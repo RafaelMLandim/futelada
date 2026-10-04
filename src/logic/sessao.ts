@@ -1,12 +1,13 @@
 // Criação e configuração da sessão (a pelada do dia).
 
 import type { Colete, Config, Estado, Lado } from '../types/pelada'
+import { numerarFila } from './fila'
 import { outro } from './lado'
 
 export const configPadrao: Config = {
   linha: 4,
   tempoMin: 10,
-  gols: 2,
+  gols: 2, // na pelada, por padrão 2 gols terminam a partida
   limiteVitorias: null,
   goleiros: [],
   coletes: {
@@ -14,25 +15,30 @@ export const configPadrao: Config = {
     B: { nome: 'Azul', cor: '#1E5FBF' },
   },
   minutosAzul: 2,
+  som: true,
+  acrescimos: true,
+  sortearInicio: true,
 }
 
 export function novaSessao(config: Config = configPadrao): Estado {
   return {
     config,
     fila: [],
+    filaTimes: [],
     emCampo: null,
     placar: [0, 0],
     gols: [],
     cartoes: [],
     goleiros: { A: null, B: null },
     historico: [],
+    subiram: [],
     proximoNumero: 1,
   }
 }
 
 /** Muda o tamanho da linha. Os times em campo continuam; só a fila se reorganiza. */
 export function alterarLinha(estado: Estado, linha: number): Estado {
-  return { ...estado, config: { ...estado.config, linha: Math.max(1, linha) } }
+  return numerarFila({ ...estado, config: { ...estado.config, linha: Math.max(1, linha) } })
 }
 
 /** Escolhe o colete de um lado. Se for a cor do outro lado, os dois trocam. */

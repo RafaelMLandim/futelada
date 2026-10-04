@@ -2,14 +2,14 @@ import type { ReactNode } from 'react'
 import { Bola } from '../../components/Bola'
 import { Cartao } from '../../components/Cartao'
 import { Icone } from '../../components/Icone'
-import { darCartao, gol } from '../../logic'
+import { darCartao, outro } from '../../logic'
 import type { Pelada } from '../../store/usePelada'
 import type { CorCartao, Jogador, Lado } from '../../types/pelada'
 
 // Menu ao tocar num jogador em campo: gol, cartões e "foi embora".
-export function AcoesJogador({ pelada, lado, jogador, decorrido, onSaiu, onFechar }: {
+export function AcoesJogador({ pelada, lado, jogador, decorrido, onGol, onSaiu, onFechar }: {
   pelada: Pelada; lado: Lado; jogador: Jogador; decorrido: number
-  onSaiu: (id: string, nome: string) => void; onFechar: () => void
+  onGol: (lado: Lado, autor: Jogador, contra?: boolean) => void; onSaiu: (id: string, nome: string) => void; onFechar: () => void
 }) {
   const { estado } = pelada.app
   if (!estado.emCampo) return null
@@ -38,7 +38,8 @@ export function AcoesJogador({ pelada, lado, jogador, decorrido, onSaiu, onFecha
           </button>
         </div>
         <div className="pb" style={{ display: 'grid', gap: 8 }}>
-          {opcao('Gol', <Bola tamanho={22} />, () => fazer((e) => gol(e, lado, jogador)))}
+          {opcao('Gol', <Bola tamanho={22} />, () => { onFechar(); onGol(lado, jogador) })}
+          {opcao('Gol contra', <Bola tamanho={22} />, () => { onFechar(); onGol(outro(lado), jogador, true) })}
           {opcao('Cartão amarelo', <Cartao cor="amarelo" tamanho={20} />, () => cartao('amarelo'))}
           {opcao('Cartão vermelho · sai da partida', <Cartao cor="vermelho" tamanho={20} />, () => cartao('vermelho'))}
           {opcao(`Cartão azul · ${minutos} min fora`, <Cartao cor="azul" tamanho={20} />, () => cartao('azul'))}

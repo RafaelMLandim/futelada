@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { comecar, configPadrao, vitoria } from '..'
+import { acabouPorGols, artilharia, comecar, configPadrao, empate, gol, placarDosColetes, removerGol, vitoria } from '..'
 import { blocos, LISTA, nomes, sessao } from './utils'
 
 describe('quem perde', () => {
@@ -46,5 +46,53 @@ describe('limite de vitórias', () => {
     expect(nomes(s.emCampo!.B.jogadores)).toEqual(['Bruno', 'Marcos', 'Rafael', 'Daniel'])
     expect(blocos(s)).toEqual([['Junior', 'Landim']])
     expect(s.historico.at(-1)!.sairam).toEqual([2])
+  })
+})
+
+
+describe('remover gol', () => {
+  it('tira o gol do placar e da artilharia', () => {
+    let s = comecar(sessao(LISTA))
+    const [joao] = s.emCampo!.A.jogadores
+    const [rafael] = s.emCampo!.B.jogadores
+    s = gol(s, 'A', joao)
+    s = gol(s, 'B', rafael)
+    s = gol(s, 'A') // sem autor
+    s = removerGol(s, 0) // o do João foi marcado errado
+    expect(s.placar).toEqual([1, 1])
+    expect(s.gols).toHaveLength(2)
+    expect(artilharia(s).map((a) => a.nome)).toEqual(['Rafael'])
+  })
+})
+
+describe('gols que terminam a partida', () => {
+  it('ligado (padrão da pelada: 2 gols) marca fim; desligado, gols não terminam', () => {
+    let s = comecar(sessao(LISTA))
+    s = gol(gol(s, 'A'), 'A')
+    expect(acabouPorGols(s)).toBe(true)
+    let semLimite = comecar(sessao(LISTA, { ...configPadrao, gols: null }))
+    for (let i = 0; i < 5; i++) semLimite = gol(semLimite, 'A')
+    expect(acabouPorGols(semLimite)).toBe(false)
+  })
+})
+
+describe('coletes no histórico', () => {
+  it('cada partida guarda a cor que cada lado vestiu', () => {
+    let s = comecar(sessao(LISTA))
+    s = vitoria(s, 'B')
+    expect(s.historico[0].coletes).toEqual({ A: { nome: 'Vermelho', cor: '#D62828' }, B: { nome: 'Azul', cor: '#1E5FBF' } })
+  })
+})
+
+describe('vitórias por colete', () => {
+  it('conta as vitórias de cada colete e os empates', () => {
+    let s = comecar(sessao(LISTA))
+    s = vitoria(s, 'B') // Azul
+    s = vitoria(s, 'B') // Azul
+    s = vitoria(s, 'A') // Vermelho
+    s = empate(s, 'A')
+    const p = placarDosColetes(s)
+    expect(p.coletes.map((c) => [c.nome, c.vitorias])).toEqual([['Vermelho', 1], ['Azul', 2]])
+    expect(p.empates).toBe(1)
   })
 })

@@ -1,6 +1,7 @@
 // Chegadas e saídas de jogadores.
 
 import type { Estado, Jogador } from '../types/pelada'
+import { numerarFila } from './fila'
 import { LADOS } from './lado'
 
 let seq = 0
@@ -11,7 +12,7 @@ export const novoJogador = (nome: string): Jogador => ({
 
 /** Quem chega (inclusive atrasado) entra no fim da fila. */
 export function adicionarJogador(estado: Estado, jogador: Jogador): Estado {
-  return { ...estado, fila: [...estado.fila, jogador] }
+  return numerarFila({ ...estado, fila: [...estado.fila, jogador] })
 }
 
 /** Todos os jogadores da sessão: em campo e na fila. */
@@ -26,7 +27,7 @@ export function todosOsJogadores(estado: Estado): Jogador[] {
  */
 export function removerJogador(estado: Estado, id: string): Estado {
   if (estado.fila.some((j) => j.id === id)) {
-    return { ...estado, fila: estado.fila.filter((j) => j.id !== id) }
+    return numerarFila({ ...estado, fila: estado.fila.filter((j) => j.id !== id) })
   }
   const { emCampo } = estado
   if (!emCampo) return estado
@@ -38,11 +39,11 @@ export function removerJogador(estado: Estado, id: string): Estado {
     const jogadores = substituto
       ? time.jogadores.map((j, k) => (k === i ? substituto : j))
       : time.jogadores.filter((_, k) => k !== i)
-    return {
+    return numerarFila({
       ...estado,
       fila: substituto ? resto : estado.fila,
       emCampo: { ...emCampo, [lado]: { ...time, jogadores } },
-    }
+    })
   }
   return estado
 }

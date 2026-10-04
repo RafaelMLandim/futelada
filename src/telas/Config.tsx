@@ -9,12 +9,14 @@ import { Passo } from '../components/Passo'
 import { LADOS, alterarLinha, definirColete, definirGoleiros } from '../logic'
 import type { Pelada } from '../store/usePelada'
 import type { Config as Cfg } from '../types/pelada'
+import { apitoInicio } from '../utils/sons'
 import { COLETES } from '../utils/cores'
-import { dataHoje, limitar, normalizarNome } from '../utils/formatar'
+import { dataHoje, limitar, maiusculas, normalizarNome } from '../utils/formatar'
 
 const PRESETS: [string, number][] = [['Futsal', 4], ['Soc.', 5], ['Soc.', 6], ['Campo', 10]]
 
-export function Config({ pelada, onPronto }: { pelada: Pelada; onPronto: () => void }) {
+/** Ajustes da pelada. Na criação (`onPronto`), tem o botão para seguir para a lista. */
+export function Config({ pelada, onPronto, onInicio }: { pelada: Pelada; onPronto?: () => void; onInicio?: () => void }) {
   const { app, aplicar } = pelada
   const cfg = app.estado.config
   const mudar = (parcial: Partial<Cfg>) => aplicar((e) => ({ ...e, config: { ...e.config, ...parcial } }))
@@ -89,11 +91,27 @@ export function Config({ pelada, onPronto }: { pelada: Pelada; onPronto: () => v
               menos={() => mudar({ tempoMin: limitar(cfg.tempoMin - 1, 1, 60) })}
               mais={() => mudar({ tempoMin: limitar(cfg.tempoMin + 1, 1, 60) })} />
           </div>
-          <div className="tr" style={{ paddingBottom: 6 }}>
-            <span className="nome">Gols</span>
-            <Passo rotulo="gols" valor={cfg.gols}
-              menos={() => mudar({ gols: limitar(cfg.gols - 1, 1, 20) })}
-              mais={() => mudar({ gols: limitar(cfg.gols + 1, 1, 20) })} />
+          <div className="tr" style={{ padding: '8px 10px' }}>
+            <div className="nome" style={{ whiteSpace: 'normal' }}>
+              Gols terminam a partida
+              <div className="mut">{cfg.gols === null ? 'Desligado: vai até o fim do tempo' : 'O que vier primeiro: tempo ou gols'}</div>
+            </div>
+            <Chave rotulo="Gols terminam a partida" ligada={cfg.gols !== null} alternar={() => mudar({ gols: cfg.gols === null ? 2 : null })} />
+          </div>
+          {cfg.gols !== null && (
+            <div className="tr" style={{ paddingBottom: 6 }}>
+              <span className="nome">Quantos gols</span>
+              <Passo rotulo="gols" valor={cfg.gols}
+                menos={() => mudar({ gols: limitar(cfg.gols! - 1, 1, 20) })}
+                mais={() => mudar({ gols: limitar(cfg.gols! + 1, 1, 20) })} />
+            </div>
+          )}
+          <div className="tr" style={{ padding: '8px 10px' }}>
+            <div className="nome" style={{ whiteSpace: 'normal' }}>
+              Acréscimos
+              <div className="mut">{cfg.acrescimos ? 'Ao acabar o tempo, define os minutos na hora' : 'Desligado: acabou o tempo, acabou o jogo'}</div>
+            </div>
+            <Chave rotulo="Acréscimos" ligada={cfg.acrescimos} alternar={() => mudar({ acrescimos: !cfg.acrescimos })} />
           </div>
           <div className="tr" style={{ paddingBottom: 6 }}>
             <span className="nome row" style={{ gap: 8 }}><Cartao cor="azul" />Cartão azul</span>
@@ -105,6 +123,23 @@ export function Config({ pelada, onPronto }: { pelada: Pelada; onPronto: () => v
 
         <section className="panel">
           <div className="ph">Regras opcionais</div>
+          <div className="tr" style={{ padding: '8px 10px' }}>
+            <div className="nome" style={{ whiteSpace: 'normal' }}>
+              Sons
+              <div className="mut">Apito no play e no fim, narração no gol, moeda no empate</div>
+            </div>
+            <Chave rotulo="Sons" ligada={cfg.som} alternar={() => {
+              if (!cfg.som) apitoInicio()
+              mudar({ som: !cfg.som })
+            }} />
+          </div>
+          <div className="tr" style={{ padding: '8px 10px' }}>
+            <div className="nome" style={{ whiteSpace: 'normal' }}>
+              Sortear o primeiro jogo
+              <div className="mut">Mistura os jogadores do Time 1 e do Time 2 antes do primeiro jogo (contra panelinha)</div>
+            </div>
+            <Chave rotulo="Sortear o primeiro jogo" ligada={cfg.sortearInicio} alternar={() => mudar({ sortearInicio: !cfg.sortearInicio })} />
+          </div>
           <div className="tr" style={{ padding: '8px 10px' }}>
             <div className="nome" style={{ whiteSpace: 'normal' }}>
               Limite de vitórias seguidas
@@ -138,8 +173,8 @@ export function Config({ pelada, onPronto }: { pelada: Pelada; onPronto: () => v
           <form className="pb" style={{ display: 'flex', gap: 8 }} onSubmit={addGoleiro}>
             <label style={{ display: 'flex', flex: 1 }}>
               <span className="vh">Nome do goleiro</span>
-              <input className="inp" placeholder="Nome do goleiro" value={goleiro} autoCapitalize="words"
-                onChange={(ev) => setGoleiro(ev.target.value)} />
+              <input className="inp" placeholder="Nome do goleiro" value={goleiro} autoCapitalize="characters"
+                onChange={(ev) => setGoleiro(maiusculas(ev.target.value))} />
             </label>
             <button className="ib" type="submit" style={{ width: 52, height: 52, background: 'var(--amarelo)', boxShadow: '0 3px 0 var(--borda)' }} aria-label="Adicionar goleiro">
               <Icone nome="mais" />
@@ -155,11 +190,16 @@ export function Config({ pelada, onPronto }: { pelada: Pelada; onPronto: () => v
           Já tem um goleiro <b>{repetido}</b>. Adicione o sobrenome ou um apelido.
         </Aviso>
       )}
-      <div className="rodape">
-        <button className="btn" onClick={onPronto}>
-          {app.iniciada ? 'Voltar' : 'Montar lista'} <Icone nome="seta" />
-        </button>
-      </div>
+      {onInicio && (
+        <div className="rodape">
+          <button className="btn w sm" onClick={onInicio}><Icone nome="inicio" /> Início (pelada ou torneio)</button>
+        </div>
+      )}
+      {onPronto && (
+        <div className="rodape">
+          <button className="btn" onClick={onPronto}>Montar lista <Icone nome="seta" /></button>
+        </div>
+      )}
     </div>
   )
 }

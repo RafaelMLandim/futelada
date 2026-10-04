@@ -5,9 +5,20 @@ import { mandarParaFila, registrarPartida, substituirTimes } from './campo'
 import { tirarProximoTime } from './fila'
 import { goleiroUnicoVaiPara, sincronizarGoleiros } from './goleiros'
 import { outro } from './lado'
+import { embaralhar, type Aleatorio } from './torneio/sorteio'
 
 export function podeComecar(estado: Estado): boolean {
   return estado.emCampo === null && estado.fila.length > estado.config.linha
+}
+
+/**
+ * Contra panelinha: mistura os jogadores dos dois primeiros times da lista (os que vão
+ * jogar o primeiro jogo). Só antes do primeiro jogo do dia.
+ */
+export function sortearPrimeirosTimes(estado: Estado, aleatorio: Aleatorio = Math.random): Estado {
+  if (estado.emCampo || estado.historico.length > 0) return estado
+  const n = Math.min(estado.config.linha * 2, estado.fila.length)
+  return { ...estado, fila: [...embaralhar(estado.fila.slice(0, n), aleatorio), ...estado.fila.slice(n)] }
 }
 
 export function comecar(estado: Estado): Estado {
@@ -17,8 +28,8 @@ export function comecar(estado: Estado): Estado {
   return sincronizarGoleiros({ ...b.estado, emCampo: { A: a.time, B: b.time }, placar: [0, 0], gols: [], cartoes: [] })
 }
 
-/** Gol do time do `lado`. `autor` = quem fez (null se não informado). */
-export function gol(estado: Estado, lado: Lado, autor: Jogador | null = null): Estado {
+/** Gol para `lado`. Gol contra: `autor` é do outro time (não conta na artilharia dele). */
+export function gol(estado: Estado, lado: Lado, autor: Jogador | null = null, tempoMs?: number, contra = false): Estado {
   const placar: Placar = [...estado.placar]
   placar[lado === 'A' ? 0 : 1]++
   const novo: Gol = {
@@ -26,13 +37,16 @@ export function gol(estado: Estado, lado: Lado, autor: Jogador | null = null): E
     autorId: autor?.id ?? null,
     autor: autor?.nome ?? null,
     goleiroSofreu: estado.goleiros[outro(lado)],
+    tempoMs,
+    ...(contra && { contra: true }),
   }
   return { ...estado, placar, gols: [...estado.gols, novo] }
 }
 
-/** Algum time chegou ao limite de gols? */
+/** Algum time chegou ao limite de gols? (sem limite configurado, nunca) */
 export function acabouPorGols(estado: Estado): boolean {
-  return estado.placar[0] >= estado.config.gols || estado.placar[1] >= estado.config.gols
+  const { gols } = estado.config
+  return gols !== null && (estado.placar[0] >= gols || estado.placar[1] >= gols)
 }
 
 /**
@@ -55,4 +69,14 @@ export function vitoria(estado: Estado, vencedor: Lado): Estado {
   }
   s = mandarParaFila(s, emCampo[perdedor])
   return substituirTimes(s, [perdedor], { lado: vencedor, time: venc })
+}
+
+/** Remove um gol da partida em andamento (marcado por engano), pelo índice na lista. */
+export function removerGol(estado: Estado, indice: number): Estado {
+  const removido = estado.gols[indice]
+  if (!removido) return estado
+  const placar: Placar = [...estado.placar]
+  const i = removido.lado === 'A' ? 0 : 1
+  placar[i] = Math.max(0, placar[i] - 1)
+  return { ...estado, placar, gols: estado.gols.filter((_, k) => k !== indice) }
 }

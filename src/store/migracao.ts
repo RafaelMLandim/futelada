@@ -2,6 +2,7 @@
 // para uma pelada salva antes de uma atualização continuar abrindo.
 
 import { configPadrao, novaSessao } from '../logic'
+import { numerarFila } from '../logic/fila'
 import type { AppState } from '../types/app'
 import type { Estado, Partida } from '../types/pelada'
 import { cronoZerado } from './cronometro'
@@ -16,7 +17,7 @@ const completarPartida = (p: Partida): Partida => ({
 export function completarEstado(e: Partial<Estado> | undefined): Estado {
   const base = novaSessao(configPadrao)
   const config = { ...configPadrao, ...e?.config, coletes: { ...configPadrao.coletes, ...e?.config?.coletes } }
-  return {
+  const estado: Estado = {
     ...base,
     ...e,
     config,
@@ -24,14 +25,16 @@ export function completarEstado(e: Partial<Estado> | undefined): Estado {
     gols: e?.gols ?? [],
     cartoes: e?.cartoes ?? [],
     historico: (e?.historico ?? []).map(completarPartida),
+    subiram: e?.subiram ?? [],
   }
+  // Dados antigos não tinham o número de cada time da fila
+  return e?.filaTimes ? estado : numerarFila({ ...estado, filaTimes: [] })
 }
 
 export function completarApp(app: Partial<AppState>): AppState {
   return {
     estado: completarEstado(app.estado),
     iniciada: app.iniciada ?? false,
-    desfazer: (app.desfazer ?? []).map(completarEstado),
     crono: app.crono ?? cronoZerado,
   }
 }

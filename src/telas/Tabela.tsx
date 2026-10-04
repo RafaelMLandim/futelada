@@ -2,10 +2,11 @@ import { Barra } from '../components/Barra'
 import { Camisa } from '../components/Camisa'
 import { Icone } from '../components/Icone'
 import { Cartao } from '../components/Cartao'
-import { artilharia, cartoesDoDia, goleirosMenosVazados } from '../logic'
+import { artilharia, cartoesDoDia, goleirosMenosVazados, placarDosColetes } from '../logic'
 import type { Pelada } from '../store/usePelada'
 import type { Partida } from '../types/pelada'
-import { corDoTime } from '../utils/cores'
+import { corDoTimeDaPelada, textoSobre } from '../utils/cores'
+import { useConfirmar } from '../utils/confirmacao'
 import { dataHoje } from '../utils/formatar'
 
 type Linha = { numero: number; j: number; v: number; e: number; d: number }
@@ -27,6 +28,7 @@ function classificacao(historico: Partida[]): Linha[] {
 
 export function Tabela({ pelada }: { pelada: Pelada }) {
   const { app, encerrar } = pelada
+  const confirmar = useConfirmar()
   const { estado } = app
   const { historico } = estado
   const tabela = classificacao(historico)
@@ -36,9 +38,16 @@ export function Tabela({ pelada }: { pelada: Pelada }) {
   const artilheiros = artilharia(estado)
   const goleiros = goleirosMenosVazados(estado)
   const cartoes = cartoesDoDia(estado)
+  const placarColetes = placarDosColetes(estado)
+  // Na tabela, cada time tem cor própria (diferente dos coletes, que são do jogo)
+  const coletes = [estado.config.coletes.A, estado.config.coletes.B]
+  const corDoTime = (numero: number) => corDoTimeDaPelada(numero, coletes)
 
   const fimDaPelada = () => {
-    if (confirm('Encerrar a pelada? A lista, os times e a tabela de hoje serão apagados.')) encerrar()
+    confirmar({
+      titulo: 'Encerrar a pelada?', mensagem: 'A lista, os goleiros, os times e a tabela de hoje serão apagados.',
+      botao: 'Encerrar', perigo: true, aoConfirmar: encerrar,
+    })
   }
 
   return (
@@ -46,9 +55,25 @@ export function Tabela({ pelada }: { pelada: Pelada }) {
       <Barra titulo="Tabela" sub={dataHoje()} />
       <div className="conteudo">
         <section className="panel">
+          <div className="ph">{placarColetes.coletes.map((c) => c.nome).join(' x ')}<span className="sub">vitórias por colete</span></div>
+          <div className="pb" style={{ display: 'grid', gridTemplateColumns: `repeat(${placarColetes.coletes.length + 1}, minmax(0, 1fr))`, gap: 8 }}>
+            {placarColetes.coletes.map((c) => (
+              <div key={c.cor} style={{ background: c.cor, color: textoSobre(c.cor), border: '2px solid var(--borda)', borderRadius: 5, textAlign: 'center', padding: '6px 4px' }}>
+                <div className="num" style={{ fontSize: 34 }}>{c.vitorias}</div>
+                <div className="num" style={{ fontSize: 14, textTransform: 'uppercase' }}>{c.nome}</div>
+              </div>
+            ))}
+            <div style={{ border: '2px solid var(--borda)', borderRadius: 5, textAlign: 'center', padding: '6px 4px', background: '#e3e8d6' }}>
+              <div className="num" style={{ fontSize: 34 }}>{placarColetes.empates}</div>
+              <div className="num" style={{ fontSize: 14, textTransform: 'uppercase' }}>Empates</div>
+            </div>
+          </div>
+        </section>
+
+        <section className="panel">
           <div className="ph">Resultados<span className="sub">{historico.length} partidas</span></div>
           {historico.length === 0 && <div className="pb mut">Nenhuma partida terminou ainda.</div>}
-          {[...historico].reverse().map((p) => (
+          {historico.map((p) => ( // da partida 1 (mais antiga) até a última
             <div key={p.numero} className="tr" style={{ minHeight: 48 }}>
               <span className="no">{p.numero}</span>
               <Camisa cor={corDoTime(p.timeA.numero)} tamanho={18} />

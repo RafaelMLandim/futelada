@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Camisa } from '../../components/Camisa'
 import { Icone } from '../../components/Icone'
+import { Moeda } from '../../components/Moeda'
 import { empate, empateSaemOsDois } from '../../logic'
 import type { Pelada } from '../../store/usePelada'
 import type { Lado } from '../../types/pelada'
+import { somDeMoeda } from '../../utils/sons'
 
 // Cara = time da esquerda (A), Coroa = time da direita (B)
 export function Empate({ pelada, onFechar }: { pelada: Pelada; onFechar: () => void }) {
@@ -16,14 +18,14 @@ export function Empate({ pelada, onFechar }: { pelada: Pelada; onFechar: () => v
   if (!estado.emCampo) return null
   const { coletes } = estado.config
   const saemOsDois = empateSaemOsDois(estado)
-  const nome = (l: Lado) => `Time ${estado.emCampo![l].numero} (${coletes[l].nome})`
-  const sorteado = nome(lado)
-  const outro = nome(lado === 'A' ? 'B' : 'A')
+  const sorteado = coletes[lado].nome
+  const outro = coletes[lado === 'A' ? 'B' : 'A'].nome
 
   const jogar = () => {
     if (fase === 'girando') return
     setLado(Math.random() < 0.5 ? 'A' : 'B')
     setFase('girando')
+    if (estado.config.som) somDeMoeda(1.4)
     timer.current = window.setTimeout(() => setFase('pronta'), 1400)
   }
   const confirmar = () => {
@@ -61,15 +63,12 @@ export function Empate({ pelada, onFechar }: { pelada: Pelada; onFechar: () => v
           ))}
         </div>
         <div className="palco" style={{ background: 'var(--grama)' }}>
-          <button className={'moeda' + (fase !== 'parada' && lado === 'B' ? ' coroa' : '') + (fase === 'girando' ? ' girando' : '')}
-            onClick={jogar} aria-label="Jogar a moeda">
-            <span className="num" style={{ fontSize: 36, textTransform: 'uppercase' }}>{fase === 'girando' ? '' : face}</span>
-          </button>
+          <Moeda resultado={fase !== 'parada' && lado === 'B' ? 'coroa' : 'cara'} girando={fase === 'girando'} parada={fase === 'parada'} onClick={jogar} />
           {fase === 'pronta' ? (
             <div className="led" style={{ textAlign: 'center', padding: '10px 18px' }}>
               <div className="num" style={{ fontSize: 26, textTransform: 'uppercase' }}>Deu {face}</div>
               <div style={{ color: '#fff', fontWeight: 600, marginTop: 4 }}>
-                {saemOsDois ? `${sorteado} entra primeiro na fila` : `${sorteado} sai · ${outro} continua`}
+                {saemOsDois ? `${sorteado} primeiro na fila` : `${outro} fica`}
               </div>
             </div>
           ) : (

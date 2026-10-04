@@ -10,6 +10,5 @@ describe('dados salvos em versão antiga', () => {
     expect(app.estado.cartoes).toEqual([])
     expect(app.estado.gols).toEqual([])
     expect(app.estado.historico[0].cartoes).toEqual([])
-    expect(app.desfazer).toEqual([])
   })
 })

@@ -16,6 +16,16 @@ describe('artilharia', () => {
     expect(s.placar).toEqual([1, 2])
     expect(artilharia(s).map((a) => [a.nome, a.gols])).toEqual([['João', 3], ['Rafael', 1]])
   })
+
+  it('gol contra conta no placar do adversário e não mexe nos gols de quem fez', () => {
+    let s = comecar(sessao(LISTA, { ...configPadrao, goleiros: ['Zé', 'Tião'] }))
+    const [joao] = s.emCampo!.A.jogadores
+    s = gol(s, 'A', joao) // João marca para o A
+    s = gol(s, 'B', joao, undefined, true) // João faz contra: ponto para o B
+    expect(s.placar).toEqual([1, 1])
+    expect(s.gols[1]).toMatchObject({ lado: 'B', autor: 'João', contra: true, goleiroSofreu: 'Zé' })
+    expect(artilharia(s).map((a) => [a.nome, a.gols])).toEqual([['João', 1]])
+  })
 })
 
 describe('goleiro menos vazado', () => {

@@ -1,0 +1,19 @@
+rules_version = '2';
+// Regras do torneio compartilhado (PLANO.md, seção 10):
+// - qualquer celular logado (login anônimo) com o código lê o torneio;
+// - só o organizador cria/muda/apaga a base do torneio (regras, times, sorteio);
+// - mesários gravam os jogos em andamento e os resultados.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /torneios/{codigo} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.nuvem.organizador == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.nuvem.organizador == request.auth.uid;
+
+      match /{parte}/{jogo} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && parte in ['partidas', 'resultados'];
+      }
+    }
+  }
+}

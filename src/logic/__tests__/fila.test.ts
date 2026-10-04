@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alterarLinha, comecar, configPadrao, definirColete, vitoria } from '..'
+import { alterarLinha, atualizarSubiram, comecar, configPadrao, definirColete, sortearPrimeirosTimes, vitoria } from '..'
 import { blocos, LISTA, nomes, sessao } from './utils'
 
 describe('montagem dos times', () => {
@@ -44,5 +44,24 @@ describe('coletes', () => {
     expect(s.config.coletes.B.nome).toBe('Vermelho')
     s = definirColete(s, 'B', { nome: 'Amarelo', cor: '#FFD23F' })
     expect(s.config.coletes).toEqual({ A: { nome: 'Azul', cor: '#1E5FBF' }, B: { nome: 'Amarelo', cor: '#FFD23F' } })
+  })
+})
+
+describe('sorteio do primeiro jogo (contra panelinha)', () => {
+  it('mistura só os jogadores dos 2 primeiros times; o resto da fila fica igual', () => {
+    const s = sessao(LISTA) // 10 jogadores, 4 na linha: T1 e T2 com 8, sobram Mano e Lucas
+    const aleatorio = () => 0 // sempre troca com o primeiro: ordem muda de forma previsível
+    const m = sortearPrimeirosTimes(s, aleatorio)
+    expect(nomes(m.fila.slice(0, 8)).sort()).toEqual(LISTA.slice(0, 8).sort())
+    expect(nomes(m.fila.slice(0, 8))).not.toEqual(LISTA.slice(0, 8))
+    expect(nomes(m.fila.slice(8))).toEqual(['Mano', 'Lucas'])
+  })
+
+  it('depois do primeiro jogo não mistura mais, e começar não marca ninguém como "subiu"', () => {
+    const s = sessao(LISTA)
+    const comecou = atualizarSubiram(s, comecar(sortearPrimeirosTimes(s, () => 0)))
+    expect(comecou.subiram).toEqual([])
+    const depois = vitoria(comecou, 'A')
+    expect(sortearPrimeirosTimes(depois)).toBe(depois)
   })
 })

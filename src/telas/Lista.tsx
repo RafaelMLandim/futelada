@@ -1,20 +1,23 @@
 import { useRef, useState, type FormEvent } from 'react'
 import {
-  adicionarJogador, alterarLinha, blocosDaFila, comecar, novoJogador, podeComecar, removerJogador,
-  LADOS, timesCompletosNaFila, todosOsJogadores,
+  adicionarJogador, alterarLinha, blocosDaFila, comecar, sortearPrimeirosTimes, novoJogador, podeComecar, removerJogador,
+  LADOS, subiuDe, timesCompletosNaFila, todosOsJogadores,
 } from '../logic'
 import { Aviso } from '../components/Aviso'
 import { Barra } from '../components/Barra'
 import { Camisa } from '../components/Camisa'
 import { Icone } from '../components/Icone'
+import { Subiu } from '../components/Subiu'
 import type { Pelada } from '../store/usePelada'
 import { SEM_COLETE } from '../utils/cores'
-import { normalizarNome } from '../utils/formatar'
+import { useConfirmar } from '../utils/confirmacao'
+import { maiusculas, normalizarNome } from '../utils/formatar'
 
 export function Lista({ pelada, onApitar }: { pelada: Pelada; onApitar: () => void }) {
   const { app, aplicar } = pelada
   const { estado } = app
   const [nome, setNome] = useState('')
+  const confirmar = useConfirmar()
   const [repetido, setRepetido] = useState<string | null>(null)
   const campo = useRef<HTMLInputElement>(null)
   const linha = estado.config.linha
@@ -35,10 +38,14 @@ export function Lista({ pelada, onApitar }: { pelada: Pelada; onApitar: () => vo
     setNome('')
   }
   const remover = (id: string, quem: string) => {
-    if (confirm(`${quem} foi embora? A fila sobe uma posição.`)) aplicar((e) => removerJogador(e, id))
+    confirmar({
+      titulo: 'Foi embora?', mensagem: `${quem} foi embora? A fila sobe uma posição.`, botao: 'Foi embora', perigo: true,
+      aoConfirmar: () => aplicar((e) => removerJogador(e, id)),
+    })
   }
   const apitar = () => {
-    aplicar(comecar, true)
+    // primeiro jogo: mistura os jogadores dos 2 primeiros times (se ligado nos Ajustes)
+    aplicar((e) => comecar(e.config.sortearInicio ? sortearPrimeirosTimes(e) : e), true)
     onApitar()
   }
 
@@ -63,7 +70,7 @@ export function Lista({ pelada, onApitar }: { pelada: Pelada; onApitar: () => vo
         <label style={{ display: 'flex', flex: 1 }}>
           <span className="vh">Nome do jogador</span>
           <input ref={campo} className="inp" placeholder={emJogo ? 'Chegou atrasado?' : 'Quem chegou?'} value={nome}
-            onChange={(ev) => setNome(ev.target.value)} autoCapitalize="words" enterKeyHint="done" />
+            onChange={(ev) => setNome(maiusculas(ev.target.value))} autoCapitalize="characters" enterKeyHint="done" />
         </label>
         <button className="ib" type="submit" style={{ width: 52, height: 52, background: 'var(--amarelo)', boxShadow: '0 3px 0 var(--borda)' }} aria-label="Adicionar jogador">
           <Icone nome="mais" />
@@ -75,7 +82,7 @@ export function Lista({ pelada, onApitar }: { pelada: Pelada; onApitar: () => vo
           <div className="vazio">{emJogo ? 'Ninguém esperando. Quem perder vem para cá.' : 'Adicione os nomes na ordem de chegada.'}</div>
         )}
         {blocos.map((bloco, i) => {
-          const numero = estado.proximoNumero + i
+          const numero = estado.filaTimes[i]
           const falta = linha - bloco.length
           // Antes de apitar, os dois primeiros times já vestem os coletes
           const colete = !emJogo && i < 2 ? coletes[LADOS[i]] : null
@@ -101,7 +108,9 @@ export function Lista({ pelada, onApitar }: { pelada: Pelada; onApitar: () => vo
                   return (
                     <div key={j.id} className="tr">
                       <span className="no">{posicao}</span>
-                      <span className="nome">{j.nome}</span>
+                      <span className="nome" style={{ flex: '0 1 auto' }}>{j.nome}</span>
+                      <Subiu de={subiuDe(estado, j.id)} />
+                      <span style={{ flex: 1 }} />
                       <button className="ib g" aria-label={`${j.nome} foi embora`} onClick={() => remover(j.id, j.nome)}>
                         <Icone nome="saiu" tamanho={20} />
                       </button>
@@ -126,7 +135,7 @@ export function Lista({ pelada, onApitar }: { pelada: Pelada; onApitar: () => vo
       {!emJogo && (
         <div className="rodape">
           <button className="btn" disabled={!podeComecar(estado)} onClick={apitar}>
-            Apitar · Time {estado.proximoNumero} x Time {estado.proximoNumero + 1}
+            {estado.config.sortearInicio && estado.historico.length === 0 ? 'Sortear e apitar' : 'Apitar'} · Time {estado.filaTimes[0]} x Time {estado.filaTimes[1]}
           </button>
         </div>
       )}

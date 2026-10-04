@@ -2,7 +2,7 @@
 // Usado pelas regras de vitória e de empate.
 
 import type { Estado, Lado, Partida, Time } from '../types/pelada'
-import { tirarProximoTime } from './fila'
+import { entrarNaFila, tirarProximoTime } from './fila'
 
 /** Guarda a partida que acabou no histórico. */
 export function registrarPartida(estado: Estado, resultado: Partida['resultado'], sairam: number[]): Estado {
@@ -18,6 +18,7 @@ export function registrarPartida(estado: Estado, resultado: Partida['resultado']
     gols: estado.gols,
     cartoes: estado.cartoes,
     goleiros: estado.goleiros,
+    coletes: estado.config.coletes,
   }
   return { ...estado, historico: [...estado.historico, partida] }
 }
@@ -36,7 +37,7 @@ export function substituirTimes(estado: Estado, lados: Lado[], fica?: { lado: La
   return { ...atual, emCampo: campo, placar: [0, 0], gols: [], cartoes: [] }
 }
 
-/** Manda os jogadores dos times para o fim da fila, na ordem dada. */
+/** Manda os times para o fim da fila, na ordem dada (cada um mantém o número). */
 export function mandarParaFila(estado: Estado, ...times: Time[]): Estado {
-  return { ...estado, fila: [...estado.fila, ...times.flatMap((t) => t.jogadores)] }
+  return times.reduce(entrarNaFila, estado)
 }

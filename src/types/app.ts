@@ -2,11 +2,13 @@
 
 import type { Estado } from './pelada'
 
-export type Cronometro = { rodando: boolean; inicio: number; acumulado: number }
+export type Cronometro = {
+  rodando: boolean; inicio: number; acumulado: number
+  acrescimoMin?: number // minutos de acréscimo dados depois do tempo (somam ao tempo da partida)
+}
 
 export type AppState = {
   estado: Estado
   iniciada: boolean // passou da tela de configuração
-  desfazer: Estado[]
   crono: Cronometro
 }
