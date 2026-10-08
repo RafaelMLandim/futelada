@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  campoDoJogo, camposLivres, cartaoNaPartida, proximosPorCampo, encerrarPartida, golNaPartida, iniciarPartida, jogosDisponiveis, jogosParaComecar,
+  campoDoJogo, campoLiberadoDosGrupos, camposLivres, cartaoNaPartida, proximosPorCampo, encerrarPartida, golNaPartida, iniciarPartida, jogosDisponiveis, jogosParaComecar,
   removerGolDaPartida, situacaoDisciplinar, substituirNaPartida, timesDoJogo,
 } from '..'
 import type { Torneio } from '../../../types/torneio'
@@ -97,6 +97,28 @@ describe('cada grupo no seu campo', () => {
     // Campo 1 ocupado: só jogos do Grupo B podem começar (no Campo 2)
     expect(jogosParaComecar(t).every((j) => j.grupo === 1)).toBe(true)
     expect(proximosPorCampo(t).map((x) => x.campo)).toEqual([2])
+  })
+
+  it('mais grupos que campos: o campo que acaba os seus grupos ajuda o outro (não fica parado)', () => {
+    // 3 grupos, 2 campos: A e C no Campo 1, B no Campo 2 (3 jogos no Campo 2, 6 no Campo 1)
+    let t = sorteado(torneioCom(9, 'grupos', { grupos: 3, campos: 2, classificamPorGrupo: 1 }))
+    expect(t.jogos.filter((j) => campoDoJogo(t, j) === 2).length).toBe(3)
+    expect(campoLiberadoDosGrupos(t, 2)).toBe(false)
+    // enquanto o Grupo B tem jogo, o Campo 2 só recebe o Grupo B
+    expect(proximosPorCampo(t).find((x) => x.campo === 2)!.jogo.grupo).toBe(1)
+    // joga os 3 jogos do Grupo B no Campo 2
+    for (const jogo of t.jogos.filter((j) => j.grupo === 1)) {
+      t = iniciarPartida(t, jogo.id, 2)
+      t = encerrarPartida(t, jogo.id)
+    }
+    expect(campoLiberadoDosGrupos(t, 2)).toBe(true)
+    // agora o Campo 2 pega jogos dos Grupos A e C, que eram do Campo 1
+    const noCampo2 = proximosPorCampo(t).find((x) => x.campo === 2)!.jogo
+    expect([0, 2]).toContain(noCampo2.grupo)
+    t = iniciarPartida(t, noCampo2.id, 2)
+    expect(t.emAndamento[0].campo).toBe(2)
+    // e o Campo 1 continua com os dele ao mesmo tempo
+    expect(proximosPorCampo(t).map((x) => x.campo)).toEqual([1])
   })
 
   it('desligado, os jogos de grupo vão para qualquer campo livre', () => {

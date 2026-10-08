@@ -8,16 +8,24 @@ export type Formato = 'pontos' | 'mata-mata' | 'grupos'
 export type RegrasTorneio = {
   formato: Formato
   linha: number // jogadores na linha (goleiro não conta)
-  tempoMin: number
+  tempos: number // tempos regulamentares (1, 2, 3…)
+  tempoMin: number // duração de cada tempo regulamentar
+  intervaloMin: number // intervalo entre os tempos (0 = sem intervalo)
+  prorrogacao: boolean // mata-mata: empate (ou agregado empatado) vai para a prorrogação antes dos pênaltis
+  temposProrrogacao: number
+  minutosProrrogacao: number // duração de cada tempo da prorrogação
   gols: number | null // gols que terminam a partida (null = só o tempo)
   idaEVolta: boolean // pontos corridos / grupos: turno e returno
   grupos: number // grupos + mata-mata: quantos grupos
   classificamPorGrupo: number // grupos + mata-mata: quantos passam de cada grupo
   terceiroLugar: boolean // mata-mata: disputa de 3º lugar
+  mataIdaEVolta: boolean // mata-mata em ida e volta (placar agregado; pênaltis só no fim da volta)
+  finalUnica: boolean // com ida e volta: a final é em jogo único (como na Libertadores)
   cobrancasPenalti: number // cobranças normais antes das alternadas
   maxSubstituicoes: number | null // por time, por jogo (null = ilimitadas)
   campos: number // quantos jogos podem acontecer ao mesmo tempo
   grupoPorCampo: boolean // grupos: cada grupo joga sempre no mesmo campo
+  chaveCopa: boolean // grupos: chave em dois lados como na Copa (1º e 2º do mesmo grupo só se encontram na final)
   minutosAzul: number
   som: boolean
   acrescimos: boolean // ao acabar o tempo, pode dar acréscimos
@@ -39,6 +47,8 @@ export type Origem =
   | { tipo: 'vencedor'; jogo: string }
   | { tipo: 'perdedor'; jogo: string }
   | { tipo: 'grupo'; grupo: number; posicao: number } // posicao: 1 = primeiro
+  // o `ordem`º melhor entre quem terminou em `posicao` nos `grupos` (melhor campanha; W.O. da chave)
+  | { tipo: 'melhor'; posicao: number; grupos: number[]; ordem: number }
 
 export type ResultadoJogo = {
   placar: Placar
@@ -60,6 +70,9 @@ export type JogoTorneio = {
   casa: Origem // lado A
   fora: Origem // lado B
   resultado: ResultadoJogo | null
+  // mata-mata em ida e volta: qual jogo do confronto é este e o id do outro
+  perna?: 'ida' | 'volta'
+  outraPerna?: string
 }
 
 /** Quem está em campo e no banco durante um jogo do torneio. */
@@ -80,7 +93,11 @@ export type PartidaTorneio = {
   placar: Placar
   gols: Gol[]
   cartoes: Cartao[]
-  crono: Cronometro
+  crono: Cronometro // relógio do jogo todo (o intervalo não conta)
+  periodo?: number // tempo atual (1º, 2º…), dentro do regulamentar ou da prorrogação
+  prorrogacao?: boolean // está na prorrogação
+  inicioDoPeriodo?: number // ms do relógio quando o tempo atual começou
+  intervaloAte?: number | null // no intervalo: hora em que acaba
 }
 
 export type Torneio = {

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Barra } from '../../components/Barra'
 import { Camisa } from '../../components/Camisa'
 import { Icone } from '../../components/Icone'
@@ -9,6 +10,7 @@ import type { TorneioHook } from '../../store/torneio'
 import type { JogoTorneio, Torneio } from '../../types/torneio'
 import { useConfirmar } from '../../utils/confirmacao'
 import { SEM_COLETE } from '../../utils/cores'
+import { ChaveCompleta } from './ChaveCompleta'
 import { descreverOrigem, nomeDoJogo, timePorId } from './nomes'
 
 const NOME_FORMATO = { pontos: 'Pontos corridos', 'mata-mata': 'Mata-mata', grupos: 'Grupos + mata-mata' }
@@ -17,6 +19,7 @@ const NOME_FORMATO = { pontos: 'Pontos corridos', 'mata-mata': 'Mata-mata', grup
 export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: string) => void }) {
   const torneio = hook.torneio!
   const confirmar = useConfirmar()
+  const [chaveAberta, setChaveAberta] = useState(false) // mata-mata em tela cheia
   const comecou = torneio.jogos.some((j) => j.resultado)
 
   if (!torneio.sorteado) {
@@ -68,6 +71,7 @@ export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: 
   const livres = camposLivres(torneio)
   const variosCampos = torneio.regras.campos > 1
   const vencedor = campeao(torneio)
+  const temMata = torneio.jogos.some((j) => j.fase === 'mata')
   const jogar = (jogoId: string, campo?: number) => {
     hook.aplicar((t) => iniciarPartida(t, jogoId, campo))
     onJogar(jogoId)
@@ -85,6 +89,12 @@ export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: 
             </div>
           </section>
         )}
+        {temMata && (
+          <button className="btn w sm" style={{ flex: 'none' }} onClick={() => setChaveAberta(true)}>
+            <Icone nome="trofeu" tamanho={20} /> Ver chave do mata-mata
+          </button>
+        )}
+        {chaveAberta && <ChaveCompleta torneio={torneio} onFechar={() => setChaveAberta(false)} />}
         {[...torneio.emAndamento].sort((a, b) => a.campo - b.campo).map((p) => (
           <button key={p.jogoId} className="panel destaque row" style={{ padding: '10px 12px', cursor: 'pointer', font: 'inherit', color: 'inherit', textAlign: 'left' }}
             onClick={() => onJogar(p.jogoId)}>
@@ -141,15 +151,14 @@ export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: 
             ))}
           </section>
         ))}
-      </div>
-      {!comecou && hook.souOrganizador && (
-        <div className="rodape">
-          <button className="btn w sm" onClick={() => confirmar({
+        {/* antes do primeiro jogo: refazer o sorteio fica no fim da lista (não flutua por cima) */}
+        {!comecou && hook.souOrganizador && (
+          <button className="btn w sm" style={{ flex: 'none' }} onClick={() => confirmar({
             titulo: 'Sortear de novo?', mensagem: 'Grupos, chave e ordem dos jogos serão sorteados outra vez.',
             botao: 'Sortear de novo', aoConfirmar: () => hook.aplicar((t) => sortear(t)),
           })}><Icone nome="sorteio" /> Sortear de novo</button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

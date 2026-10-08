@@ -77,7 +77,8 @@ export function EditorDeTime({ torneio, inicial, onSalvar, onExcluir, onCancelar
             {nomeRepetido && <div className="mut" style={{ color: 'var(--vermelho)' }}>Já existe um time com esse nome.</div>}
             <div role="radiogroup" aria-label="Cor do time" style={{ display: 'grid', gridTemplateColumns: 'repeat(8, minmax(0, 1fr))', gap: 6 }}>
               {CORES_TORNEIO.map((c) => {
-                const usada = coresUsadas.has(c.cor)
+                // acabaram as cores (mais de 21 times): aí pode repetir
+                const usada = coresUsadas.has(c.cor) && coresUsadas.size < CORES_TORNEIO.length
                 return (
                   <button key={c.cor} role="radio" aria-checked={time.cor === c.cor} disabled={usada}
                     aria-label={`${c.nome}${usada ? ' (já usada)' : ''}`} title={c.nome}

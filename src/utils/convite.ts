@@ -1,16 +1,15 @@
 // Convite para entrar no torneio compartilhado: link com o código.
 
-export const linkDoConvite = (codigo: string) => `${location.origin}${location.pathname}?entrar=${codigo}`
+import { compartilharTexto, enderecoDoSite, nativo } from './nativo'
+
+export const linkDoConvite = (codigo: string) => `${enderecoDoSite()}${nativo() ? '/' : location.pathname}?entrar=${codigo}`
 
 /** Abre o compartilhar do celular (WhatsApp etc.) ou copia o link. Devolve o que fez. */
 export async function enviarConvite(codigo: string, nome: string): Promise<'enviado' | 'copiado' | 'falhou'> {
   const url = linkDoConvite(codigo)
   const texto = `Entre no torneio ${nome} para marcar os jogos. Código: ${codigo}`
   try {
-    if (navigator.share) {
-      await navigator.share({ title: nome, text: texto, url })
-      return 'enviado'
-    }
+    if (await compartilharTexto({ title: nome, text: texto, url })) return 'enviado'
     await navigator.clipboard.writeText(`${texto}\n${url}`)
     return 'copiado'
   } catch {

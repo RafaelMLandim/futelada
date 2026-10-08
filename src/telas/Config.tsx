@@ -15,11 +15,15 @@ import { dataHoje, limitar, maiusculas, normalizarNome } from '../utils/formatar
 
 const PRESETS: [string, number][] = [['Futsal', 4], ['Soc.', 5], ['Soc.', 6], ['Campo', 10]]
 
-/** Ajustes da pelada. Na criação (`onPronto`), tem o botão para seguir para a lista. */
-export function Config({ pelada, onPronto, onInicio }: { pelada: Pelada; onPronto?: () => void; onInicio?: () => void }) {
+/** Ajustes da pelada. Na criação (`onPronto`), tem o botão para seguir para a lista; no fim, cancelar a pelada. */
+export function Config({ pelada, onPronto, onCancelar }: { pelada: Pelada; onPronto?: () => void; onCancelar?: () => void }) {
   const { app, aplicar } = pelada
   const cfg = app.estado.config
   const mudar = (parcial: Partial<Cfg>) => aplicar((e) => ({ ...e, config: { ...e.config, ...parcial } }))
+  const pag = cfg.pagamento
+  const mudarPag = (parcial: Partial<Cfg['pagamento']>) => aplicar((e) => ({ ...e, config: { ...e.config, pagamento: { ...e.config.pagamento, ...parcial } } }))
+  /** "120", "120,50" → número (vazio = 0) */
+  const numero = (texto: string) => Math.max(0, Number(texto.replace(/[^\d,.]/g, '').replace(',', '.')) || 0)
   const linha = (n: number) => aplicar((e) => alterarLinha(e, limitar(n, 2, 11)))
   const [goleiro, setGoleiro] = useState('')
   const [repetido, setRepetido] = useState<string | null>(null)
@@ -63,7 +67,7 @@ export function Config({ pelada, onPronto, onInicio }: { pelada: Pelada; onPront
         </section>
 
         <section className="panel">
-          <div className="ph">Coletes<span className="sub">quem entra veste o colete de quem saiu</span></div>
+          <div className="ph">Coletes<span className="sub">escolha as cores</span></div>
           {LADOS.map((lado) => (
             <div key={lado} className="pb" style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: lado === 'B' ? '2px solid #e3e8d6' : undefined }}>
               <div className="row num" style={{ fontSize: 18, textTransform: 'uppercase', gap: 8 }}>
@@ -158,6 +162,55 @@ export function Config({ pelada, onPronto, onInicio }: { pelada: Pelada; onPront
           )}
         </section>
 
+        {/* Campo pago: valor, divisão e a chave Pix de quem recebe (PLANO.md, seção 12) */}
+        <section className="panel">
+          <div className="tr" style={{ padding: '8px 10px' }}>
+            <div className="nome" style={{ whiteSpace: 'normal' }}>
+              Campo pago
+              <div className="mut">{pag.ativo ? 'Cada um paga pelo Pix e marca no link' : 'Desligado: campo de graça'}</div>
+            </div>
+            <Chave rotulo="Campo pago" ligada={pag.ativo} alternar={() => mudarPag({ ativo: !pag.ativo })} />
+          </div>
+          {pag.ativo && (
+            <div className="pb" style={{ display: 'grid', gap: 10 }}>
+              <label style={{ display: 'grid', gap: 4 }}>
+                <span className="mut" style={{ color: 'var(--navy)', fontWeight: 700 }}>Valor do campo (R$)</span>
+                <input className="inp" inputMode="decimal" placeholder="Ex.: 120" value={pag.valorCampo || ''}
+                  onChange={(ev) => mudarPag({ valorCampo: numero(ev.target.value) })} />
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <button className={'btn sm' + (pag.modo === 'proporcional' ? '' : ' w')} onClick={() => mudarPag({ modo: 'proporcional' })}>Dividir o campo</button>
+                <button className={'btn sm' + (pag.modo === 'fixo' ? '' : ' w')} onClick={() => mudarPag({ modo: 'fixo' })}>Valor por pessoa</button>
+              </div>
+              {pag.modo === 'fixo'
+                ? (
+                  <label style={{ display: 'grid', gap: 4 }}>
+                    <span className="mut" style={{ color: 'var(--navy)', fontWeight: 700 }}>Cada um paga (R$) · o que sobrar vai para o caixa</span>
+                    <input className="inp" inputMode="decimal" placeholder="Ex.: 15" value={pag.valorFixo || ''}
+                      onChange={(ev) => mudarPag({ valorFixo: numero(ev.target.value) })} />
+                  </label>
+                )
+                : <div className="mut">O valor do campo é dividido por quem está na lista (ex.: R$ 120 ÷ 12 = R$ 10 cada).</div>}
+              <label style={{ display: 'grid', gap: 4 }}>
+                <span className="mut" style={{ color: 'var(--navy)', fontWeight: 700 }}>Sua chave Pix</span>
+                <input className="inp" placeholder="CPF, celular, e-mail ou chave aleatória" value={pag.chavePix}
+                  onChange={(ev) => mudarPag({ chavePix: ev.target.value })} autoCapitalize="none" />
+              </label>
+              <label style={{ display: 'grid', gap: 4 }}>
+                <span className="mut" style={{ color: 'var(--navy)', fontWeight: 700 }}>Nome de quem recebe</span>
+                <input className="inp" placeholder="Como aparece no Pix" value={pag.recebedor} onChange={(ev) => mudarPag({ recebedor: ev.target.value })} />
+              </label>
+              <div className="tr" style={{ padding: '4px 0' }}>
+                <div className="nome" style={{ whiteSpace: 'normal' }}>
+                  "Já paguei" já vale como pago
+                  <div className="mut">{pag.confirmarAuto ? 'Sem conferir no banco (turma de confiança)' : 'Você confere no banco e confirma'}</div>
+                </div>
+                <Chave rotulo="Já paguei vale como pago" ligada={pag.confirmarAuto} alternar={() => mudarPag({ confirmarAuto: !pag.confirmarAuto })} />
+              </div>
+            </div>
+          )}
+        </section>
+
         <section className="panel">
           <div className="ph">Goleiros fixos<span className="sub">opcional · um em cada gol</span></div>
           {cfg.goleiros.map((g, i) => (
@@ -184,21 +237,19 @@ export function Config({ pelada, onPronto, onInicio }: { pelada: Pelada; onPront
             Quem perde deixa o goleiro em campo para o time que entra. Com um só goleiro, ele fica com quem continua jogando.
           </div>
         </section>
+        {/* nova pelada: o "Montar lista" fica no fim dos ajustes (não flutua por cima) */}
+        {onPronto && <button className="btn" style={{ flex: 'none' }} onClick={onPronto}>Montar lista <Icone nome="seta" /></button>}
+        {/* descarta a pelada de hoje sem salvar (teste, pelada que não aconteceu…) */}
+        {onCancelar && (
+          <button className="btn w sm" style={{ flex: 'none', color: 'var(--vermelho)' }} onClick={onCancelar}>
+            <Icone nome="lixo" tamanho={20} /> Cancelar pelada
+          </button>
+        )}
       </div>
       {repetido && (
         <Aviso titulo="Nome repetido" onFechar={() => setRepetido(null)}>
           Já tem um goleiro <b>{repetido}</b>. Adicione o sobrenome ou um apelido.
         </Aviso>
-      )}
-      {onInicio && (
-        <div className="rodape">
-          <button className="btn w sm" onClick={onInicio}><Icone nome="inicio" /> Início (pelada ou torneio)</button>
-        </div>
-      )}
-      {onPronto && (
-        <div className="rodape">
-          <button className="btn" onClick={onPronto}>Montar lista <Icone nome="seta" /></button>
-        </div>
       )}
     </div>
   )

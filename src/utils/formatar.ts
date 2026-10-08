@@ -24,3 +24,6 @@ export function minutoDoGol(tempoMs: number | undefined, tempoMin: number): stri
   const minuto = Math.floor(tempoMs / 60_000) + 1
   return minuto > tempoMin ? `${tempoMin}+${minuto - tempoMin}'` : `${minuto}'`
 }
+
+/** R$ 10,00 */
+export const reais = (valor: number) => valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })

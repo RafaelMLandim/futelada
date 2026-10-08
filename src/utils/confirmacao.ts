@@ -7,6 +7,7 @@ export type PedidoDeConfirmacao = {
   mensagem: string
   botao: string // texto do botão que confirma
   perigo?: boolean // botão vermelho (apaga ou tira algo)
+  voltar?: string // texto do botão que desiste (padrão: "Cancelar")
   aoConfirmar: () => void
 }
 

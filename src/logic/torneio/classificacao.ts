@@ -67,3 +67,23 @@ export function classificacao(torneio: Torneio, grupo: number | null = null): Li
   const jogos = torneio.jogos.filter((j) => (grupo === null ? j.fase === 'liga' : j.fase === 'grupo' && j.grupo === grupo))
   return classificar(times, jogos, torneio.sorteio)
 }
+
+/**
+ * Quem terminou em `posicao` nos `grupos`, do melhor para o pior (para o W.O. da chave e,
+ * no futuro, os melhores terceiros). Compara aproveitamento, porque os grupos podem ter
+ * tamanhos diferentes: pontos por jogo, vitórias por jogo, saldo por jogo e o disciplinar.
+ */
+export function melhoresDaPosicao(torneio: Torneio, posicao: number, grupos: readonly number[]): LinhaDaTabela[] {
+  const porJogo = (n: number, l: LinhaDaTabela) => (l.jogos ? n / l.jogos : 0)
+  return grupos
+    .map((g) => classificacao(torneio, g)[posicao - 1])
+    .filter((l): l is LinhaDaTabela => !!l)
+    .sort((x, y) =>
+      porJogo(y.pontos, y) - porJogo(x.pontos, x) ||
+      porJogo(y.vitorias, y) - porJogo(x.vitorias, x) ||
+      porJogo(y.saldo, y) - porJogo(x.saldo, x) ||
+      x.vermelhos - y.vermelhos ||
+      x.azuis - y.azuis ||
+      x.amarelos - y.amarelos ||
+      torneio.sorteio.indexOf(x.time) - torneio.sorteio.indexOf(y.time))
+}

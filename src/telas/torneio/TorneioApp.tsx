@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Barra } from '../../components/Barra'
 import { Icone, type NomeIcone } from '../../components/Icone'
-import { timesDoJogo } from '../../logic/torneio'
+import { campeao, timesDoJogo } from '../../logic/torneio'
 import { useTorneio } from '../../store/torneio'
 import { codigoDoLink, limparLink } from '../../utils/convite'
 import { AjustesTorneio } from './AjustesTorneio'
@@ -10,6 +10,7 @@ import { JogoTorneio } from './JogoTorneio'
 import { Jogos } from './Jogos'
 import { TabelaTorneio } from './TabelaTorneio'
 import { Times } from './Times'
+import { useVoltar } from '../../utils/voltar'
 
 type Aba = 'times' | 'jogos' | 'jogo' | 'tabela' | 'ajustes'
 
@@ -27,6 +28,18 @@ export function TorneioApp({ onInicio }: { onInicio: () => void }) {
     const cod = codigoDoLink()
     if (cod) { limparLink(); void entrar(cod) }
   }, [entrar])
+  // "voltar" do celular numa aba escolhida: volta para a aba principal
+  useVoltar(abaEscolhida !== null, () => setAba(null))
+
+  // Acabou o torneio (saiu o campeão agora): volta para o início, que mostra o campeão.
+  // Quem abre um torneio que já tinha acabado continua nele (para ver a tabela e a chave).
+  const vencedor = torneio ? campeao(torneio) : null
+  const vencedorAntes = useRef<string | null | undefined>(undefined)
+  useEffect(() => {
+    if (!torneio) return
+    if (vencedorAntes.current === null && vencedor) onInicio()
+    vencedorAntes.current = vencedor
+  }, [torneio, vencedor, onInicio])
 
   if (compartilhado && compartilhado.status !== 'ok') {
     const textos = {
@@ -47,7 +60,7 @@ export function TorneioApp({ onInicio }: { onInicio: () => void }) {
 
   if (!torneio) {
     return (
-      <CriarTorneio onInicio={onInicio}
+      <CriarTorneio
         onEntrar={hook.podeCompartilhar ? (cod) => hook.entrar(cod) : undefined}
         onCriar={(t) => {
           hook.criar(t)

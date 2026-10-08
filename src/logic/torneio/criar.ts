@@ -2,23 +2,31 @@
 
 import type { Jogador } from '../../types/pelada'
 import type { JogoTorneio, Origem, RegrasTorneio, TimeTorneio, Torneio } from '../../types/torneio'
-import { montarChave } from './chave'
+import { chaveDosGrupos, montarChave } from './chave'
 import { embaralhar, type Aleatorio } from './sorteio'
 import { ordenarSemRepetir, todosContraTodos } from './tabela'
 
 export const regrasPadrao: RegrasTorneio = {
   formato: 'pontos',
   linha: 4,
+  tempos: 1,
   tempoMin: 10,
+  intervaloMin: 0,
+  prorrogacao: false,
+  temposProrrogacao: 2,
+  minutosProrrogacao: 5,
   gols: null, // por padrão a partida do torneio termina só pelo tempo
   idaEVolta: false,
   grupos: 2,
   classificamPorGrupo: 2,
   terceiroLugar: false,
+  mataIdaEVolta: false,
+  finalUnica: true,
   cobrancasPenalti: 3,
   maxSubstituicoes: null,
   campos: 1,
   grupoPorCampo: true,
+  chaveCopa: true,
   minutosAzul: 2,
   som: true,
   acrescimos: true,
@@ -99,6 +107,9 @@ function jogosDePontos(times: string[], idaEVolta: boolean, fase: 'liga' | 'grup
 }
 
 /** Sorteia grupos / chave e gera todos os jogos. Pode ser refeito até o primeiro jogo. */
+/** Mata-mata em ida e volta? (e se a final também é ida e volta) */
+const idaEVoltaDoMata = (r: RegrasTorneio) => (r.mataIdaEVolta ? { finalUnica: r.finalUnica } : null)
+
 export function sortear(torneio: Torneio, aleatorio: Aleatorio = Math.random): Torneio {
   const problemas = problemasParaSortear(torneio)
   if (problemas.length) throw new Error(problemas[0])
@@ -116,7 +127,7 @@ export function sortear(torneio: Torneio, aleatorio: Aleatorio = Math.random): T
 
   if (regras.formato === 'mata-mata') {
     const sementes: Origem[] = sorteio.map((time) => ({ tipo: 'time', time }))
-    return { ...torneio, sorteio, grupos: [], jogos: montarChave(sementes, regras.terceiroLugar), sorteado: true }
+    return { ...torneio, sorteio, grupos: [], jogos: montarChave(sementes, regras.terceiroLugar, 'm', 0, idaEVoltaDoMata(regras)), sorteado: true }
   }
 
   // Grupos + mata-mata: distribui o sorteio nos grupos (A, B, C, A, B, C…)
@@ -129,11 +140,13 @@ export function sortear(torneio: Torneio, aleatorio: Aleatorio = Math.random): T
   for (let i = 0; i < maior; i++) for (const g of porGrupo) if (g[i]) intercalados.push(g[i])
   const jogosDeGrupo = numerar(ordenarSemRepetir(intercalados, timesDe))
 
-  // Mata-mata: sementes 1ºA, 1ºB…, 2ºA, 2ºB… (1º de um grupo pega 2º de outro)
+  // Mata-mata (cruzamento simples): sementes 1ºA, 1ºB…, 2ºA, 2ºB… (1º de um grupo pega 2º de outro)
   const sementes: Origem[] = []
   for (let posicao = 1; posicao <= regras.classificamPorGrupo; posicao++) {
     for (let grupo = 0; grupo < regras.grupos; grupo++) sementes.push({ tipo: 'grupo', grupo, posicao })
   }
-  const mata = montarChave(sementes, regras.terceiroLugar, 'm', jogosDeGrupo.length)
+  // Chave da Copa (dois lados; W.O. por melhor campanha) ou o cruzamento simples
+  const copa = regras.chaveCopa ? chaveDosGrupos(regras.grupos, regras.classificamPorGrupo) : null
+  const mata = montarChave(sementes, regras.terceiroLugar, 'm', jogosDeGrupo.length, idaEVoltaDoMata(regras), copa)
   return { ...torneio, sorteio, grupos, jogos: [...jogosDeGrupo, ...mata], sorteado: true }
 }

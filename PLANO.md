@@ -112,13 +112,19 @@ fila [M, N, A, B, C, D] → blocos **[M, N, A, B]** e **[C, D]**.
   O tempo principal fica parado em 10:00 e embaixo corre "+0:35 DE +2 MIN ACRÉSCIMOS".
   Gol nos acréscimos aparece como tempo + acréscimo ("10+1'"). Quando os acréscimos acabam,
   apita e abre o fim de jogo de novo (acréscimos só uma vez por partida).
-- **Encerrar antes do tempo** (botões de vencedor/empate sem tempo nem gols esgotados)
-  pede confirmação.
+- **Um botão só para encerrar, que segue o placar** (pelada): com alguém ganhando,
+  "Time N venceu · chamar o próximo" (na cor do colete de quem ganha); empatado,
+  "Empatou · ir para a moeda". Assim não dá para dar a vitória para o time errado: se faltou
+  um gol, corrige o placar antes. Encerrar antes do tempo pede confirmação (mostra o placar).
+- **Cartões na escalação, compactos:** expulso mostra só o vermelho (sem o tempo do azul);
+  cartões repetidos viram um com a contagem (amarelo ×2).
 - **Gol contra:** no "Gol do Time X" tem "Foi gol contra" (a lista passa a mostrar o outro time) e,
   tocando no jogador, a opção "Gol contra". Conta no placar de quem se beneficiou, o goleiro do
   time de quem fez sofre o gol, aparece no resumo como "NOME (contra)" no lado de quem ganhou o
   gol e **não entra na artilharia** (não soma nem subtrai os gols do jogador). Vale para pelada e torneio.
-  Na escalação, quem fez gol contra ganha uma **bolinha com X vermelho** (o som é o mesmo do gol).
+  O som é o mesmo do gol.
+- **Escalações sem bolinhas de gol:** os gols aparecem só no resumo de gols (em cima); ao
+  lado do nome ficam só a marca "subiu" e os cartões, para a linha não estourar.
 - **Resumo de gols** (abaixo do placar, como nos placares de futebol): a bola no meio,
   quem fez de cada lado e o **minuto** ("LUCAS 6', 9'"; depois do tempo, "10+1'").
 - **Gol marcado errado:** tocar no **jogador** no resumo de gols abre um modal para remover
@@ -129,11 +135,37 @@ fila [M, N, A, B, C, D] → blocos **[M, N, A, B]** e **[C, D]**.
   no gol que decide, o apito final vem depois do áudio.
   Se o áudio não tocar, usa uma fanfarrinha de 8 bits. No empate, a moeda tem som
   (peteleco, girando no ar e caindo). Dá para desligar tudo nos Ajustes.
+- **Tela sempre ligada** na pelada e no torneio (Wake Lock): o celular não bloqueia no meio do
+  jogo. Com o celular bloqueado na mão, o navegador congela o app e o apito não toca: só um app
+  nativo (notificação agendada com som de apito) resolveria isso.
 
 - **Transição de fim de partida (na própria tela de Jogo, nas escalações):** por ~4 s,
   cada coluna mostra **venceu / perdeu / empatou**; a de quem fica brilha; na de quem
   sai, um **X vermelho** se desenha sobre os nomes, que dão lugar aos do time que entra
   (mesmo colete, "↑ entra").
+
+### 3.5.1 Resumo da pelada e compartilhar
+- **Seleção da pelada:** contador de **vitórias por jogador** (em qualquer time; o time muda,
+  a vitória fica com o jogador). A seleção são os N com mais vitórias (N = jogadores na linha);
+  desempate: mais gols, menos jogos. Painel na Tabela; tocar no jogador gera a **ficha** dele.
+- **Compartilhar resumo** (botão no topo da Tabela; também "Compartilhar e encerrar" ao encerrar a
+  pelada): gera a imagem e **abre direto o compartilhar do celular** (sem modal, sem texto):
+  - **Seleção da pelada** (1080×1920, 9:16 = tela inteira do celular, status/stories): a seleção
+    ocupa a imagem toda, num campo em
+    perspectiva com fundo de estádio; cada jogador é uma peça (camisa sem número, plaquinha do
+    nome; a bolinha aparece só no artilheiro, se ele está na seleção) e o goleiro menos vazado fica no gol (sem goleiro fixo, a
+    peça do gol aparece só com o "G", sem nome). As peças se ajustam
+    ao tamanho do time (testado com 4, 5 e 10 na linha).
+  - Embaixo do campo, na mesma imagem, a **Chuteira de Ouro** (artilheiro e gols) e a **Luva de
+    Ouro** (goleiro menos vazado e gols sofridos): troféus dourados desenhados no app, em pedestal.
+- **Artilheiro: sai um só.** Desempate: mais gols → **menos jogos** (melhor média) → **mais
+  vitórias** → **menos cartões** (o vermelho dos 2 amarelos não conta de novo) → **quem chegou
+  primeiro** ao número de gols (nunca empata). Gol contra não conta. Quando houve empate em gols,
+  a imagem e o texto mostram o critério ("2 gols · desempate: menos jogos"); a Tabela lista a ordem.
+- Os destaques de zoeira (Pé de Rato, Açougueiro etc.) foram testados e **retirados**.
+- **Ficha do jogador** = **cartinha do FIFA preta e dourada** (TOTW): "nota" no canto = vitórias,
+  "SEL" se está na seleção (senão a posição no dia), camisa com a inicial, nome entre filetes
+  dourados e atributos em duas colunas (VIT JOG GOL | EMP CRT APR).
 
 ### 3.6 Limite de vitórias seguidas (opcional)
 - Desligado por padrão. Se ativado, define-se quantas vitórias seguidas.
@@ -363,6 +395,45 @@ src/
 - Cada cobrança: quem bateu e **gol / perdeu**. O app avisa quando já está decidido.
 - Não conta para artilharia nem para goleiro menos vazado.
 
+### 9.4.1 Mata-mata em ida e volta (opcional)
+- Como na **Libertadores**: cada confronto tem **ida e volta** com o **mando invertido**; vale o
+  **placar agregado** (não existe gol fora de casa). A ida pode empatar (sem pênaltis); se o
+  **agregado** empatar, **prorrogação** (se ligada, 9.4.2) e/ou **pênaltis no fim da volta**. A volta só é liberada depois da ida.
+- **Final em jogo único** (padrão, como na Libertadores) ou também ida e volta. Disputa de 3º
+  lugar sempre jogo único. Vale para "mata-mata" e para o mata-mata de "grupos + mata-mata".
+- Na tela: "Semifinal 1 · ida/volta"; no jogo de volta aparecem a ida e o **agregado**; na chave,
+  cada confronto numa caixa com **ida · volta · agregado**.
+
+### 9.4.2 Tempos, intervalo e prorrogação
+- **Tempos regulamentares:** quantos (1, 2, 3…), a duração de cada um e o **intervalo** entre eles
+  (0 = sem intervalo). Cada tempo conta do zero no relógio; acabou um tempo: "Fim do 1º tempo"
+  com **Intervalo** (contagem e apito no fim), **Começar o 2º tempo** ou **Dar acréscimos**.
+- **Prorrogação no mata-mata** (opcional): quantos tempos e a duração de cada um. Só entra quando o
+  desempate exige, no fim do último tempo regulamentar:
+  - **Jogo único** empatado: prorrogação (se ligada) ou direto para os **pênaltis** (se desligada).
+  - **Ida e volta:** a **ida** nunca tem prorrogação nem pênaltis (pode terminar empatada). Na
+    **volta** vale o **agregado** (ida + volta, **sem gol fora de casa**): empatado → prorrogação
+    (ligada) ou pênaltis (desligada); com vencedor no agregado, acaba.
+  - Empatou também na prorrogação (no placar, ou no agregado na volta): **pênaltis**.
+- O gol guarda em que tempo saiu ("2ºT 7'", "Pror. 1ºT 3'"); o cartão azul conta o jogo todo
+  (o intervalo não conta). Fase de grupos e pontos corridos nunca têm prorrogação.
+
+### 9.4.3 Chave como na Copa e mata-mata em tela cheia
+- **Chave como na Copa** (grupos + mata-mata; ligada por padrão): dois lados que só se encontram na final.
+  - **Passam 2**, com 2, 4 ou 8 grupos: igual à Copa (lado 1: 1ºA x 2ºB, 1ºC x 2ºD…; lado 2: 1ºB x 2ºA,
+    1ºD x 2ºC…). O 1º e o 2º do mesmo grupo ficam em lados opostos.
+  - **Passam 2**, outros números de grupos: lado 1 = 1º dos grupos A, C, E… e 2º dos B, D…; lado 2 o
+    contrário. Sobram vagas: **W.O.** para os 1º com **melhor campanha** daquele lado.
+  - **Passa 1**: 1ºA x 1ºB, 1ºC x 1ºD… (2 grupos = direto a final); não fechando, W.O. para os campeões
+    de grupo com melhor campanha.
+  - **Melhor campanha** (entre grupos): pontos por jogo, vitórias por jogo, saldo por jogo, disciplinar,
+    sorteio (por jogo, porque os grupos podem ter tamanhos diferentes). A vaga só sai quando os grupos acabam.
+  - 3 ou mais passando por grupo, ou a opção desligada: cruzamento simples de antes.
+- **Tela cheia** ("Ver chave do mata-mata" em Jogos, "Tela cheia" na Tabela): lado 1 à esquerda, lado 2 à
+  direita, final no meio com o troféu e o campeão; 3º lugar embaixo; quem passa por W.O. aparece tracejado.
+  Abre ajustada à tela (zoom mínimo legível) e centralizada na final; botões − / +; deitar o celular mostra tudo.
+- **Depois:** melhores terceiros (a "melhor campanha" já serve para isso).
+
 ### 9.5.1 Substituições e cartões no torneio
 - **Substituições:** ilimitadas por padrão ou com um máximo por jogo (configurável).
   Quem sai vai para o banco e pode voltar.
@@ -439,7 +510,14 @@ A **pelada continua só no celular**.
   Compartilha um **código** (ou link) para os outros entrarem.
 - **Mesário de campo:** entra com o código, escolhe o campo dele e marca os jogos daquele
   campo (gols, cartões, substituições, encerrar, pênaltis). Vê tudo dos outros campos ao vivo.
-- Sem cadastro com senha: quem tem o código entra (login anônimo do Firebase).
+- **Mais grupos que campos** (cada grupo no seu campo): os grupos se revezam (A→1, B→2, C→1…),
+  mas o campo que termina os jogos dos seus grupos passa a pegar jogos dos outros grupos (não fica
+  parado esperando o mata-mata).
+- **Campo travado:** quem pega um campo trava para os outros mesários (aparece "Campo 2 · Nome"
+  em cinza). Para trocar de mesário: ele toca em "Só acompanhar" (libera) ou o organizador toca
+  em **Liberar** na lista de mesários (Ajustes). Nuvem: `torneios/{código}/campos/{n}`; as regras
+  garantem que só o dono ou o organizador soltam.
+- Precisa entrar com o Google (desde 06/10): conta anônima não lê nem marca o torneio.
 
 ### 10.3 Como os dados ficam na nuvem (sem conflito entre celulares)
 - `torneios/{código}`: base do torneio (regras, times, grupos, jogos) — só o organizador grava.
@@ -457,6 +535,80 @@ A **pelada continua só no celular**.
    mesário, travas por papel, faixa com código e "sem internet".
 4. ✅ Teste com dois "celulares" (organizador + mesário) no navegador.
 5. Ligar no Firebase de verdade (projeto do usuário) e testar.
+
+## 12. Campo pago (pelada)
+- **Ajustes → Campo pago:** valor do campo; divisão **proporcional** (campo ÷ quem está na
+  lista, arredondado para cima no centavo; ex.: R$ 120 ÷ 12 = R$ 10) ou **valor por pessoa**
+  (ex.: R$ 15; o que passa do campo é sobra para o caixa); **chave Pix** e nome de quem recebe
+  (a cidade do Pix vai sempre "BRASIL": o banco não confere); opção **"Já paguei" já vale como pago** (sem conferir).
+- **Pix copia e cola + QR Code** gerados no próprio app (BR Code do Banco Central), com o valor.
+  O dinheiro vai **direto** de quem paga para o organizador: **sem taxa**, o app não toca no dinheiro.
+- **Lista:** faixa "💰 Campo · R$ 10 cada · 7/12 pagos" → janela com o QR, "Copiar Pix",
+  **"Link p/ grupo"** e todos os pagantes (toque = pago/desfaz; amarelo = avisou).
+- **Link de pagamento** (`?pagar=CÓDIGO`, sem instalar nada): mostra o valor, o QR e os nomes; a
+  pessoa paga e toca no **próprio nome → "Já paguei"** → no app do organizador fica amarelo
+  ("avisou · confirmar") na hora; ele confere no banco e confirma (verde, aparece no link também).
+- **Nuvem:** `cobrancas/{código}` (o organizador publica) + `avisos/{jogador}`. Regras: quem tem
+  o link só marca "avisou" (ou "pago" com a confirmação automática); só o organizador confirma;
+  ninguém de fora desfaz um "pago".
+- Quem foi embora depois de pagar continua na conta. **Depois:** confirmação automática via
+  empresa de pagamento (com taxa).
+
+### 12.1 Login com Google e caixa da pelada
+- **Login com Google é a primeira tela** (quem já entrou vai direto para o início). Exceção: o link
+  de pagamento (`?pagar=`) abre sem login. Ao entrar, a conta anônima do celular **vira** a conta
+  Google (mesmo uid: torneios e cobranças continuam seus); se essa conta já existe (outro celular),
+  troca para ela. "Sair" volta para a tela de login.
+- **Sem janela nova** (no celular a janela separada trava): login de um toque do Google (folha por
+  cima do app, Google Identity Services); se o celular não mostra a folha, vai para a página do
+  Google **na mesma tela** e volta (redirect). O `authDomain` no site é o próprio domínio
+  (`dois-ou-dez.web.app/__/auth/`), senão Safari/Chrome bloqueiam a volta. No cliente OAuth
+  (Google Cloud → Credenciais): origem `https://dois-ou-dez.web.app` e redirecionamento
+  `https://dois-ou-dez.web.app/__/auth/handler`.
+- **Foto do Google** ao lado da logo em todas as telas.
+- **Caixa da pelada** (cartão na tela inicial, precisa de login): **saldo** + lançamentos
+  (data, descrição, +entrada / −saída); botões "+ Entrada" e "− Saída"; tocar apaga.
+- No campo pago: **"Lançar no caixa"** (uma vez por pelada) → entra o que foi pago e sai o campo
+  (ex.: R$ 180 − R$ 120 = +R$ 60).
+- Nuvem: `usuarios/{uid}/caixa/{id}`; regra: só o dono lê e escreve. Fica no perfil: troca de
+  celular, entra com o Google e o caixa está lá.
+
+### 12.1.1 Cancelar a pelada
+- **"Cancelar pelada"** no fim da tela "Nova pelada" e no fim dos Ajustes (com a pelada rolando):
+  descarta tudo do dia (lista, jogos, pagamentos) **sem salvar**: nada vai para o histórico nem
+  para o caixa, e o link de pagamento é apagado (quem abrir vê "Link não encontrado").
+- Os **ajustes voltam a ser os de antes** daquela pelada (ex.: o campo pago ligado só para teste).
+  Diferente de **Encerrar** (na Tabela), que guarda no histórico e mantém os ajustes.
+- **Encerrar ou cancelar a pelada volta para a tela inicial.** No torneio, quando sai o campeão
+  (final confirmada), o app volta para o início, e o cartão do torneio mostra "🏆 campeão" ("Ver");
+  abrir de novo um torneio encerrado mostra a tabela e a chave normalmente.
+
+### 12.2 Histórico das peladas e temporada
+- Ao **encerrar** a pelada (com login), ela vai para `usuarios/{uid}/peladas/{id}`: data, dia e o
+  estado só com as partidas terminadas (a em andamento e o campo pago ficam de fora). Peladas
+  encerradas antes disso não voltam.
+- Tela **Histórico** (cartão no início): aba **Temporada** (vitórias, artilharia com 👑 vezes
+  artilheiro do dia, goleiros por média de gols sofridos) e aba **Peladas** (toca para ver os
+  jogos e destaques, compartilhar a seleção de novo ou apagar).
+- O mesmo jogador em peladas diferentes é reconhecido **pelo nome** (sem acento/maiúsculas).
+
+## 13. App de loja (Capacitor)
+
+O **mesmo código** do site vira app Android (e iPhone depois) com o Capacitor; o site continua
+no ar para quem não instalar.
+- **Identificador:** `app.doisoudez` (dá para trocar até publicar na loja; depois, nunca mais).
+- **Login do Google:** no app, pela tela de contas do próprio celular (`@capacitor-firebase/authentication`;
+  o Google não deixa entrar pelo navegador interno). App Android registrado no Firebase com a impressão
+  digital (SHA-1/SHA-256) da chave de teste; `android/app/google-services.json`.
+- **Links** (pagamento, convite do torneio) apontam para `https://dois-ou-dez.web.app` (no app o
+  endereço interno é "localhost"). **Compartilhar** (imagens e textos) usa o do celular.
+- Service worker só no site (no app já está tudo dentro).
+- **Ferramentas** (na pasta do usuário, sem instalar no sistema): Node 22, Java 21 e Android SDK em
+  `~/.local/opt` e `~/Android/Sdk`; `source ~/.local/opt/android-env.sh`. Gerar o APK de teste:
+  `npm run android` → `android/app/build/outputs/apk/debug/app-debug.apk`.
+- **Ícone e abertura:** gerados da logo (`assets/` → `npx @capacitor/assets generate --android`).
+- **Próximos:** apito com o celular bloqueado (notificação agendada com som), chave de assinatura
+  da loja (a de teste não serve para publicar) e conta na Play Store (US$ 25).
 
 ## 11. Melhorias para comercializar (depois)
 

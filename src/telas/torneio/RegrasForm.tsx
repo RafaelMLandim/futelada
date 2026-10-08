@@ -57,9 +57,17 @@ export function RegrasForm({ regras, mudar, travado = false, minCampos = 1 }: {
         <Linha titulo="Jogadores na linha" detalhe="Goleiro não conta. Os primeiros de cada time são titulares.">
           <Passo rotulo="na linha" valor={r.linha} menos={() => mudar({ linha: limitar(r.linha - 1, 2, 11) })} mais={() => mudar({ linha: limitar(r.linha + 1, 2, 11) })} />
         </Linha>
-        <Linha titulo="Tempo">
-          <Passo rotulo="tempo" valor={r.tempoMin} sufixo="min" menos={() => mudar({ tempoMin: limitar(r.tempoMin - 1, 1, 90) })} mais={() => mudar({ tempoMin: limitar(r.tempoMin + 1, 1, 90) })} />
+        <Linha titulo="Tempos" detalhe={r.tempos === 1 ? 'Um tempo só' : `${r.tempos} tempos de ${r.tempoMin} min`}>
+          <Passo rotulo="tempos regulamentares" valor={r.tempos} menos={() => mudar({ tempos: limitar(r.tempos - 1, 1, 9) })} mais={() => mudar({ tempos: limitar(r.tempos + 1, 1, 9) })} />
         </Linha>
+        <Linha titulo={r.tempos === 1 ? 'Duração' : 'Duração de cada tempo'}>
+          <Passo rotulo="minutos de cada tempo" valor={r.tempoMin} sufixo="min" menos={() => mudar({ tempoMin: limitar(r.tempoMin - 1, 1, 90) })} mais={() => mudar({ tempoMin: limitar(r.tempoMin + 1, 1, 90) })} />
+        </Linha>
+        {r.tempos > 1 && (
+          <Linha titulo="Intervalo" detalhe={r.intervaloMin ? 'Entre um tempo e outro' : 'Sem intervalo: o próximo tempo começa direto'}>
+            <Passo rotulo="minutos de intervalo" valor={r.intervaloMin} sufixo="min" menos={() => mudar({ intervaloMin: limitar(r.intervaloMin - 1, 0, 30) })} mais={() => mudar({ intervaloMin: limitar(r.intervaloMin + 1, 0, 30) })} />
+          </Linha>
+        )}
         <Linha titulo="Campos" detalhe="Quantos jogos podem acontecer ao mesmo tempo">
           <Passo rotulo="campos" valor={r.campos} menos={() => mudar({ campos: limitar(r.campos - 1, minCampos, 4) })} mais={() => mudar({ campos: limitar(r.campos + 1, 1, 4) })} />
         </Linha>
@@ -88,13 +96,25 @@ export function RegrasForm({ regras, mudar, travado = false, minCampos = 1 }: {
           <>
             <Linha titulo="Grupos">
               {travado ? <span className="num" style={{ fontSize: 24 }}>{r.grupos}</span>
-                : <Passo rotulo="grupos" valor={r.grupos} menos={() => mudar({ grupos: limitar(r.grupos - 1, 2, 8) })} mais={() => mudar({ grupos: limitar(r.grupos + 1, 2, 8) })} />}
+                : <Passo rotulo="grupos" valor={r.grupos} menos={() => mudar({ grupos: limitar(r.grupos - 1, 2, 16) })} mais={() => mudar({ grupos: limitar(r.grupos + 1, 2, 16) })} />}
             </Linha>
             <Linha titulo="Passam de cada grupo">
               {travado ? <span className="num" style={{ fontSize: 24 }}>{r.classificamPorGrupo}</span>
                 : <Passo rotulo="classificados por grupo" valor={r.classificamPorGrupo} menos={() => mudar({ classificamPorGrupo: limitar(r.classificamPorGrupo - 1, 1, 4) })} mais={() => mudar({ classificamPorGrupo: limitar(r.classificamPorGrupo + 1, 1, 4) })} />}
             </Linha>
           </>
+        )}
+        {r.formato === 'grupos' && (
+          <Linha titulo="Chave como na Copa" detalhe={!r.chaveCopa
+            ? 'Desligada: cruzamento simples (1º de um grupo x 2º de outro)'
+            : r.classificamPorGrupo > 2
+              ? 'Com 3 ou mais passando por grupo, usa o cruzamento simples'
+              : r.classificamPorGrupo === 2
+                ? 'Dois lados: 1º e 2º do mesmo grupo só se encontram na final; W.O. para a melhor campanha'
+                : 'Metade dos grupos de cada lado; W.O. para o campeão de grupo com melhor campanha'}>
+            {travado ? <span className="tag t-y">{r.chaveCopa ? 'Sim' : 'Não'}</span>
+              : <Chave rotulo="Chave como na Copa" ligada={r.chaveCopa} alternar={() => mudar({ chaveCopa: !r.chaveCopa })} />}
+          </Linha>
         )}
         {r.formato === 'grupos' && r.campos >= 2 && (
           <Linha titulo="Cada grupo no seu campo" detalhe={r.grupos > r.campos ? 'Mais grupos que campos: eles se revezam' : 'Grupo A no Campo 1, Grupo B no Campo 2…'}>
@@ -103,10 +123,35 @@ export function RegrasForm({ regras, mudar, travado = false, minCampos = 1 }: {
         )}
         {temMata && (
           <>
+            <Linha titulo="Mata-mata em ida e volta" detalhe="Como na Libertadores: vale o agregado (sem gol fora de casa); empatou, decide no fim da volta">
+              {travado ? <span className="tag t-y">{r.mataIdaEVolta ? 'Sim' : 'Não'}</span>
+                : <Chave rotulo="Mata-mata em ida e volta" ligada={r.mataIdaEVolta} alternar={() => mudar({ mataIdaEVolta: !r.mataIdaEVolta })} />}
+            </Linha>
+            {r.mataIdaEVolta && (
+              <Linha titulo="Final em jogo único" detalhe={r.finalUnica ? 'A final é um jogo só' : 'A final também é ida e volta'}>
+                {travado ? <span className="tag t-y">{r.finalUnica ? 'Sim' : 'Não'}</span>
+                  : <Chave rotulo="Final em jogo único" ligada={r.finalUnica} alternar={() => mudar({ finalUnica: !r.finalUnica })} />}
+              </Linha>
+            )}
             <Linha titulo="Disputa de 3º lugar">
               {travado ? <span className="tag t-y">{r.terceiroLugar ? 'Sim' : 'Não'}</span>
                 : <Chave rotulo="Disputa de 3º lugar" ligada={r.terceiroLugar} alternar={() => mudar({ terceiroLugar: !r.terceiroLugar })} />}
             </Linha>
+            <Linha titulo="Prorrogação" detalhe={r.prorrogacao
+              ? 'Empatou no tempo normal (ou no agregado, na volta): prorrogação; empatou de novo, pênaltis'
+              : 'Desligada: empatou, direto para os pênaltis'}>
+              <Chave rotulo="Prorrogação" ligada={r.prorrogacao} alternar={() => mudar({ prorrogacao: !r.prorrogacao })} />
+            </Linha>
+            {r.prorrogacao && (
+              <>
+                <Linha titulo="Tempos da prorrogação">
+                  <Passo rotulo="tempos da prorrogação" valor={r.temposProrrogacao} menos={() => mudar({ temposProrrogacao: limitar(r.temposProrrogacao - 1, 1, 4) })} mais={() => mudar({ temposProrrogacao: limitar(r.temposProrrogacao + 1, 1, 4) })} />
+                </Linha>
+                <Linha titulo={r.temposProrrogacao === 1 ? 'Duração da prorrogação' : 'Duração de cada tempo'}>
+                  <Passo rotulo="minutos de cada tempo da prorrogação" valor={r.minutosProrrogacao} sufixo="min" menos={() => mudar({ minutosProrrogacao: limitar(r.minutosProrrogacao - 1, 1, 30) })} mais={() => mudar({ minutosProrrogacao: limitar(r.minutosProrrogacao + 1, 1, 30) })} />
+                </Linha>
+              </>
+            )}
             <Linha titulo="Cobranças de pênalti" detalhe="Se empatar, alternadas até alguém errar">
               <Passo rotulo="cobranças de pênalti" valor={r.cobrancasPenalti} menos={() => mudar({ cobrancasPenalti: limitar(r.cobrancasPenalti - 1, 1, 10) })} mais={() => mudar({ cobrancasPenalti: limitar(r.cobrancasPenalti + 1, 1, 10) })} />
             </Linha>

@@ -2,12 +2,19 @@ import { Barra } from '../components/Barra'
 import { Camisa } from '../components/Camisa'
 import { Icone } from '../components/Icone'
 import { Cartao } from '../components/Cartao'
-import { artilharia, cartoesDoDia, goleirosMenosVazados, placarDosColetes } from '../logic'
+import { useContext, useState } from 'react'
+import { VoltarAoInicio } from '../components/navegacao'
+import { artilharia, cartoesDoDia, goleirosMenosVazados, peladaParaGuardar, placarDosColetes, vitoriasPorJogador } from '../logic'
+import { guardarNoHistorico, useConta } from '../store/conta'
 import type { Pelada } from '../store/usePelada'
 import type { Partida } from '../types/pelada'
 import { corDoTimeDaPelada, textoSobre } from '../utils/cores'
 import { useConfirmar } from '../utils/confirmacao'
 import { dataHoje } from '../utils/formatar'
+import { compartilharFicha, compartilharImagem, imagemDoResumo, nomeDoArquivo } from '../utils/resumoDaPelada'
+
+/** Encerra guardando no histórico (fora do componente: usa o relógio). */
+const guardar = (estado: Parameters<typeof peladaParaGuardar>[0]) => void guardarNoHistorico(peladaParaGuardar(estado, Date.now(), dataHoje())).catch(() => null)
 
 type Linha = { numero: number; j: number; v: number; e: number; d: number }
 
@@ -27,9 +34,17 @@ function classificacao(historico: Partida[]): Linha[] {
 }
 
 export function Tabela({ pelada }: { pelada: Pelada }) {
-  const { app, encerrar } = pelada
+  const { app } = pelada
   const confirmar = useConfirmar()
+  const conta = useConta()
   const { estado } = app
+  // Ao encerrar, quem entrou com o Google guarda a pelada no histórico; depois volta para o início
+  const voltarAoInicio = useContext(VoltarAoInicio)
+  const encerrar = () => {
+    if (conta.logado && estado.historico.length > 0) guardar(estado)
+    pelada.encerrar()
+    voltarAoInicio?.()
+  }
   const { historico } = estado
   const tabela = classificacao(historico)
   const jogadores = estado.fila.length + (estado.emCampo ? estado.emCampo.A.jogadores.length + estado.emCampo.B.jogadores.length : 0)
@@ -39,11 +54,29 @@ export function Tabela({ pelada }: { pelada: Pelada }) {
   const goleiros = goleirosMenosVazados(estado)
   const cartoes = cartoesDoDia(estado)
   const placarColetes = placarDosColetes(estado)
+  const vitorias = vitoriasPorJogador(estado)
+  // Compartilhar: gera a imagem da seleção e abre direto o compartilhar do celular
+  const [gerando, setGerando] = useState(false)
+  const compartilhar = async (): Promise<boolean> => {
+    setGerando(true)
+    const ok = await imagemDoResumo(estado).then((img) => compartilharImagem(img, nomeDoArquivo('selecao'))).catch(() => false)
+    setGerando(false)
+    return ok
+  }
+  const [encerrando, setEncerrando] = useState(false)
+  const [fichaGerando, setFichaGerando] = useState<string | null>(null)
+  const ficha = async (id: string, nome: string) => {
+    setFichaGerando(id)
+    await compartilharFicha(estado, id, nome).catch(() => null)
+    setFichaGerando(null)
+  }
   // Na tabela, cada time tem cor própria (diferente dos coletes, que são do jogo)
   const coletes = [estado.config.coletes.A, estado.config.coletes.B]
   const corDoTime = (numero: number) => corDoTimeDaPelada(numero, coletes)
 
-  const fimDaPelada = () => {
+  // Encerrar apaga tudo: primeiro oferece compartilhar o resumo
+  const fimDaPelada = () => (historico.length > 0 ? setEncerrando(true) : encerrarDeVez())
+  const encerrarDeVez = () => {
     confirmar({
       titulo: 'Encerrar a pelada?', mensagem: 'A lista, os goleiros, os times e a tabela de hoje serão apagados.',
       botao: 'Encerrar', perigo: true, aoConfirmar: encerrar,
@@ -54,6 +87,11 @@ export function Tabela({ pelada }: { pelada: Pelada }) {
     <div className="scr">
       <Barra titulo="Tabela" sub={dataHoje()} />
       <div className="conteudo">
+        {historico.length > 0 && (
+          <button className="btn" onClick={compartilhar} disabled={gerando}>
+            <Icone nome="compartilhar" /> {gerando ? 'Gerando a imagem…' : 'Compartilhar resumo'}
+          </button>
+        )}
         <section className="panel">
           <div className="ph">{placarColetes.coletes.map((c) => c.nome).join(' x ')}<span className="sub">vitórias por colete</span></div>
           <div className="pb" style={{ display: 'grid', gridTemplateColumns: `repeat(${placarColetes.coletes.length + 1}, minmax(0, 1fr))`, gap: 8 }}>
@@ -106,6 +144,9 @@ export function Tabela({ pelada }: { pelada: Pelada }) {
         <section className="panel">
           <div className="ph">Artilharia<span className="sub">gols</span></div>
           {artilheiros.length === 0 && <div className="pb mut">Nenhum gol com autor marcado ainda.</div>}
+          {artilheiros.length > 1 && (
+            <div className="mut" style={{ padding: '4px 12px', fontSize: 11 }}>Desempate: menos jogos, mais vitórias, menos cartões, quem chegou primeiro.</div>
+          )}
           {artilheiros.map((a, i) => (
             <div key={a.id} className="tr">
               <span className={'no' + (i === 0 ? ' g' : '')}>{i + 1}</span>
@@ -113,6 +154,30 @@ export function Tabela({ pelada }: { pelada: Pelada }) {
               <span className="num" style={{ fontSize: 22, minWidth: 28, textAlign: 'center' }}>{a.gols}</span>
             </div>
           ))}
+        </section>
+
+        {/* Vitórias de cada jogador, em qualquer time; os primeiros (tamanho da linha) são a seleção */}
+        <section className="panel">
+          <div className="ph">Seleção da pelada<span className="sub">toque para a ficha</span></div>
+          {vitorias.length === 0
+            ? <div className="pb mut">Os números aparecem quando a primeira partida terminar.</div>
+            : <div className="tr" style={{ minHeight: 30, fontSize: 12, color: 'var(--mut)', letterSpacing: .8, background: '#e3e8d6' }}>
+                <span style={{ width: 24 }} /><span className="nome">JOGADOR</span>
+                <span style={col}>J</span><span style={col}>V</span>
+              </div>}
+          {vitorias.map((v, i) => {
+            const naSelecao = i < estado.config.linha && v.vitorias > 0
+            return (
+              <button key={v.id} className="tr" aria-label={`Ficha de ${v.nome}`} disabled={fichaGerando !== null}
+                style={{ width: '100%', border: 0, font: 'inherit', color: 'var(--navy)', textAlign: 'left', cursor: 'pointer', ...(naSelecao ? { background: '#fff6d0' } : {}) }}
+                onClick={() => ficha(v.id, v.nome)}>
+                <span className={'no' + (naSelecao ? ' g' : '')}>{i + 1}</span>
+                <span className="nome">{fichaGerando === v.id ? 'Gerando a ficha…' : v.nome}</span>
+                <span style={col}>{v.jogos}</span>
+                <span className="num" style={{ ...col, fontSize: 22 }}>{v.vitorias}</span>
+              </button>
+            )
+          })}
         </section>
 
         {estado.config.goleiros.length > 0 && (
@@ -161,6 +226,32 @@ export function Tabela({ pelada }: { pelada: Pelada }) {
         <div style={{ flex: 1 }} />
         <button className="btn r sm" onClick={fimDaPelada}><Icone nome="lixo" tamanho={20} /> Encerrar pelada</button>
       </div>
+
+      {encerrando && (
+        <div className="modal" role="dialog" aria-modal="true" aria-label="Encerrar a pelada" onClick={() => setEncerrando(false)}>
+          <section className="panel" onClick={(ev) => ev.stopPropagation()}>
+            <div className="ph">Encerrar a pelada?</div>
+            <div className="pb" style={{ display: 'grid', gap: 8 }}>
+              <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>
+                Depois de encerrar, a lista, os times e a tabela de hoje somem. Quer compartilhar o resumo antes?
+              </div>
+              {conta.logado
+                ? <div className="mut" style={{ color: 'var(--verde)', fontWeight: 700 }}>✓ Os resultados ficam guardados no seu histórico.</div>
+                : (
+                  <button className="btn w sm" style={{ textTransform: 'none' }} onClick={conta.entrar}>
+                    Entrar com Google para guardar no histórico
+                  </button>
+                )}
+              {/* compartilha a imagem e, se não cancelou, encerra */}
+              <button className="btn" disabled={gerando} onClick={async () => { if (await compartilhar()) { setEncerrando(false); encerrar() } }}>
+                <Icone nome="compartilhar" /> {gerando ? 'Gerando a imagem…' : 'Compartilhar e encerrar'}
+              </button>
+              <button className="btn r sm" onClick={() => { setEncerrando(false); encerrar() }}>Encerrar sem compartilhar</button>
+              <button className="btn w sm" onClick={() => setEncerrando(false)}>Cancelar</button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   )
 }

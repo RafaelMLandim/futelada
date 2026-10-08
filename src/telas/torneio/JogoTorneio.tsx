@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Barra } from '../../components/Barra'
 import { Bola } from '../../components/Bola'
 import { Camisa } from '../../components/Camisa'
-import { Cartao } from '../../components/Cartao'
+import { Cartao, CartoesDoJogador } from '../../components/Cartao'
 import { Icone } from '../../components/Icone'
 import { ResumoDeGols } from '../../components/ResumoDeGols'
 import { PlacarLed } from '../../components/PlacarLed'
@@ -10,8 +10,9 @@ import { LADOS, outro, restanteAzulNaLista } from '../../logic'
 import { tempoDecorrido, tempoTotalMs } from '../../logic/cronometro'
 import { EscolherAcrescimos } from '../../components/EscolherAcrescimos'
 import {
-  acrescimosNaPartida, cancelarPartida, cartaoNaPartida, cronoDaPartida, expulsosNaPartida, golNaPartida, jogoPorId, partidaDoJogo, removerGolDaPartida,
-  substituirNaPartida, timesDoJogo,
+  acrescimosNaPartida, cancelarPartida, cartaoNaPartida, comecarIntervalo, cronoDaPartida, decorridoNoPeriodo, duracaoDoPeriodo, nomeDoPeriodo,
+  periodoDaPartida, placarDecisivo, proximoTempo, expulsosNaPartida, golNaPartida, jogoPorId, partidaDoJogo, removerGolDaPartida,
+  substituirNaPartida, timesDoJogo, ultimoPeriodo,
 } from '../../logic/torneio'
 import type { TorneioHook } from '../../store/torneio'
 import type { CorCartao, Jogador, Lado } from '../../types/pelada'
@@ -22,6 +23,9 @@ import { formatarTempo } from '../../utils/formatar'
 import { apitoFim, apitoInicio, somDeGol } from '../../utils/sons'
 import { nomeDoJogo } from './nomes'
 import { FimDeJogo } from './FimDeJogo'
+
+/** Quanto falta até a hora `ate` (fora do componente: usa o relógio). */
+const faltaAte = (ate: number) => Math.max(0, ate - Date.now())
 
 type Escolha =
   | { tipo: 'gol'; lado: Lado; contra?: boolean }
@@ -38,45 +42,71 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
   const confirmar = useConfirmar()
   const [escolha, setEscolha] = useState<Escolha | null>(null)
   const [fimManual, setFimManual] = useState(false)
-  // acréscimos dados quando o resumo foi fechado (o resumo volta a abrir quando os acréscimos acabam)
-  const [fimDispensadoEm, setFimDispensadoEm] = useState<number | null>(null)
+  // tempo + acréscimos em que o resumo foi fechado (ele volta a abrir no fim dos acréscimos ou do próximo tempo)
+  const [fimDispensadoEm, setFimDispensadoEm] = useState<string | null>(null)
   const [escolhendoAcrescimos, setEscolhendoAcrescimos] = useState(false)
   const [, tique] = useState(0)
 
+  const noIntervalo = p.intervaloAte != null
   useEffect(() => {
-    if (!p.crono.rodando) return
+    if (!p.crono.rodando && !noIntervalo) return
     const id = setInterval(() => tique((n) => n + 1), 500)
     return () => clearInterval(id)
-  }, [p.crono.rodando])
+  }, [p.crono.rodando, noIntervalo])
 
   const { regras } = t
   const jogo = jogoPorId(t, p.jogoId)!
   const ids = timesDoJogo(t, jogo)
   const times = { A: t.times.find((x) => x.id === ids.A)!, B: t.times.find((x) => x.id === ids.B)! }
-  const decorrido = tempoDecorrido(p.crono)
-  const acabouTempo = decorrido >= tempoTotalMs(regras.tempoMin, p.crono)
+  // Vários tempos: o relógio mostra o tempo atual (cada tempo conta do zero); o cartão azul usa o jogo todo
+  const decorrido = decorridoNoPeriodo(p)
+  const decorridoNoJogo = tempoDecorrido(p.crono)
+  const duracao = duracaoDoPeriodo(regras, p)
+  const acabouTempo = decorrido >= tempoTotalMs(duracao, p.crono)
+  const ultimo = ultimoPeriodo(regras, p)
+  const periodo = nomeDoPeriodo(regras, p)
   const acabouGols = regras.gols !== null && (p.placar[0] >= regras.gols || p.placar[1] >= regras.gols)
-  const fim = acabouTempo || acabouGols
+  const fimDoTempo = acabouTempo && !ultimo && !acabouGols // acabou um tempo que não é o último
+  const fim = (acabouTempo && ultimo) || acabouGols
   const expulsos = expulsosNaPartida(p)
 
   // Apita, vibra e pausa uma vez quando acaba (tempo ou gols)
-  const avisou = useRef(fim)
+  const parou = fim || fimDoTempo
+  const avisou = useRef(parou)
   const { aplicar } = hook
   useEffect(() => {
-    if (fim && !avisou.current) {
+    if (parou && !avisou.current) {
       avisou.current = true
       if (!editavel) return // quem só acompanha não apita nem mexe no jogo
       if (regras.som) apitoFim()
       navigator.vibrate?.([300, 150, 300, 150, 600])
       if (p.crono.rodando) aplicar((x) => cronoDaPartida(x, jogoId, false))
     }
-    if (!fim) avisou.current = false
-  }, [fim, regras.som, p.crono.rodando, aplicar, jogoId, editavel])
+    if (!parou) avisou.current = false
+  }, [parou, regras.som, p.crono.rodando, aplicar, jogoId, editavel])
+
+  // Fim do intervalo: apita e vibra uma vez (o próximo tempo começa no botão)
+  const restanteIntervalo = noIntervalo ? faltaAte(p.intervaloAte!) : 0
+  const avisouIntervalo = useRef(false)
+  useEffect(() => {
+    if (noIntervalo && restanteIntervalo === 0 && !avisouIntervalo.current) {
+      avisouIntervalo.current = true
+      if (!editavel) return
+      if (regras.som) apitoFim()
+      navigator.vibrate?.([300, 150, 300])
+    }
+    if (!noIntervalo || restanteIntervalo > 0) avisouIntervalo.current = false
+  }, [noIntervalo, restanteIntervalo, editavel, regras.som])
 
   // O resumo de fim de jogo abre pelo botão ou sozinho quando acaba o tempo
   const acrescimoMin = p.crono.acrescimoMin ?? 0
-  const fimAberto = editavel && !escolhendoAcrescimos && (fimManual || (acabouTempo && fimDispensadoEm !== acrescimoMin))
-  const fecharFim = () => { setFimManual(false); setFimDispensadoEm(acrescimoMin) }
+  const chaveDoFim = `${p.prorrogacao ? 'P' : 'R'}${periodoDaPartida(p)}+${acrescimoMin}`
+  const fimAberto = editavel && !escolhendoAcrescimos && (fimManual || (acabouTempo && ultimo && fimDispensadoEm !== chaveDoFim))
+  const fimDoTempoAberto = editavel && !escolhendoAcrescimos && !fimManual && fimDoTempo && !noIntervalo && fimDispensadoEm !== chaveDoFim
+  const fecharFim = () => { setFimManual(false); setFimDispensadoEm(chaveDoFim) }
+  const proximo = nomeDoPeriodo(regras, p, periodoDaPartida(p) + 1)
+  const intervalo = () => hook.aplicar((x) => comecarIntervalo(x, jogoId))
+  const comecarProximo = () => hook.aplicar((x) => proximoTempo(x, jogoId))
   const comecarAcrescimos = (min: number) => {
     setEscolhendoAcrescimos(false)
     if (regras.som) apitoInicio()
@@ -95,17 +125,18 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
   }
   const darCartao = (lado: Lado, j: Jogador, cor: CorCartao) => {
     setEscolha(null)
-    hook.aplicar((x) => cartaoNaPartida(x, jogoId, lado, j, cor, decorrido))
+    hook.aplicar((x) => cartaoNaPartida(x, jogoId, lado, j, cor, decorridoNoJogo))
   }
   const trocar = (lado: Lado, saiId: string, entraId: string) => {
     setEscolha(null)
     hook.aplicar((x) => substituirNaPartida(x, jogoId, lado, saiId, entraId))
   }
-  const restante = formatarTempo(regras.tempoMin * 60_000 - decorrido)
+  const restante = formatarTempo(duracao * 60_000 - decorrido)
   const encerrar = () => {
     if (fim) return setFimManual(true)
     confirmar({
-      titulo: 'Encerrar o jogo?', mensagem: `O tempo ainda não acabou (faltam ${restante}).`,
+      titulo: 'Encerrar o jogo?',
+      mensagem: ultimo ? `O tempo ainda não acabou (faltam ${restante}).` : `Ainda está no ${periodo}. Encerrar o jogo agora, com este placar?`,
       botao: 'Encerrar', aoConfirmar: () => setFimManual(true),
     })
   }
@@ -118,8 +149,6 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
 
   const coluna = (lado: Lado) => {
     const time = times[lado]
-    const golsDe = (id: string) => p.gols.filter((g) => g.autorId === id && !g.contra).length
-    const contraDe = (id: string) => p.gols.filter((g) => g.autorId === id && g.contra).length
     return (
       <div key={lado} style={lado === 'A' ? { borderRight: '2px solid #e3e8d6' } : undefined}>
         <div className="num" style={{ padding: '6px 10px', background: time.cor, color: textoSobre(time.cor), textTransform: 'uppercase' }}>
@@ -132,17 +161,14 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
         {p.escalacao.emCampo[lado].map((id, i) => {
           const j = jogador(time, id)
           const fora = expulsos.has(id)
-          const azul = restanteAzulNaLista(p.cartoes, id, regras.minutosAzul, decorrido)
+          const azul = restanteAzulNaLista(p.cartoes, id, regras.minutosAzul, decorridoNoJogo)
           return (
             <button key={id} className="tr linha-jogador" style={{ minHeight: 40, fontSize: 14, opacity: fora ? 0.55 : 1 }} disabled={!editavel}
               aria-label={`Ações de ${j.nome}`} onClick={() => setEscolha({ tipo: 'jogador', lado, jogador: j })}>
               <span className="no">{i + 1}</span>
               <span className="nome" style={{ flex: '0 1 auto', textDecoration: fora ? 'line-through' : undefined }}>{j.nome}</span>
-              {Array.from({ length: Math.min(golsDe(id), 3) }, (_, k) => <Bola key={k} />)}
-              {golsDe(id) > 3 && <span className="num" style={{ fontSize: 14 }}>×{golsDe(id)}</span>}
-              {Array.from({ length: contraDe(id) }, (_, k) => <Bola key={`c${k}`} contra />)}
-              {p.cartoes.filter((c) => c.jogadorId === id).map((c, k) => <Cartao key={k} cor={c.cor} />)}
-              {azul > 0 && <span className="tag" style={{ background: 'var(--azul)', color: '#fff', height: 20, fontSize: 13 }}>{formatarTempo(azul)}</span>}
+              <CartoesDoJogador cores={p.cartoes.filter((c) => c.jogadorId === id).map((c) => c.cor)} expulso={fora} />
+              {azul > 0 && !fora && <span className="tag" style={{ background: 'var(--azul)', color: '#fff', height: 20, fontSize: 13 }}>{formatarTempo(azul)}</span>}
             </button>
           )
         })}
@@ -173,7 +199,44 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
       <Barra titulo={`${times.A.nome} x ${times.B.nome}`} sub={`${nomeDoJogo(t, jogo)}${regras.campos > 1 ? ` · Campo ${p.campo}` : ''}`} />
       <div className="conteudo" style={{ gap: 10 }}>
         <PlacarLed lados={{ A: { titulo: times.A.nome, cor: times.A.cor }, B: { titulo: times.B.nome, cor: times.B.cor } }}
-          placar={p.placar} tempoMin={regras.tempoMin} gols={regras.gols} decorrido={decorrido} rodando={p.crono.rodando} fim={fim} acrescimoMin={p.crono.acrescimoMin} />
+          placar={p.placar} tempoMin={duracao} gols={regras.gols} decorrido={decorrido} rodando={p.crono.rodando} fim={fim || fimDoTempo}
+          acrescimoMin={p.crono.acrescimoMin} periodo={noIntervalo ? 'Intervalo' : periodo || undefined}
+          textoFim={fimDoTempo ? `FIM DO ${periodo.toUpperCase()}` : undefined} />
+
+        {/* acabou um tempo (e a janela foi fechada): continua dando para ir ao intervalo ou ao próximo tempo */}
+        {fimDoTempo && !noIntervalo && editavel && (
+          <section className="panel pb" style={{ display: 'grid', gap: 8, textAlign: 'center' }}>
+            <div className="mut" style={{ color: 'var(--navy)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>Fim do {periodo}</div>
+            {regras.intervaloMin > 0 && <button className="btn" onClick={intervalo}>Intervalo · {regras.intervaloMin} min</button>}
+            <button className={'btn' + (regras.intervaloMin > 0 ? ' w sm' : '')} onClick={comecarProximo}><Icone nome="play" /> Começar o {proximo}</button>
+          </section>
+        )}
+
+        {/* intervalo entre os tempos: contagem e o botão do próximo tempo */}
+        {noIntervalo && (
+          <section className="panel pb" style={{ display: 'grid', gap: 8, textAlign: 'center' }}>
+            <div className="mut" style={{ color: 'var(--navy)', fontWeight: 700, letterSpacing: 1 }}>INTERVALO</div>
+            <div className={'num' + (restanteIntervalo === 0 ? ' alerta' : '')} style={{ fontSize: 40, color: restanteIntervalo === 0 ? 'var(--vermelho)' : 'var(--navy)' }}>
+              {formatarTempo(restanteIntervalo)}
+            </div>
+            {editavel && <button className="btn" onClick={comecarProximo}><Icone nome="play" /> Começar o {proximo}</button>}
+          </section>
+        )}
+
+        {/* ida e volta: no jogo de volta, o placar da ida e o agregado (é ele que decide) */}
+        {jogo.perna === 'volta' && (() => {
+          const ida = jogoPorId(t, jogo.outraPerna ?? '')?.resultado
+          const ag = placarDecisivo(t, jogo, p.placar)
+          if (!ida || !ag) return null
+          return (
+            <div className="panel row" style={{ justifyContent: 'space-around', padding: '8px 10px', textAlign: 'center' }}>
+              <div><div className="mut" style={{ fontSize: 11, letterSpacing: 1 }}>IDA</div>
+                <div className="num" style={{ fontSize: 20 }}>{times.B.nome} {ida.placar[0]} x {ida.placar[1]} {times.A.nome}</div></div>
+              <div><div className="mut" style={{ fontSize: 11, letterSpacing: 1 }}>AGREGADO</div>
+                <div className="num" style={{ fontSize: 26, color: ag[0] === ag[1] ? 'var(--navy)' : 'var(--verde)' }}>{ag[0]} x {ag[1]}</div></div>
+            </div>
+          )
+        })()}
 
         {!editavel && (
           <div className="panel pb mut" style={{ color: 'var(--navy)' }}>
@@ -265,6 +328,24 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
         </Escolher>
       )}
 
+      {fimDoTempoAberto && (
+        <div className="modal" role="dialog" aria-modal="true" aria-label={`Fim do ${periodo}`} onClick={fecharFim}>
+          <section className="panel" onClick={(ev) => ev.stopPropagation()}>
+            <div className="ph">Fim do {periodo}</div>
+            <div className="pb" style={{ display: 'grid', gap: 10 }}>
+              <div className="led num" style={{ textAlign: 'center', padding: '10px 12px', fontSize: 40 }}>
+                {p.placar[0]} <span style={{ color: '#5e6a76' }}>-</span> {p.placar[1]}
+              </div>
+              {regras.intervaloMin > 0
+                ? <button className="btn" onClick={intervalo}>Intervalo · {regras.intervaloMin} min</button>
+                : <button className="btn" onClick={comecarProximo}><Icone nome="play" /> Começar o {proximo}</button>}
+              {regras.intervaloMin > 0 && <button className="btn w sm" onClick={comecarProximo}>Sem intervalo · começar o {proximo}</button>}
+              {regras.acrescimos && !acrescimoMin && <button className="btn w sm" onClick={() => setEscolhendoAcrescimos(true)}>Dar acréscimos</button>}
+              <button className="btn w sm" onClick={fecharFim}>Voltar ao jogo</button>
+            </div>
+          </section>
+        </div>
+      )}
       {fimAberto && (
         <FimDeJogo hook={hook} jogoId={jogoId} times={times} onFechar={fecharFim} onEncerrado={onTerminou}
           onAcrescimos={acabouTempo && regras.acrescimos && !acrescimoMin ? () => { setFimManual(false); setEscolhendoAcrescimos(true) } : undefined} />

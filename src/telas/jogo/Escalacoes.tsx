@@ -1,5 +1,4 @@
-import { Bola } from '../../components/Bola'
-import { Cartao } from '../../components/Cartao'
+import { CartoesDoJogador } from '../../components/Cartao'
 import { Subiu } from '../../components/Subiu'
 import { LADOS, cartoesDoJogador, subiuDe, escolherGoleiro, expulso, restanteAzul, trocarGoleiros } from '../../logic'
 import type { Pelada } from '../../store/usePelada'
@@ -45,15 +44,6 @@ export function Escalacoes({ pelada, decorrido, transicao, onJogador }: {
   const { A, B } = emCampo
   const lider = A.vitoriasSeguidas >= B.vitoriasSeguidas ? A : B
 
-  // Gols de cada jogador na partida em andamento
-  const golsPorJogador = new Map<string, number>()
-  const contraPorJogador = new Map<string, number>()
-  for (const g of estado.gols) {
-    if (!g.autorId) continue
-    const mapa = g.contra ? contraPorJogador : golsPorJogador
-    mapa.set(g.autorId, (mapa.get(g.autorId) ?? 0) + 1)
-  }
-
   // Fim de partida: por alguns segundos, a coluna de quem saiu recebe um X e os
   // nomes dão lugar aos do time que entra; a coluna de quem ficou mostra o resultado.
   const coluna = (lado: Lado) => {
@@ -89,10 +79,8 @@ export function Escalacoes({ pelada, decorrido, transicao, onJogador }: {
               <span className="no">{i + 1}</span>
               <span className="nome" style={{ flex: '0 1 auto', textDecoration: fora ? 'line-through' : undefined }}>{j.nome}</span>
               <Subiu de={subiuDe(estado, j.id)} />
-              <Bolinhas gols={golsPorJogador.get(j.id) ?? 0} />
-              <Bolinhas gols={contraPorJogador.get(j.id) ?? 0} contra />
-              {cartoesDoJogador(estado, j.id).map((c, k) => <Cartao key={k} cor={c.cor} />)}
-              {azul > 0 && <span className="tag" style={{ background: 'var(--azul)', color: '#fff', height: 20, fontSize: 13 }}>{formatarTempo(azul)}</span>}
+              <CartoesDoJogador cores={cartoesDoJogador(estado, j.id).map((c) => c.cor)} expulso={fora} />
+              {azul > 0 && !fora && <span className="tag" style={{ background: 'var(--azul)', color: '#fff', height: 20, fontSize: 13 }}>{formatarTempo(azul)}</span>}
             </button>
           )
         })}
@@ -142,18 +130,5 @@ export function Escalacoes({ pelada, decorrido, transicao, onJogador }: {
         {LADOS.map(coluna)}
       </div>
     </section>
-  )
-}
-
-// Uma bolinha por gol na partida; a partir de 4 gols vira "bolinha ×N". Gol contra: bolinha com X.
-function Bolinhas({ gols, contra = false }: { gols: number; contra?: boolean }) {
-  if (gols === 0) return null
-  const rotulo = `${gols} ${gols > 1 ? 'gols' : 'gol'}${contra ? ' contra' : ''}`
-  return (
-    <span className="row" style={{ gap: 2, flex: 'none' }} aria-label={rotulo}>
-      {gols <= 3
-        ? Array.from({ length: gols }, (_, i) => <Bola key={i} contra={contra} />)
-        : <><Bola contra={contra} /><span className="num" style={{ fontSize: 14 }}>×{gols}</span></>}
-    </span>
   )
 }

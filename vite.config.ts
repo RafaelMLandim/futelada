@@ -9,6 +9,8 @@ export default defineConfig({
     // PWA: instala no celular ("Adicionar à tela inicial") e funciona sem internet
     VitePWA({
       registerType: 'autoUpdate',
+      // o service worker é registrado no main.tsx (só no site; o app de loja já tem tudo dentro)
+      injectRegister: false,
       includeAssets: ['favicon.png', 'apple-touch-icon.png', 'sons/*.mp3'],
       manifest: {
         name: 'Dois ou Dez',
@@ -17,7 +19,8 @@ export default defineConfig({
         lang: 'pt-BR',
         start_url: '/',
         display: 'standalone',
-        orientation: 'portrait',
+        // gira com o celular (a chave do mata-mata em tela cheia fica melhor deitada)
+        orientation: 'any',
         background_color: '#FFD23F',
         theme_color: '#10223A',
         icons: [
@@ -27,9 +30,14 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // versão nova entra na hora (sem esperar fechar todas as abas do app)
+        skipWaiting: true,
+        clientsClaim: true,
         // guarda o app e os áudios de gol para tocar sem internet
         globPatterns: ['**/*.{js,css,html,png,svg,mp3}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        // /__/auth/ é a volta do login do Google (servida pelo Firebase Hosting, não pelo app)
+        navigateFallbackDenylist: [/^\/__\//],
         runtimeCaching: [{
           urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com',
           handler: 'CacheFirst',

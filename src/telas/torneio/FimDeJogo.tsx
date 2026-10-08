@@ -2,8 +2,8 @@ import { useState, type ReactNode } from 'react'
 import { Camisa } from '../../components/Camisa'
 import { LADOS } from '../../logic'
 import {
-  cobrar, encerrarPartida, expulsosNaPartida, jogoPorId, novaDisputa, partidaDoJogo, placarDosPenaltis, quemBate, vencedorDosPenaltis,
-  voltarCobranca, type Penaltis,
+  cobrar, comecarProrrogacao, encerrarPartida, expulsosNaPartida, jogoPorId, novaDisputa, partidaDoJogo, placarDecisivo, placarDosPenaltis, precisaDePenaltis, quemBate, vencedorDosPenaltis,
+  vaiParaProrrogacao, voltarCobranca, type Penaltis,
 } from '../../logic/torneio'
 import type { TorneioHook } from '../../store/torneio'
 import type { Lado } from '../../types/pelada'
@@ -11,7 +11,8 @@ import type { TimeTorneio } from '../../types/torneio'
 import { textoSobre } from '../../utils/cores'
 import { somDeMoeda } from '../../utils/sons'
 
-// Fim de jogo: confirma o resultado. No mata-mata empatado, abre a disputa de pênaltis.
+// Fim de jogo: confirma o resultado. No mata-mata empatado (ou agregado empatado na volta):
+// prorrogação, se ligada e ainda não jogada; senão, a disputa de pênaltis.
 export function FimDeJogo({ hook, jogoId, times, onFechar, onEncerrado, onAcrescimos }: {
   hook: TorneioHook; jogoId: string; times: Record<Lado, TimeTorneio>; onFechar: () => void; onEncerrado: () => void
   /** Tempo esgotado e acréscimos ligados: abre a escolha dos minutos de acréscimo. */
@@ -24,14 +25,24 @@ export function FimDeJogo({ hook, jogoId, times, onFechar, onEncerrado, onAcresc
   const [batedor, setBatedor] = useState<string | null>(null)
   const [a, b] = p.placar
   const empate = a === b
-  const precisaPenaltis = jogo.fase === 'mata' && empate
+  // ida e volta: na volta vale o agregado (ida + volta); a ida não tem pênaltis
+  const agregado = jogo.perna === 'volta' ? placarDecisivo(t, jogo, p.placar) : null
+  const precisaPenaltis = precisaDePenaltis(t, jogo, p.placar)
+  const prorrogar = vaiParaProrrogacao(t, jogo, p)
+  const { temposProrrogacao, minutosProrrogacao } = t.regras
+  const comecarAProrrogacao = () => {
+    hook.aplicar((x) => comecarProrrogacao(x, jogoId))
+    onFechar()
+  }
 
   const confirmar = (placarPenaltis: [number, number] | null) => {
     hook.aplicar((x) => encerrarPartida(x, jogoId, placarPenaltis))
     onEncerrado()
   }
 
-  const titulo = empate ? 'Empate' : `${times[a > b ? 'A' : 'B'].nome} venceu`
+  const titulo = agregado
+    ? agregado[0] === agregado[1] ? `Agregado empatado · ${agregado[0]} x ${agregado[1]}` : `${times[agregado[0] > agregado[1] ? 'A' : 'B'].nome} avança · agregado ${agregado[0]} x ${agregado[1]}`
+    : empate ? 'Empate' : `${times[a > b ? 'A' : 'B'].nome} venceu`
 
   // ---- Pênaltis ----
   if (penaltis) {
@@ -103,10 +114,19 @@ export function FimDeJogo({ hook, jogoId, times, onFechar, onEncerrado, onAcresc
         <div style={{ fontSize: 44 }}>{a} <span style={{ color: '#5e6a76' }}>-</span> {b}</div>
         <div style={{ fontSize: 22, textTransform: 'uppercase', color: '#fff' }}>{titulo}</div>
       </div>
-      {precisaPenaltis ? (
+      {prorrogar ? (
         <>
           <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>
-            Mata-mata empatado: vai para os pênaltis ({t.regras.cobrancasPenalti} cobranças de cada lado). Quem começa?
+            {agregado ? 'Agregado empatado' : 'Empate no mata-mata'}: vai para a prorrogação
+            ({temposProrrogacao > 1 ? `${temposProrrogacao} tempos de ${minutosProrrogacao} min` : `${minutosProrrogacao} min`}).
+            Se empatar de novo, pênaltis.
+          </div>
+          <button className="btn" onClick={comecarAProrrogacao}>Começar a prorrogação</button>
+        </>
+      ) : precisaPenaltis ? (
+        <>
+          <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>
+            {agregado ? 'Agregado empatado' : 'Mata-mata empatado'}{p.prorrogacao ? ' depois da prorrogação' : ''}: vai para os pênaltis ({t.regras.cobrancasPenalti} cobranças de cada lado). Quem começa?
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {LADOS.map((l) => (

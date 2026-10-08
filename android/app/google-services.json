@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "908586591174",
+    "project_id": "dois-ou-dez",
+    "storage_bucket": "dois-ou-dez.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:908586591174:android:af468e7ab4f4f0c61e48c7",
+        "android_client_info": {
+          "package_name": "app.doisoudez"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "908586591174-d2pqu9u115gk4ehv2tq6glnojoccdn3n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.doisoudez",
+            "certificate_hash": "9cac6a1e1607efc4b5ac3ada4e8b56c49c400464"
+          }
+        },
+        {
+          "client_id": "908586591174-nonnhfd008cj39jhmel3e2t1l9fd93kh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDuvvrmem3wxBJkDCifaw77aX0NPq9StYA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "908586591174-nonnhfd008cj39jhmel3e2t1l9fd93kh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

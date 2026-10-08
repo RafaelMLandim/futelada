@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 import {
-  adicionarJogador, alterarLinha, blocosDaFila, comecar, sortearPrimeirosTimes, novoJogador, podeComecar, removerJogador,
-  LADOS, subiuDe, timesCompletosNaFila, todosOsJogadores,
+  adicionarJogador, blocosDaFila, comecar, sortearPrimeirosTimes, novoJogador, podeComecar, removerJogador,
+  LADOS, resumoPagamentos, subiuDe, todosOsJogadores,
 } from '../logic'
 import { Aviso } from '../components/Aviso'
 import { Barra } from '../components/Barra'
@@ -11,19 +11,21 @@ import { Subiu } from '../components/Subiu'
 import type { Pelada } from '../store/usePelada'
 import { SEM_COLETE } from '../utils/cores'
 import { useConfirmar } from '../utils/confirmacao'
-import { maiusculas, normalizarNome } from '../utils/formatar'
+import { maiusculas, normalizarNome, reais } from '../utils/formatar'
+import type { useCobranca } from '../store/cobranca'
+import { Pagamentos } from './Pagamentos'
 
-export function Lista({ pelada, onApitar }: { pelada: Pelada; onApitar: () => void }) {
+export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca: ReturnType<typeof useCobranca>; onApitar: () => void }) {
   const { app, aplicar } = pelada
   const { estado } = app
   const [nome, setNome] = useState('')
   const confirmar = useConfirmar()
   const [repetido, setRepetido] = useState<string | null>(null)
+  const [pagamentos, setPagamentos] = useState(false)
   const campo = useRef<HTMLInputElement>(null)
   const linha = estado.config.linha
   const { coletes } = estado.config
   const blocos = blocosDaFila(estado)
-  const completos = timesCompletosNaFila(estado)
   const emJogo = estado.emCampo !== null
 
   const adicionar = (ev: FormEvent) => {
@@ -53,18 +55,8 @@ export function Lista({ pelada, onApitar }: { pelada: Pelada; onApitar: () => vo
   return (
     <div className="scr">
       <Barra
-        titulo={emJogo ? `Fila · ${estado.fila.length}` : `Lista · ${estado.fila.length}`}
-        sub={`${completos} ${completos === 1 ? 'time completo' : 'times completos'}${blocos.length > completos ? ' · 1 incompleto' : ''}`}
-        direita={
-          <div className="row" style={{ gap: 4 }}>
-            <button className="ib s" aria-label="Menos um na linha" onClick={() => aplicar((e) => alterarLinha(e, Math.max(2, linha - 1)))}><Icone nome="menos" /></button>
-            <div className="led" style={{ minWidth: 46, textAlign: 'center', padding: '3px 0' }}>
-              <div className="num" style={{ fontSize: 22 }}>{linha}</div>
-              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, color: '#c9d4e3' }}>LINHA</div>
-            </div>
-            <button className="ib s" aria-label="Mais um na linha" onClick={() => aplicar((e) => alterarLinha(e, Math.min(11, linha + 1)))}><Icone nome="mais" /></button>
-          </div>
-        }
+        titulo={emJogo ? 'Fila' : 'Lista'}
+        sub={`${estado.fila.length} ${estado.fila.length === 1 ? 'jogador' : 'jogadores'}`}
       />
       <form onSubmit={adicionar} style={{ padding: '12px 12px 0', display: 'flex', gap: 8 }}>
         <label style={{ display: 'flex', flex: 1 }}>
@@ -76,6 +68,21 @@ export function Lista({ pelada, onApitar }: { pelada: Pelada; onApitar: () => vo
           <Icone nome="mais" />
         </button>
       </form>
+
+      {/* campo pago: quantos já pagaram; abre QR Pix, link para o grupo e a lista de pagamentos */}
+      {estado.config.pagamento.ativo && (() => {
+        const r = resumoPagamentos(estado)
+        return (
+          <button className="panel row" style={{ margin: '10px 12px 0', padding: '8px 10px', cursor: 'pointer', font: 'inherit', color: 'var(--navy)', textAlign: 'left' }}
+            onClick={() => setPagamentos(true)}>
+            <span className="num" style={{ fontSize: 20 }}>💰</span>
+            <span style={{ flex: 1, fontWeight: 700 }}>Campo · {reais(r.valor)} cada</span>
+            {r.avisaram > 0 && <span className="tag" style={{ background: 'var(--amarelo)' }}>{r.avisaram} avisou</span>}
+            <span className={'tag ' + (r.pagos === r.pessoas && r.pessoas ? 't-ok' : 't-warn')}>{r.pagos}/{r.pessoas} pagos</span>
+          </button>
+        )
+      })()}
+      {pagamentos && <Pagamentos pelada={pelada} cobranca={cobranca} onFechar={() => setPagamentos(false)} />}
 
       <div className="conteudo">
         {blocos.length === 0 && (

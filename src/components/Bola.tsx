@@ -1,5 +1,5 @@
 // Bola de futebol (branca com gomos), usada para marcar gols.
-export function Bola({ tamanho = 16, contra = false }: { tamanho?: number; contra?: boolean }) {
+export function Bola({ tamanho = 16 }: { tamanho?: number }) {
   return (
     <svg width={tamanho} height={tamanho} viewBox="0 0 24 24" aria-hidden="true" style={{ flex: 'none' }}>
       <defs>
@@ -12,8 +12,6 @@ export function Bola({ tamanho = 16, contra = false }: { tamanho?: number; contr
         <path d="M12.00 8.30L12.00 4.90M15.52 10.86L18.75 9.81M14.17 14.99L16.17 17.74M9.83 14.99L7.83 17.74M8.48 10.86L5.25 9.81" fill="none" stroke="#10223A" strokeWidth="0.8" strokeLinecap="round" />
       </g>
       <circle cx="12" cy="12" r="10.6" fill="none" stroke="#10223A" strokeWidth="1" />
-      {/* gol contra: X vermelho por cima da bola */}
-      {contra && <path d="M4 4L20 20M20 4L4 20" stroke="#D62828" strokeWidth="3.6" strokeLinecap="round" />}
     </svg>
   )
 }

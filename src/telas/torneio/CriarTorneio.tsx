@@ -7,8 +7,8 @@ import { dataHoje, maiusculas } from '../../utils/formatar'
 import { RegrasForm } from './RegrasForm'
 
 // Primeira tela do torneio: nome e regras.
-export function CriarTorneio({ onCriar, onInicio, onEntrar }: {
-  onCriar: (t: Torneio) => void; onInicio: () => void; onEntrar?: (codigo: string) => Promise<boolean>
+export function CriarTorneio({ onCriar, onEntrar }: {
+  onCriar: (t: Torneio) => void; onEntrar?: (codigo: string) => Promise<boolean>
 }) {
   const [nome, setNome] = useState('')
   const [codigo, setCodigo] = useState('')
@@ -56,10 +56,8 @@ export function CriarTorneio({ onCriar, onInicio, onEntrar }: {
           </div>
         </section>
         <RegrasForm regras={regras} mudar={(p) => setRegras((r) => ({ ...r, ...p }))} />
-      </div>
-      <div className="rodape">
-        <button className="btn w sm" onClick={onInicio}><Icone nome="inicio" /> Início</button>
-        <button className="btn" disabled={!nome.trim()} onClick={() => onCriar(novoTorneio(nome, regras))}>
+        {/* no fim das regras (não flutua por cima); o início fica no menu da foto */}
+        <button className="btn" style={{ flex: 'none' }} disabled={!nome.trim()} onClick={() => onCriar(novoTorneio(nome, regras))}>
           Cadastrar times <Icone nome="seta" />
         </button>
       </div>

@@ -12,8 +12,10 @@ export function timePorId(torneio: Torneio, id: string | null): TimeTorneio | un
 export function nomeDoJogo(torneio: Torneio, jogo: JogoTorneio): string {
   if (jogo.fase === 'grupo') return `${jogo.rodada} · ${nomeDoGrupo(jogo.grupo!)}`
   if (jogo.fase === 'liga') return jogo.rodada
-  const mesmos = torneio.jogos.filter((j) => j.rodada === jogo.rodada && j.grupo === jogo.grupo)
-  return mesmos.length > 1 ? `${jogo.rodada} ${mesmos.indexOf(jogo) + 1}` : jogo.rodada
+  // ida e volta: numera os confrontos (ida e volta do mesmo confronto têm o mesmo número)
+  const mesmos = torneio.jogos.filter((j) => j.rodada === jogo.rodada && j.grupo === jogo.grupo && j.perna === jogo.perna)
+  const nome = mesmos.length > 1 ? `${jogo.rodada} ${mesmos.indexOf(jogo) + 1}` : jogo.rodada
+  return jogo.perna ? `${nome} · ${jogo.perna}` : nome
 }
 
 /** Versão curta do nome da rodada, para caber na linha do jogo. */
@@ -26,11 +28,18 @@ export function descreverOrigem(torneio: Torneio, origem: Origem): { nome: strin
   switch (origem.tipo) {
     case 'grupo':
       return { nome: `${origem.posicao}º ${nomeDoGrupo(origem.grupo)}` }
+    case 'melhor': {
+      // "Melhor 1º A/C", "2º melhor 1º A/C/E" (sai quando a fase de grupos acaba)
+      const letras = origem.grupos.map((g) => nomeDoGrupo(g).replace('Grupo ', '')).join('/')
+      if (origem.grupos.length === 1) return { nome: `${origem.posicao}º ${nomeDoGrupo(origem.grupos[0])}` }
+      return { nome: `${origem.ordem === 1 ? 'Melhor' : `${origem.ordem}º melhor`} ${origem.posicao}º ${letras}` }
+    }
     case 'vencedor':
     case 'perdedor': {
       const jogo = torneio.jogos.find((j) => j.id === origem.jogo)
       const quem = origem.tipo === 'vencedor' ? 'Venc.' : 'Perd.'
-      return { nome: jogo ? `${quem} ${abreviar(nomeDoJogo(torneio, jogo))}` : quem }
+      // "Venc. Semi 1" (o confronto, sem o "· volta" do jogo que decide)
+      return { nome: jogo ? `${quem} ${abreviar(nomeDoJogo(torneio, jogo).replace(' · volta', ''))}` : quem }
     }
     default:
       return { nome: '?' }

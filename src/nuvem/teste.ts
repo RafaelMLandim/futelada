@@ -3,7 +3,10 @@
 // Liga com localStorage "nuvem:teste" = endereço do servidor (ex.: http://localhost:5299).
 
 import type { DadosNuvem, Operacao } from '../logic/torneio'
-import type { Nuvem } from './tipos'
+import type { MesarioNoCampo, Nuvem } from './tipos'
+
+/** Nome deste "celular" nos testes (localStorage "nuvem-teste:nome"). */
+const nomeDeTeste = () => { try { return localStorage.getItem('nuvem-teste:nome') ?? 'Teste' } catch { return 'Teste' } }
 
 export function criarNuvemDeTeste(servidor: string): Nuvem {
   const url = (rota: string, codigo: string) => `${servidor}/${rota}?c=${encodeURIComponent(codigo)}`
@@ -32,6 +35,34 @@ export function criarNuvemDeTeste(servidor: string): Nuvem {
     },
     async apagar(codigo) {
       await fetch(url('apagar', codigo), { method: 'POST' })
+    },    // campos travados (o servidor de teste segue as mesmas regras do Firebase)
+    ouvirCampos(codigo, aoMudar) {
+      const fonte = new EventSource(url('campos', codigo))
+      fonte.onmessage = (ev) => aoMudar(JSON.parse(ev.data) as Record<number, MesarioNoCampo>)
+      return () => fonte.close()
     },
+    async pegarCampo(codigo, campo) {
+      const r = await fetch(url('pegar', codigo), { method: 'POST', body: JSON.stringify({ campo, uid: await this.usuario(), nome: nomeDeTeste(), foto: null }) })
+      return r.ok
+    },
+    async soltarCampo(codigo, campo) {
+      await fetch(url('soltar', codigo), { method: 'POST', body: JSON.stringify({ campo, uid: await this.usuario() }) })
+    },
+    // a nuvem de teste não tem login, caixa nem campo pago (só o Firebase)
+    // usuário de teste já "logado" (passa da tela de login)
+    ouvirPerfil(aoMudar) { void this.usuario().then((uid) => aoMudar({ uid, nome: nomeDeTeste(), email: null, foto: null, anonimo: false })); return () => {} },
+    async entrarComGoogle() { throw new Error('Login só funciona com o Firebase') },
+    async sair() {},
+    ouvirCaixa(aoMudar) { aoMudar([]); return () => {} },
+    async lancarNoCaixa() { throw new Error('Caixa só funciona com o Firebase') },
+    async apagarLancamento() {},
+    ouvirHistorico(aoMudar) { aoMudar([]); return () => {} },
+    async guardarPelada() { throw new Error('Histórico só funciona com o Firebase') },
+    async apagarPelada() {},
+    async publicarCobranca() { throw new Error('Campo pago só funciona com o Firebase') },
+    ouvirCobranca() { return () => {} },
+    async avisarPagamento() { throw new Error('Campo pago só funciona com o Firebase') },
+    async apagarCobranca() {},
+
   }
 }

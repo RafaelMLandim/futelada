@@ -30,12 +30,12 @@ export function Times({ hook, onSorteio }: { hook: TorneioHook; onSorteio: () =>
     )
   }
 
+  // cor do time novo: a menos usada (com mais de 21 times, as cores se repetem)
   const criarTime = () => {
-    const usadas = new Set(torneio.times.map((t) => t.cor))
-    const cor = CORES_TORNEIO.find((c) => !usadas.has(c.cor))?.cor ?? CORES_TORNEIO[0].cor
+    const vezes = (cor: string) => torneio.times.filter((t) => t.cor === cor).length
+    const cor = [...CORES_TORNEIO].sort((a, b) => vezes(a.cor) - vezes(b.cor))[0].cor
     setEditando(novoTime(`TIME ${torneio.times.length + 1}`, cor))
   }
-  const semCor = torneio.times.length >= CORES_TORNEIO.length
 
   return (
     <div className="scr">
@@ -65,7 +65,7 @@ export function Times({ hook, onSorteio }: { hook: TorneioHook; onSorteio: () =>
           </section>
         ))}
         {!torneio.sorteado && hook.souOrganizador && (
-          <button className="btn w" disabled={semCor} onClick={criarTime}><Icone nome="mais" /> Novo time</button>
+          <button className="btn w" onClick={criarTime}><Icone nome="mais" /> Novo time</button>
         )}
       </div>
       {!torneio.sorteado && hook.souOrganizador && torneio.times.length >= 2 && (

@@ -1,18 +1,53 @@
 rules_version = '2';
 // Regras do torneio compartilhado (PLANO.md, seção 10):
-// - qualquer celular logado (login anônimo) com o código lê o torneio;
+// - quem entrou com o Google e tem o código lê o torneio;
 // - só o organizador cria/muda/apaga a base do torneio (regras, times, sorteio);
-// - mesários gravam os jogos em andamento e os resultados.
+// - mesários gravam os jogos em andamento e os resultados; cada um trava o seu campo.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /torneios/{codigo} {
+    // Dados de quem entrou com o Google (caixa da pelada): só o dono lê e escreve
+    match /usuarios/{uid}/{documento=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Campo pago da pelada (PLANO.md, seção 12): o organizador publica a cobrança; quem tem o
+    // link lê e avisa "já paguei" no próprio registro; só o organizador marca "pago" (a não ser
+    // que ele tenha ligado a confirmação automática). Ninguém de fora desfaz um "pago".
+    match /cobrancas/{codigo} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.nuvem.organizador == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.nuvem.organizador == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.organizador == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.organizador == request.auth.uid;
+
+      match /avisos/{jogador} {
+        function cobranca() { return get(/databases/$(database)/documents/cobrancas/$(codigo)).data; }
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && (
+          cobranca().organizador == request.auth.uid
+          || ((resource == null || resource.data.status != 'pago')
+              && (request.resource.data.status == 'avisou'
+                  || (request.resource.data.status == 'pago' && cobranca().confirmarAuto == true))));
+      }
+    }
+
+    // Torneio: só quem entrou com o Google (conta anônima não lê nem marca jogos)
+    match /torneios/{codigo} {
+      function comConta() { return request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
+      function organizador() { return get(/databases/$(database)/documents/torneios/$(codigo)).data.nuvem.organizador; }
+      allow read: if comConta();
+      allow create: if comConta() && request.resource.data.nuvem.organizador == request.auth.uid;
+      allow update, delete: if comConta() && resource.data.nuvem.organizador == request.auth.uid;
+
+      // Campo do mesário: quem pega trava; só ele mesmo ou o organizador libera
+      match /campos/{campo} {
+        allow read: if comConta();
+        allow create: if comConta() && request.resource.data.uid == request.auth.uid;
+        allow update: if comConta() && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid;
+        allow delete: if comConta() && (resource.data.uid == request.auth.uid || organizador() == request.auth.uid);
+      }
 
       match /{parte}/{jogo} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null && parte in ['partidas', 'resultados'];
+        allow read: if comConta();
+        allow write: if comConta() && parte in ['partidas', 'resultados'];
       }
     }
   }

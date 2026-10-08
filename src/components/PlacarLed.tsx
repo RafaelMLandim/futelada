@@ -5,10 +5,12 @@ import { Camisa } from './Camisa'
 export type LadoDoPlacar = { titulo: string; sub?: string; cor: string }
 
 // Painel do placar (pelada e torneio): tempo, times e gols.
-export function PlacarLed({ lados, placar, tempoMin, gols, decorrido, rodando, fim, acrescimoMin }: {
+export function PlacarLed({ lados, placar, tempoMin, gols, decorrido, rodando, fim, acrescimoMin, periodo, textoFim = 'FIM DE JOGO!' }: {
   lados: Record<Lado, LadoDoPlacar>; placar: Placar; tempoMin: number; gols: number | null // null = só o tempo
   decorrido: number; rodando: boolean; fim: boolean
   acrescimoMin?: number // acréscimos dados: o relógio para em 10:00 e embaixo corre o acréscimo
+  periodo?: string // torneio com vários tempos: "2º tempo", "Prorrogação"…
+  textoFim?: string // ex.: "FIM DO 1º TEMPO"
 }) {
   const totalMs = tempoMin * 60_000
   return (
@@ -16,11 +18,14 @@ export function PlacarLed({ lados, placar, tempoMin, gols, decorrido, rodando, f
       <div className="row num" style={{ justifyContent: 'space-between', color: '#c9d4e3', fontWeight: 700, letterSpacing: 1, fontSize: 15 }}>
         <span>{tempoMin} MIN</span>
         {fim
-          ? <span className="alerta" style={{ color: 'var(--amarelo)', fontSize: 18 }}>FIM DE JOGO!</span>
+          ? <span className="alerta" style={{ color: 'var(--amarelo)', fontSize: 18 }}>{textoFim}</span>
           : <span style={{ color: rodando ? 'var(--amarelo)' : '#c9d4e3' }}>{rodando ? '● AO VIVO' : 'PAUSADO'}</span>}
         <span>{gols === null ? 'SÓ TEMPO' : `${gols} GOLS`}</span>
       </div>
-      <div className="num" style={{ textAlign: 'center', fontSize: 44, marginTop: 6, color: decorrido >= totalMs ? 'var(--vermelho)' : 'var(--amarelo)' }}>
+      {periodo && (
+        <div className="num" style={{ textAlign: 'center', fontSize: 16, letterSpacing: 1, color: '#fff', textTransform: 'uppercase', marginTop: 6 }}>{periodo}</div>
+      )}
+      <div className="num" style={{ textAlign: 'center', fontSize: 44, marginTop: periodo ? 0 : 6, color: decorrido >= totalMs ? 'var(--vermelho)' : 'var(--amarelo)' }}>
         {formatarTempo(Math.min(decorrido, totalMs))}
       </div>
       {(acrescimoMin || decorrido - totalMs >= 1000) && (

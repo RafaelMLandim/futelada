@@ -8,6 +8,7 @@ import { cartoesAoDar } from '../cartoes'
 import { outro } from '../lado'
 import { iniciarEscalacao, substituir } from './escalacao'
 import { jogoPorId, jogosDisponiveis, registrarResultado, timesDoJogo } from './jogos'
+import { duracaoDoPeriodo, rotuloDoPeriodo } from './periodos'
 
 export const partidaDoJogo = (t: Torneio, jogoId: string) => t.emAndamento.find((p) => p.jogoId === jogoId)
 
@@ -33,6 +34,7 @@ export function camposLivres(t: Torneio): number[] {
 /**
  * Campo fixo do jogo, quando cada grupo joga no seu campo (Grupo A no 1, B no 2…;
  * com mais grupos que campos, eles se revezam). Null = pode ir para qualquer campo.
+ * O campo que terminar os seus grupos antes passa a ajudar os outros (`campoLiberadoDosGrupos`).
  */
 export function campoDoJogo(t: Torneio, jogo: JogoTorneio): number | null {
   const { formato, grupoPorCampo, campos } = t.regras
@@ -40,12 +42,26 @@ export function campoDoJogo(t: Torneio, jogo: JogoTorneio): number | null {
   return (jogo.grupo % campos) + 1
 }
 
+/**
+ * O campo já jogou todos os jogos dos grupos dele? Aí ele ajuda os outros campos
+ * (com mais grupos que campos, um campo acabaria parado enquanto o outro ainda tem jogos).
+ */
+export function campoLiberadoDosGrupos(t: Torneio, campo: number): boolean {
+  return !t.jogos.some((j) => campoDoJogo(t, j) === campo && !j.resultado && !t.emAndamento.some((p) => p.jogoId === j.id))
+}
+
+/** O jogo pode ir para este campo? (sem campo fixo, o campo dele, ou um campo que já acabou os seus grupos) */
+const serveNoCampo = (t: Torneio, jogo: JogoTorneio, campo: number) => {
+  const fixo = campoDoJogo(t, jogo)
+  return fixo === null || fixo === campo || campoLiberadoDosGrupos(t, campo)
+}
+
 /** Em que campo o jogo começaria agora (null = não tem campo livre para ele). */
 export function campoParaJogo(t: Torneio, jogo: JogoTorneio): number | null {
   const livres = camposLivres(t)
   const fixo = campoDoJogo(t, jogo)
-  if (fixo !== null) return livres.includes(fixo) ? fixo : null
-  return livres[0] ?? null
+  if (fixo !== null && livres.includes(fixo)) return fixo
+  return livres.find((c) => serveNoCampo(t, jogo, c)) ?? null
 }
 
 /** Jogos que dá para começar agora: disponíveis, com campo livre e sem time que já está jogando. */
@@ -60,8 +76,7 @@ export function jogosParaComecar(t: Torneio): JogoTorneio[] {
 /** Dá para começar este jogo agora neste campo? (campo livre, do grupo certo, times livres) */
 export function podeComecarNoCampo(t: Torneio, jogo: JogoTorneio, campo: number): boolean {
   if (!camposLivres(t).includes(campo)) return false
-  const fixo = campoDoJogo(t, jogo)
-  return (fixo === null || fixo === campo) && jogosParaComecar(t).some((j) => j.id === jogo.id)
+  return serveNoCampo(t, jogo, campo) && jogosParaComecar(t).some((j) => j.id === jogo.id)
 }
 
 /** O próximo jogo de cada campo livre (para mostrar "Próximo no Campo 1", "no Campo 2"…). */
@@ -71,8 +86,7 @@ export function proximosPorCampo(t: Torneio): { campo: number; jogo: JogoTorneio
   for (const campo of camposLivres(t)) {
     const jogo = jogosParaComecar(t).find((j) => {
       if (usados.has(j.id)) return false
-      const fixo = campoDoJogo(t, j)
-      if (fixo !== null && fixo !== campo) return false
+      if (!serveNoCampo(t, j, campo)) return false
       // não oferece dois jogos com o mesmo time em campos diferentes
       const times = Object.values(timesDoJogo(t, j))
       return !lista.some((x) => Object.values(timesDoJogo(t, x.jogo)).some((id) => times.includes(id)))
@@ -90,9 +104,8 @@ export function iniciarPartida(t: Torneio, jogoId: string, campo?: number): Torn
   if (camposLivres(t).length === 0) throw new Error('Todos os campos estão em uso')
   const jogo = jogosParaComecar(t).find((j) => j.id === jogoId)
   if (!jogo) throw new Error('Esse jogo não pode começar agora')
-  const fixo = campoDoJogo(t, jogo)
   const escolhido = campo ?? campoParaJogo(t, jogo)!
-  if (!camposLivres(t).includes(escolhido) || (fixo !== null && fixo !== escolhido)) throw new Error('Esse campo não está livre para esse jogo')
+  if (!camposLivres(t).includes(escolhido) || !serveNoCampo(t, jogo, escolhido)) throw new Error('Esse campo não está livre para esse jogo')
   const partida: PartidaTorneio = {
     jogoId, campo: escolhido, escalacao: iniciarEscalacao(t, jogo), placar: [0, 0], gols: [], cartoes: [], crono: cronoZerado,
   }
@@ -110,14 +123,20 @@ export const acrescimosNaPartida = (t: Torneio, jogoId: string, min: number): To
 export const cronoDaPartida = (t: Torneio, jogoId: string, rodando: boolean): Torneio =>
   comPartida(t, jogoId, (p) => ({ ...p, crono: alternarCrono(p.crono, rodando) }))
 
-/** Gol do lado; o goleiro do outro time "sofre" (para o goleiro menos vazado). */
-/** Gol para `lado`. Gol contra: `autor` é do outro time (não conta na artilharia dele). */
+/**
+ * Gol para `lado`; o goleiro do outro time "sofre". Gol contra: `autor` é do outro time (não conta
+ * na artilharia dele). `tempoMs` é dentro do tempo atual (com vários tempos, o gol guarda qual foi).
+ */
 export function golNaPartida(t: Torneio, jogoId: string, lado: Lado, autor: Jogador | null, tempoMs?: number, contra = false): Torneio {
   const goleiro = timeDoLado(t, jogoId, outro(lado))?.goleiro ?? null
   return comPartida(t, jogoId, (p) => {
     const placar: Placar = [...p.placar]
     placar[lado === 'A' ? 0 : 1]++
-    const gol: Gol = { lado, autorId: autor?.id ?? null, autor: autor?.nome ?? null, goleiroSofreu: goleiro, tempoMs, ...(contra && { contra: true }) }
+    const periodo = rotuloDoPeriodo(t.regras, p)
+    const gol: Gol = {
+      lado, autorId: autor?.id ?? null, autor: autor?.nome ?? null, goleiroSofreu: goleiro, tempoMs, ...(contra && { contra: true }),
+      ...(periodo && { periodo, duracaoMin: duracaoDoPeriodo(t.regras, p) }),
+    }
     return { ...p, placar, gols: [...p.gols, gol] }
   })
 }

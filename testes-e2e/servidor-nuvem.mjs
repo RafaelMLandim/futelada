@@ -4,6 +4,10 @@ import http from 'node:http'
 
 const torneios = new Map() // código -> { base, partidas, resultados }
 const ouvintes = new Map() // código -> Set<res>
+// campos travados pelos mesários (mesmas regras do firestore.rules): código -> { [campo]: { uid, nome, foto, em } }
+const campos = new Map()
+const ouvintesCampos = new Map() // código -> Set<res>
+const avisarCampos = (c) => { for (const res of ouvintesCampos.get(c) ?? []) res.write(`data: ${JSON.stringify(campos.get(c) ?? {})}\n\n`) }
 const vazio = () => ({ base: null, partidas: [], resultados: {} })
 
 function aplicar(dados, ops) {
@@ -32,12 +36,37 @@ http.createServer((req, res) => {
     req.on('close', () => lista.delete(res))
     return
   }
+  if (url.pathname === '/campos') {
+    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' })
+    const lista = ouvintesCampos.get(c) ?? new Set(); lista.add(res); ouvintesCampos.set(c, lista)
+    res.write(`data: ${JSON.stringify(campos.get(c) ?? {})}\n\n`)
+    req.on('close', () => lista.delete(res))
+    return
+  }
   if (url.pathname === '/dados') return res.end(JSON.stringify(torneios.get(c) ?? vazio()))
   let corpo = ''
   req.on('data', (d) => (corpo += d))
   req.on('end', () => {
     if (url.pathname === '/gravar') torneios.set(c, aplicar(torneios.get(c) ?? vazio(), JSON.parse(corpo)))
-    if (url.pathname === '/apagar') torneios.delete(c)
+    if (url.pathname === '/apagar') { torneios.delete(c); campos.delete(c); avisarCampos(c) }
+    if (url.pathname === '/pegar' || url.pathname === '/soltar') {
+      const { campo, uid, nome, foto } = JSON.parse(corpo)
+      const doTorneio = campos.get(c) ?? {}
+      const dono = doTorneio[campo]?.uid
+      const organizador = torneios.get(c)?.base?.nuvem?.organizador
+      if (url.pathname === '/pegar') {
+        // pega se o campo está livre ou já é dele
+        if (dono && dono !== uid) { res.statusCode = 403; return res.end('ocupado') }
+        doTorneio[campo] = { uid, nome, foto, em: Date.now() }
+      } else {
+        // solta: o próprio mesário ou o organizador
+        if (dono && dono !== uid && organizador !== uid) { res.statusCode = 403; return res.end('negado') }
+        delete doTorneio[campo]
+      }
+      campos.set(c, doTorneio)
+      avisarCampos(c)
+      return res.end('ok')
+    }
     avisar(c)
     res.end('ok')
   })

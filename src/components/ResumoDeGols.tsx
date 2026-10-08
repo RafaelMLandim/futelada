@@ -7,6 +7,12 @@ import { Bola } from './Bola'
 type GolNaLista = { indice: number; minuto: string | null }
 type Autor = { nome: string; gols: GolNaLista[] }
 
+/** Minuto do gol; com vários tempos (torneio), com o tempo em que saiu: "2ºT 7'", "Pror. 5+1'". */
+function minutoNoTempo(g: Gol, tempoMin: number): string | null {
+  const minuto = minutoDoGol(g.tempoMs, g.duracaoMin ?? tempoMin)
+  return minuto && g.periodo ? `${g.periodo} ${minuto}` : minuto
+}
+
 /** Agrupa os gols de um lado por jogador, na ordem do primeiro gol de cada um. */
 function autoresDoLado(gols: Gol[], lado: Lado, tempoMin: number): Autor[] {
   const autores: Autor[] = []
@@ -15,7 +21,7 @@ function autoresDoLado(gols: Gol[], lado: Lado, tempoMin: number): Autor[] {
     // gol contra fica no lado de quem ganhou o gol, separado dos gols normais do jogador
     const nome = `${g.autor ?? 'Sem autor'}${g.contra ? ' (contra)' : ''}`
     const autor = autores.find((a) => a.nome === nome)
-    const gol = { indice, minuto: minutoDoGol(g.tempoMs, tempoMin) }
+    const gol = { indice, minuto: minutoNoTempo(g, tempoMin) }
     if (autor) autor.gols.push(gol)
     else autores.push({ nome, gols: [gol] })
   })
@@ -35,7 +41,7 @@ export function ResumoDeGols({ gols, tempoMin, nomeDoLado, onRemover }: {
 
   const remover = (indice: number) => {
     const g = gols[indice]
-    const minuto = minutoDoGol(g.tempoMs, tempoMin)
+    const minuto = minutoNoTempo(g, tempoMin)
     confirmar({
       titulo: 'Remover gol',
       mensagem: `Remover o gol${g.contra ? ' contra' : ''} ${g.autor ? `de ${g.autor}` : 'sem autor'}${minuto ? ` aos ${minuto}` : ''} (${nomeDoLado[g.lado]})?`,

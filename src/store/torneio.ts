@@ -3,18 +3,19 @@
 // ao mesmo tempo. Dura até ser apagado: serve para um dia ou para semanas.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { diferencas, juntar, novoCodigo, regrasPadrao, separar } from '../logic/torneio'
+import { campeao, diferencas, juntar, novoCodigo, regrasPadrao, separar } from '../logic/torneio'
 import { nuvemDisponivel, obterNuvem, type Nuvem } from '../nuvem'
+import type { MesarioNoCampo } from '../nuvem/tipos'
 import type { PartidaTorneio, Torneio } from '../types/torneio'
 
 const CHAVE = 'torneio:v1'
 const CHAVE_ATIVO = 'torneio:ativo'
 
 /** Torneio compartilhado que este celular está acompanhando. */
-export type Ativo = { codigo: string; campo: number | null; nome?: string }
+export type Ativo = { codigo: string; campo: number | null; nome?: string; campeao?: string }
 
-/** Completa torneios salvos por versões antigas (antes dos jogos simultâneos). */
-function completar(t: Torneio): Torneio {
+/** Completa torneios salvos por versões antigas (antes dos jogos simultâneos, dos tempos e da prorrogação). */
+export function completar(t: Torneio): Torneio {
   const antigo = t.emAndamento as unknown
   const emAndamento: PartidaTorneio[] = Array.isArray(antigo)
     ? antigo
@@ -45,11 +46,17 @@ const carregarLocal = () => {
 }
 
 /** Para a tela inicial: o torneio local ou o compartilhado que está sendo acompanhado. */
-export function torneioSalvo(): { nome: string; codigo?: string } | null {
+/** Nome do time campeão (null enquanto o torneio não acabou). */
+const nomeDoCampeao = (t: Torneio) => {
+  const id = campeao(t)
+  return id ? t.times.find((x) => x.id === id)?.nome ?? null : null
+}
+
+export function torneioSalvo(): { nome: string; codigo?: string; campeao?: string } | null {
   const ativo = ler<Ativo>(CHAVE_ATIVO)
-  if (ativo) return { nome: ativo.nome ?? 'Torneio compartilhado', codigo: ativo.codigo }
+  if (ativo) return { nome: ativo.nome ?? 'Torneio compartilhado', codigo: ativo.codigo, campeao: ativo.campeao }
   const local = carregarLocal()
-  return local ? { nome: local.nome } : null
+  return local ? { nome: local.nome, campeao: nomeDoCampeao(local) ?? undefined } : null
 }
 
 export type StatusNuvem = 'carregando' | 'ok' | 'nao-encontrado' | 'erro'
@@ -60,6 +67,8 @@ export function useTorneio() {
   const [status, setStatus] = useState<StatusNuvem>(ativo ? 'carregando' : 'ok')
   const [usuario, setUsuario] = useState<string | null>(null)
   const [online, setOnline] = useState(() => navigator.onLine)
+  // quem está em cada campo (null = ainda carregando)
+  const [campos, setCampos] = useState<Record<number, MesarioNoCampo> | null>(null)
   // Valor mais recente, para calcular e salvar na hora (mesmo que a tela feche em seguida)
   const atual = useRef(torneio)
   const nuvem = useRef<Nuvem | null>(null)
@@ -91,15 +100,29 @@ export function useTorneio() {
       nuvem.current = n
       setUsuario(await n.usuario().catch(() => null))
       parar = n.ouvir(ativo.codigo, (dados) => {
-        const t = juntar(dados)
+        const junto = juntar(dados)
+        const t = junto && completar(junto) // regras de versões antigas ganham os valores padrão
         atual.current = t
         setTorneio(t)
         setStatus(t ? 'ok' : 'nao-encontrado')
-        if (t && t.nome !== ler<Ativo>(CHAVE_ATIVO)?.nome) escrever(CHAVE_ATIVO, { ...ler<Ativo>(CHAVE_ATIVO), nome: t.nome })
+        // para a tela inicial: nome e campeão (sem precisar carregar o torneio da nuvem)
+        const salvo = ler<Ativo>(CHAVE_ATIVO)
+        const ganhou = t ? nomeDoCampeao(t) ?? undefined : undefined
+        if (t && salvo && (t.nome !== salvo.nome || ganhou !== salvo.campeao)) escrever(CHAVE_ATIVO, { ...salvo, nome: t.nome, campeao: ganhou })
       }, () => setStatus('erro'))
     })
     return () => { vivo = false; parar() }
   }, [ativo])
+
+  // Campos travados pelos mesários (refaz só quando muda o torneio, não o campo)
+  const codigoAtivo = ativo?.codigo ?? null
+  useEffect(() => {
+    if (!codigoAtivo) return
+    let parar = () => {}
+    let vivo = true
+    void obterNuvem().then((n) => { if (n && vivo) parar = n.ouvirCampos(codigoAtivo, setCampos) })
+    return () => { vivo = false; parar(); setCampos(null) }
+  }, [codigoAtivo])
 
   const acoes = useMemo(() => {
     /** Muda o torneio: local salva no celular; compartilhado grava só o que mudou na nuvem. */
@@ -153,6 +176,8 @@ export function useTorneio() {
 
   /** Para de acompanhar o torneio compartilhado neste celular (ele continua na nuvem). */
   const sair = () => {
+    const a = ler<Ativo>(CHAVE_ATIVO)
+    if (a?.campo != null) void nuvem.current?.soltarCampo(a.codigo, a.campo)
     atual.current = carregarLocal()
     setTorneio(atual.current)
     setStatus('ok')
@@ -168,7 +193,18 @@ export function useTorneio() {
     setAtivo(null)
   }
 
-  const definirCampo = (campo: number | null) => ativo && setAtivo({ ...ativo, campo })
+  /** Mesário pega um campo (trava para os outros) e solta o anterior. false = o campo já tem mesário. */
+  const definirCampo = async (campo: number | null): Promise<boolean> => {
+    const a = ler<Ativo>(CHAVE_ATIVO)
+    const n = await obterNuvem()
+    if (!a || !n) return false
+    if (campo !== null && !(await n.pegarCampo(a.codigo, campo))) return false
+    if (a.campo != null && a.campo !== campo) void n.soltarCampo(a.codigo, a.campo)
+    setAtivo({ ...a, campo })
+    return true
+  }
+  /** Organizador libera um campo (ex.: o mesário foi embora sem soltar). */
+  const liberarCampo = (campo: number) => { if (ativo) void nuvem.current?.soltarCampo(ativo.codigo, campo) }
 
   const souOrganizador = !torneio?.nuvem || torneio.nuvem.organizador === usuario
 
@@ -179,8 +215,11 @@ export function useTorneio() {
     compartilhar, entrar, sair,
     /** Organizador faz tudo; mesário só marca os jogos do campo dele. */
     souOrganizador,
-    meuCampo: ativo?.campo ?? null,
-    definirCampo,
+    /** O campo deste mesário (só vale enquanto a trava na nuvem for dele). */
+    meuCampo: ativo?.campo != null && (campos === null || campos[ativo.campo]?.uid === usuario) ? ativo.campo : null,
+    campos: campos ?? {},
+    usuario,
+    definirCampo, liberarCampo,
   }
 }
 

@@ -1,13 +1,15 @@
+import { useState } from 'react'
 import { Barra } from '../../components/Barra'
 import { Camisa } from '../../components/Camisa'
 import { Cartao } from '../../components/Cartao'
 import { Icone } from '../../components/Icone'
 import {
-  artilhariaDoTorneio, campeao, cartoesDoTorneio, classificacao, goleirosDoTorneio, nomeDoGrupo, vencedor,
+  artilhariaDoTorneio, campeao, cartoesDoTorneio, classificacao, goleirosDoTorneio, nomeDoGrupo, placarDecisivo, vencedor,
   type LinhaDaTabela,
 } from '../../logic/torneio'
 import type { JogoTorneio, Torneio } from '../../types/torneio'
 import { SEM_COLETE } from '../../utils/cores'
+import { ChaveCompleta } from './ChaveCompleta'
 import { descreverOrigem, timePorId } from './nomes'
 
 const COL = { width: 24, textAlign: 'center' as const, flex: 'none' }
@@ -81,14 +83,18 @@ function Chave({ torneio, jogos }: { torneio: Torneio; jogos: JogoTorneio[] }) {
   const terceiro = jogos.filter((j) => j.rodada === 'Disputa de 3º lugar')
   const rodadas: { nome: string; jogos: JogoTorneio[] }[] = []
   for (const j of [...jogos].sort((a, b) => a.ordem - b.ordem)) {
-    if (j.rodada === 'Disputa de 3º lugar') continue
+    if (j.rodada === 'Disputa de 3º lugar' || j.perna === 'ida') continue // ida e volta: a caixa é da volta (mostra os dois jogos)
     const r = rodadas.find((x) => x.nome === j.rodada)
     if (r) r.jogos.push(j)
     else rodadas.push({ nome: j.rodada, jogos: [j] })
   }
+  const [telaCheia, setTelaCheia] = useState(false)
   return (
     <section className="panel">
-      <div className="ph">Mata-mata{rodadas.length > 2 && <span className="sub">arraste para o lado →</span>}</div>
+      <div className="ph">Mata-mata
+        <button className="tag t-y" style={{ border: 0, cursor: 'pointer', height: 26 }} onClick={() => setTelaCheia(true)}>Tela cheia ⤢</button>
+      </div>
+      {telaCheia && <ChaveCompleta torneio={torneio} onFechar={() => setTelaCheia(false)} />}
       <div className="chave" style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: 10, background: '#f6f7f2' }}>
         {rodadas.map((r) => (
           <div key={r.nome} style={{ display: 'flex', flexDirection: 'column', minWidth: 168, flex: 'none' }}>
@@ -109,23 +115,34 @@ function Chave({ torneio, jogos }: { torneio: Torneio; jogos: JogoTorneio[] }) {
   )
 }
 
-function Confronto({ torneio, jogo }: { torneio: Torneio; jogo: JogoTorneio }) {
-  const ganhou = vencedor(jogo)
+/** Caixa de um confronto (ida e volta: ida · volta · agregado; pênaltis entre parênteses). */
+export function Confronto({ torneio, jogo }: { torneio: Torneio; jogo: JogoTorneio }) {
+  const ganhou = vencedor(jogo, torneio)
   const r = jogo.resultado
+  // ida e volta: a caixa é da volta; os lados são os da volta (o lado A da volta é o B da ida)
+  const ida = jogo.perna === 'volta' ? torneio.jogos.find((j) => j.id === jogo.outraPerna) : undefined
+  const agregado = placarDecisivo(torneio, jogo)
   const linha = (lado: 'A' | 'B') => {
     const o = descreverOrigem(torneio, lado === 'A' ? jogo.casa : jogo.fora)
-    const gols = r ? r.placar[lado === 'A' ? 0 : 1] : null
-    const pen = r?.penaltis ? r.penaltis[lado === 'A' ? 0 : 1] : null
+    const i = lado === 'A' ? 0 : 1
+    const golsIda = ida?.resultado ? ida.resultado.placar[1 - i] : null
+    const golsVolta = r ? r.placar[i] : null
+    const pen = r?.penaltis ? r.penaltis[i] : null
     return (
       <div className="row" style={{ gap: 6, padding: '5px 8px', fontSize: 13, fontWeight: ganhou === lado ? 800 : 600, color: o.time ? 'var(--navy)' : 'var(--mut)', opacity: ganhou && ganhou !== lado ? 0.6 : 1 }}>
         <Camisa cor={o.time?.cor ?? SEM_COLETE} tamanho={16} />
         <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.nome}</span>
-        {gols !== null && <span className="num" style={{ fontSize: 16 }}>{gols}{pen !== null && <span style={{ fontSize: 12 }}> ({pen})</span>}</span>}
+        {ida && <span className="num" style={{ fontSize: 13, color: 'var(--mut)', minWidth: 14, textAlign: 'center' }}>{golsIda ?? '–'}</span>}
+        {ida && <span className="num" style={{ fontSize: 13, color: 'var(--mut)', minWidth: 14, textAlign: 'center' }}>{golsVolta ?? '–'}</span>}
+        {(ida ? agregado : r) && (
+          <span className="num" style={{ fontSize: 16 }}>{ida ? agregado![i] : golsVolta}{pen !== null && <span style={{ fontSize: 12 }}> ({pen})</span>}</span>
+        )}
       </div>
     )
   }
   return (
     <div style={{ background: '#fff', border: '2px solid var(--borda)', borderRadius: 5, boxShadow: '0 2px 0 var(--borda)' }}>
+      {ida && <div className="mut" style={{ fontSize: 10, padding: '3px 8px 0', textAlign: 'right', letterSpacing: 0.5 }}>IDA · VOLTA · AGREGADO</div>}
       {linha('A')}
       <div style={{ height: 1, background: '#e3e8d6' }} />
       {linha('B')}

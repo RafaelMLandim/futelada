@@ -16,7 +16,11 @@ const completarPartida = (p: Partida): Partida => ({
 
 export function completarEstado(e: Partial<Estado> | undefined): Estado {
   const base = novaSessao(configPadrao)
-  const config = { ...configPadrao, ...e?.config, coletes: { ...configPadrao.coletes, ...e?.config?.coletes } }
+  const config = {
+    ...configPadrao, ...e?.config,
+    coletes: { ...configPadrao.coletes, ...e?.config?.coletes },
+    pagamento: { ...configPadrao.pagamento, ...e?.config?.pagamento },
+  }
   const estado: Estado = {
     ...base,
     ...e,
@@ -26,6 +30,9 @@ export function completarEstado(e: Partial<Estado> | undefined): Estado {
     cartoes: e?.cartoes ?? [],
     historico: (e?.historico ?? []).map(completarPartida),
     subiram: e?.subiram ?? [],
+    pagamentos: e?.pagamentos ?? {},
+    cobranca: e?.cobranca ?? null,
+    caixaLancado: e?.caixaLancado ?? false,
   }
   // Dados antigos não tinham o número de cada time da fila
   return e?.filaTimes ? estado : numerarFila({ ...estado, filaTimes: [] })
@@ -36,5 +43,6 @@ export function completarApp(app: Partial<AppState>): AppState {
     estado: completarEstado(app.estado),
     iniciada: app.iniciada ?? false,
     crono: app.crono ?? cronoZerado,
+    ...(app.configAntes && { configAntes: app.configAntes }),
   }
 }

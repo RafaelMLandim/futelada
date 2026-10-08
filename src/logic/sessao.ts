@@ -18,6 +18,7 @@ export const configPadrao: Config = {
   som: true,
   acrescimos: true,
   sortearInicio: true,
+  pagamento: { ativo: false, valorCampo: 0, modo: 'proporcional', valorFixo: 0, chavePix: '', recebedor: '', confirmarAuto: false },
 }
 
 export function novaSessao(config: Config = configPadrao): Estado {
@@ -33,6 +34,9 @@ export function novaSessao(config: Config = configPadrao): Estado {
     historico: [],
     subiram: [],
     proximoNumero: 1,
+    pagamentos: {},
+    cobranca: null,
+    caixaLancado: false,
   }
 }
 

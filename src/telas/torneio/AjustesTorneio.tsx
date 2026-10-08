@@ -7,6 +7,8 @@ import { enviarConvite } from '../../utils/convite'
 import { maiusculas } from '../../utils/formatar'
 import { RegrasForm } from './RegrasForm'
 
+const primeiroNome = (nome: string) => nome.split(' ')[0]
+
 // Ajustes do torneio: compartilhar (código e convite), campo do mesário, nome, regras,
 // sair / apagar. Só o organizador muda regras e nome.
 export function AjustesTorneio({ hook, onInicio }: { hook: TorneioHook; onInicio: () => void }) {
@@ -14,6 +16,17 @@ export function AjustesTorneio({ hook, onInicio }: { hook: TorneioHook; onInicio
   const confirmar = useConfirmar()
   const [aviso, setAviso] = useState<string | null>(null)
   const [compartilhando, setCompartilhando] = useState(false)
+  const [pegando, setPegando] = useState(false)
+  const [avisoCampo, setAvisoCampo] = useState<string | null>(null)
+  const numerosDosCampos = Array.from({ length: torneio.regras.campos }, (_, i) => i + 1)
+  /** Pega o campo (ou solta, com null). Se outro mesário pegou antes, avisa. */
+  const pegar = async (campo: number | null) => {
+    setPegando(true)
+    setAvisoCampo(null)
+    const ok = await hook.definirCampo(campo).catch(() => false)
+    setPegando(false)
+    if (!ok) setAvisoCampo(campo ? `O Campo ${campo} já tem mesário. Escolha outro.` : 'Não deu para liberar agora. Tente de novo.')
+  }
   const org = hook.souOrganizador
   const codigo = hook.compartilhado?.codigo
 
@@ -43,17 +56,52 @@ export function AjustesTorneio({ hook, onInicio }: { hook: TorneioHook; onInicio
               <button className="btn sm" onClick={convidar}><Icone nome="times" /> Convidar mesários</button>
               {aviso && <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>{aviso}</div>}
             </div>
+            {/* cada campo tem um mesário: quem pega trava o campo para os outros (PLANO.md, seção 10) */}
             {!org && (
               <div className="pb" style={{ borderTop: '2px solid #e3e8d6', display: 'grid', gap: 8 }}>
                 <div style={{ fontWeight: 700 }}>Meu campo <span className="mut">· você marca os jogos dele</span></div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {Array.from({ length: torneio.regras.campos }, (_, i) => i + 1).map((c) => (
-                    <button key={c} className={'chip' + (hook.meuCampo === c ? ' on' : '')} aria-pressed={hook.meuCampo === c}
-                      onClick={() => hook.definirCampo(c)}>Campo {c}</button>
-                  ))}
+                  {numerosDosCampos.map((c) => {
+                    const outro = hook.campos[c] && hook.campos[c].uid !== hook.usuario ? hook.campos[c] : null
+                    return (
+                      <button key={c} className={'chip' + (hook.meuCampo === c ? ' on' : '')} aria-pressed={hook.meuCampo === c}
+                        disabled={!!outro || pegando} style={outro ? { opacity: .55, textTransform: 'none' } : undefined}
+                        onClick={() => void pegar(c)}>
+                        Campo {c}{outro ? ` · ${primeiroNome(outro.nome)}` : ''}
+                      </button>
+                    )
+                  })}
                   <button className={'chip' + (hook.meuCampo === null ? ' on' : '')} aria-pressed={hook.meuCampo === null}
-                    onClick={() => hook.definirCampo(null)}>Só acompanhar</button>
+                    disabled={pegando} onClick={() => void pegar(null)}>Só acompanhar</button>
                 </div>
+                <div className="mut">
+                  {hook.meuCampo !== null
+                    ? 'Vai sair? Toque em "Só acompanhar" para liberar o campo para outro mesário.'
+                    : 'Campo em cinza já tem mesário: para trocar, ele libera (ou o organizador).'}
+                </div>
+                {avisoCampo && <div style={{ color: 'var(--vermelho)', fontWeight: 700 }}>{avisoCampo}</div>}
+              </div>
+            )}
+            {/* organizador vê quem está em cada campo e libera se o mesário foi embora */}
+            {org && (
+              <div style={{ borderTop: '2px solid #e3e8d6' }}>
+                <div className="pb" style={{ fontWeight: 700, paddingBottom: 4 }}>Mesários</div>
+                {numerosDosCampos.map((c) => {
+                  const m = hook.campos[c]
+                  return (
+                    <div key={c} className="tr" style={{ borderTop: '1px solid #e3e8d6' }}>
+                      <span style={{ width: 70, fontWeight: 800 }}>Campo {c}</span>
+                      <span className={m ? 'nome' : 'mut'} style={{ flex: 1 }}>{m ? m.nome : 'livre'}</span>
+                      {m && (
+                        <button className="btn w sm" style={{ width: 'auto', height: 34, padding: '0 12px' }}
+                          onClick={() => confirmar({
+                            titulo: `Liberar o Campo ${c}?`, mensagem: `${m.nome} deixa de marcar os jogos do Campo ${c} e outro mesário pode pegar.`,
+                            botao: 'Liberar', aoConfirmar: () => hook.liberarCampo(c),
+                          })}>Liberar</button>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </section>
@@ -101,9 +149,6 @@ export function AjustesTorneio({ hook, onInicio }: { hook: TorneioHook; onInicio
             botao: 'Sair', aoConfirmar: () => { hook.sair(); onInicio() },
           })}>Sair do torneio</button>
         )}
-      </div>
-      <div className="rodape">
-        <button className="btn w sm" onClick={onInicio}><Icone nome="inicio" /> Início (pelada ou torneio)</button>
       </div>
     </div>
   )

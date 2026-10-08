@@ -106,7 +106,7 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
     )
   }
 
-  const { A, B } = estado.emCampo
+  const emCampo = estado.emCampo
   const { coletes } = cfg
   const corDoBotao = (lado: Lado) => ({ background: coletes[lado].cor, color: textoSobre(coletes[lado].cor) })
   const proximo = blocosDaFila(estado)[0]
@@ -137,7 +137,7 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
     if (fim) return fazer()
     confirmar({
       titulo: 'Encerrar a partida?',
-      mensagem: `O tempo ainda não acabou (faltam ${restante}). Encerrar com ${acao}?`,
+      mensagem: `O tempo ainda não acabou (faltam ${restante}). Encerrar ${golsA} x ${golsB} com ${acao}?`,
       botao: 'Encerrar',
       aoConfirmar: fazer,
     })
@@ -145,6 +145,8 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
   const venceu = (lado: Lado) =>
     encerrarCom(`vitória do Time ${estado.emCampo![lado].numero}`, () => aplicar((e) => vitoria(e, lado), true))
   const abrirEmpate = () => encerrarCom('empate', () => setEmpateManual(true))
+  // Quem está ganhando (null = empatado): o botão de fim de jogo segue o placar
+  const lider: Lado | null = golsA === golsB ? null : golsA > golsB ? 'A' : 'B'
   const saiu = (id: string, nome: string) => {
     const quem = proximo?.[0]?.nome
     confirmar({
@@ -178,12 +180,16 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
 
         <Escalacoes pelada={pelada} decorrido={decorrido} transicao={transicao} onJogador={(lado, jogador) => setAcoes({ lado, jogador })} />
 
+        {/* Um botão só, que segue o placar: não tem como dar a vitória para o time errado */}
         <section className={'panel' + (fim ? ' destaque' : '')}>
-          <div className="ph">Fim de jogo · quem venceu?</div>
-          <div className="pb" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8 }}>
-            <button className="btn sm" style={corDoBotao('A')} onClick={() => venceu('A')}>Time {A.numero}</button>
-            <button className="btn w sm" style={{ width: 'auto' }} onClick={abrirEmpate}>Empate</button>
-            <button className="btn sm" style={corDoBotao('B')} onClick={() => venceu('B')}>Time {B.numero}</button>
+          <div className="ph">Fim de jogo</div>
+          <div className="pb" style={{ display: 'grid', gap: 6 }}>
+            {lider
+              ? <button className="btn" style={corDoBotao(lider)} onClick={() => venceu(lider)}>
+                  Time {emCampo[lider].numero} venceu · chamar o próximo
+                </button>
+              : <button className="btn w" onClick={abrirEmpate}>Empatou · ir para a moeda</button>}
+            <div className="mut" style={{ textAlign: 'center', fontSize: 12 }}>O resultado segue o placar. Errou um gol? Corrija o placar antes.</div>
           </div>
         </section>
 

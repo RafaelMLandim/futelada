@@ -16,7 +16,7 @@ export function ProvedorDeConfirmacao({ children }: { children: ReactNode }) {
             <div className="ph">{pedido.titulo}</div>
             <div className="pb" style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.45 }}>{pedido.mensagem}</div>
             <div className="pb" style={{ paddingTop: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <button className="btn w sm" onClick={fechar}>Cancelar</button>
+              <button className="btn w sm" onClick={fechar}>{pedido.voltar ?? 'Cancelar'}</button>
               <button className={'btn sm' + (pedido.perigo ? ' r' : '')} autoFocus
                 onClick={() => { fechar(); pedido.aoConfirmar() }}>
                 {pedido.botao}
