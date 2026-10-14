@@ -4,7 +4,10 @@ import { Avatar } from '../components/Avatar'
 import { Logo } from '../components/Logo'
 import { carregar as peladaSalva } from '../store/armazenamento'
 import { useCaixa, useConta, useHistorico } from '../store/conta'
+import { useImportarTurmaAntiga, useTurmas } from '../store/turmas'
 import { torneioSalvo } from '../store/torneio'
+import { usePlano } from '../store/plano'
+import { textoDasPeladasGratis } from '../logic/plano'
 import { dataHoje, reais } from '../utils/formatar'
 
 // Tela inicial: pelada do dia, torneio, caixa da pelada e histórico (a conta fica na foto, no topo).
@@ -12,6 +15,11 @@ export function Inicio({ onPelada, onTorneio, onCaixa, onHistorico }: { onPelada
   const conta = useConta()
   const caixa = useCaixa()
   const { peladas } = useHistorico()
+  // primeira vez: as peladas antigas viram a turma "Minha pelada"
+  const { turmas } = useTurmas()
+  useImportarTurmaAntiga(conta.logado ? turmas : null, conta.logado ? peladas : null)
+  // "Pelada 3 de 10 grátis" (só com a cobrança ligada e sem Premium)
+  const gratis = textoDasPeladasGratis(usePlano())
   const pelada = peladaSalva()
   const torneio = torneioSalvo()
   const partidas = pelada?.estado.historico.length ?? 0
@@ -26,7 +34,7 @@ export function Inicio({ onPelada, onTorneio, onCaixa, onHistorico }: { onPelada
       </header>
       <div className="conteudo" style={{ justifyContent: 'center', gap: 16 }}>
         <Opcao icone="bola" titulo="Pelada do dia" onClick={onPelada}
-          detalhe={pelada?.iniciada ? `Em andamento · ${partidas} ${partidas === 1 ? 'partida jogada' : 'partidas jogadas'}` : 'Lista de chegada e rodízio de times'}
+          detalhe={pelada?.iniciada ? `Em andamento · ${partidas} ${partidas === 1 ? 'partida jogada' : 'partidas jogadas'}` : (gratis ?? 'Lista de chegada e rodízio de times')}
           acao={pelada?.iniciada ? 'Continuar' : 'Começar'} />
         <Opcao icone="trofeu" titulo="Torneio" onClick={onTorneio}
           detalhe={torneio ? (torneio.campeao ? `${torneio.nome} · 🏆 ${torneio.campeao}` : torneio.nome) : 'Times fixos, tabela, chave e campeão'}

@@ -111,4 +111,5 @@ export type Torneio = {
   sorteado: boolean // grupos/chave/jogos já sorteados
   emAndamento: PartidaTorneio[] // jogos acontecendo agora (um por campo)
   nuvem?: { codigo: string; organizador: string } // torneio compartilhado
+  limiteDeTimes?: number // torneio grátis: até 8 times (PLANO.md, seção 14.1)
 }

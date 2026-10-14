@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from 'react'
+import { useCallback, useState, type FormEvent } from 'react'
 import { Aviso } from '../components/Aviso'
 import { Barra } from '../components/Barra'
 import { Camisa } from '../components/Camisa'
 import { Cartao } from '../components/Cartao'
 import { Chave } from '../components/Chave'
+import { EscolherTurma } from '../components/EscolherTurma'
 import { Icone } from '../components/Icone'
 import { Passo } from '../components/Passo'
 import { LADOS, alterarLinha, definirColete, definirGoleiros } from '../logic'
@@ -25,6 +26,7 @@ export function Config({ pelada, onPronto, onCancelar }: { pelada: Pelada; onPro
   /** "120", "120,50" → número (vazio = 0) */
   const numero = (texto: string) => Math.max(0, Number(texto.replace(/[^\d,.]/g, '').replace(',', '.')) || 0)
   const linha = (n: number) => aplicar((e) => alterarLinha(e, limitar(n, 2, 11)))
+  const escolherTurma = useCallback((turma: string | null) => aplicar((e) => ({ ...e, config: { ...e.config, turma } })), [aplicar])
   const [goleiro, setGoleiro] = useState('')
   const [repetido, setRepetido] = useState<string | null>(null)
   const addGoleiro = (ev: FormEvent) => {
@@ -44,6 +46,7 @@ export function Config({ pelada, onPronto, onCancelar }: { pelada: Pelada; onPro
     <div className="scr">
       <Barra titulo={app.iniciada ? 'Ajustes' : 'Nova pelada'} sub={dataHoje()} />
       <div className="conteudo">
+        <EscolherTurma turma={cfg.turma} onEscolher={escolherTurma} />
         <section className="panel">
           <div className="ph">Jogadores na linha<span className="tag t-y">+ goleiro</span></div>
           <div className="pb" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

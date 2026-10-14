@@ -4,6 +4,7 @@ import { atualizarSubiram, configPadrao, novaSessao } from '../logic'
 import type { AppState } from '../types/app'
 import type { Estado } from '../types/pelada'
 import { alternarCrono, cronoZerado, darAcrescimos } from './cronometro'
+import { LIMITE_DESFAZER, descreverMudanca, mudouOJogo, restaurar } from './desfazer'
 
 export type Acao =
   | { tipo: 'aplicar'; fn: (e: Estado) => Estado; novaPartida?: boolean }
@@ -11,6 +12,7 @@ export type Acao =
   | { tipo: 'crono'; rodando: boolean }
   | { tipo: 'acrescimos'; min: number }
   | { tipo: 'encerrar' }
+  | { tipo: 'desfazer' }
   | { tipo: 'cancelar' } // descarta a pelada (sem histórico nem caixa) e volta os ajustes de antes dela
 
 
@@ -27,11 +29,21 @@ export function reducer(app: AppState, acao: Acao): AppState {
       const novo = acao.fn(app.estado)
       if (novo === app.estado) return app
       const estado = atualizarSubiram(app.estado, novo)
+      const foto = mudouOJogo(app.estado, estado)
+        ? [{ estado: app.estado, descricao: descreverMudanca(app.estado, estado), ...(acao.novaPartida && { crono: app.crono }) }]
+        : []
       return {
         ...app,
         estado,
         crono: acao.novaPartida ? cronoZerado : app.crono,
+        desfazer: [...(app.desfazer ?? []), ...foto].slice(-LIMITE_DESFAZER),
       }
+    }
+    case 'desfazer': {
+      const pilha = app.desfazer ?? []
+      const ultima = pilha[pilha.length - 1]
+      if (!ultima) return app
+      return { ...app, estado: restaurar(app.estado, ultima.estado), crono: ultima.crono ?? app.crono, desfazer: pilha.slice(0, -1) }
     }
     case 'iniciar':
       return { ...app, iniciada: true }

@@ -142,12 +142,13 @@ export function EditorDeTime({ torneio, inicial, onSalvar, onExcluir, onCancelar
             botao: 'Excluir', perigo: true, aoConfirmar: onExcluir,
           })}><Icone nome="lixo" tamanho={20} /> Excluir time</button>
         )}
-      </div>
-      <div className="rodape" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8 }}>
-        <button className="btn w sm" onClick={onCancelar}>Cancelar</button>
-        <button className="btn sm" disabled={!podeFechar} onClick={fechar}>
-          {inicial.fechado ? 'Salvar time' : 'Fechar time'}
-        </button>
+        {/* no fim da tela (não flutua por cima dos jogadores) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8, flex: 'none' }}>
+          <button className="btn w sm" onClick={onCancelar}>Cancelar</button>
+          <button className="btn sm" disabled={!podeFechar} onClick={fechar}>
+            {inicial.fechado ? 'Salvar time' : 'Fechar time'}
+          </button>
+        </div>
       </div>
       {aviso && <Aviso titulo="Nome repetido" onFechar={() => setAviso(null)}>{aviso}</Aviso>}
     </div>

@@ -67,6 +67,8 @@ button, input { font: inherit; }
 .pb { padding: 12px; }
 .tr { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 10px; font-size: 15px; font-weight: 600; }
 .tr:nth-child(even) { background: var(--zebra); }
+button.tr { background: transparent; }
+button.tr:nth-child(even) { background: var(--zebra); }
 .tr .nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .no {
   width: 24px; height: 24px; flex: none; border-radius: 3px; background: var(--grama); color: #fff;
@@ -213,6 +215,11 @@ label { min-width: 0; }
 .xis line { stroke: var(--vermelho); stroke-width: 7; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
 .xis line:first-child { animation: riscar .35s ease-out .45s forwards; }
 .xis line:last-child { animation: riscar .35s ease-out .8s forwards; }
+/* Desfez o fim da partida: o time certo desce de cima e empurra o errado para baixo, de volta para a fila */
+.empurra { overflow: hidden; }
+.empurra .trilho { position: relative; animation: empurrar .9s cubic-bezier(.5, 0, .3, 1) .35s both; }
+.empurra .velho { position: absolute; left: 0; right: 0; top: 100%; }
+@keyframes empurrar { from { transform: translateY(-100%); } to { transform: none; } }
 @keyframes brilhar { 50% { box-shadow: inset 0 0 0 4px var(--amarelo), 0 0 22px var(--amarelo); } }
 @keyframes riscar { to { stroke-dashoffset: 0; } }
 @keyframes sair { to { opacity: 0; transform: translateY(14px); } }
@@ -222,6 +229,11 @@ label { min-width: 0; }
 @media (prefers-reduced-motion: reduce) {
   .coluna-venceu { animation: none; }
   .troca .velho, .troca .novo, .xis, .xis line { animation-duration: .01s; }
+  .empurra .trilho { animation-duration: .01s; }
   .moeda3d.girando-cara, .moeda3d.girando-coroa { animation-duration: .01s; }
   .alerta { animation: none; }
 }
+
+/* botão com cara de link (termos, privacidade, excluir conta) */
+.lnk { padding: 4px 2px; border: 0; background: none; color: var(--azul); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.lnk:disabled { opacity: .6; cursor: default; }

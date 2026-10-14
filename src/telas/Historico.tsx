@@ -1,25 +1,36 @@
 import { useState } from 'react'
 import { Barra } from '../components/Barra'
+import { Carrossel, CarrosselDeTurmas } from '../components/CarrosselDeTurmas'
 import { Icone } from '../components/Icone'
-import { artilharia, artilhariaDaTemporada, goleirosMenosVazados, temporada, vitoriasPorJogador } from '../logic'
-import type { PeladaNoHistorico } from '../nuvem/tipos'
+import { anosDasPeladas, artilharia, goleirosMenosVazados, peladasDaTurma, relatorioDoAno, vitoriasPorJogador } from '../logic'
+import type { PeladaNoHistorico, Turma } from '../nuvem/tipos'
+import { useJogadoresDaTurma, useTurmas } from '../store/turmas'
 import { useConta, useHistorico } from '../store/conta'
 import { useConfirmar } from '../utils/confirmacao'
-import { compartilharImagem, imagemDoResumo } from '../utils/resumoDaPelada'
+import { compartilharImagem, imagemDoResumo, imagemDoTimeDoAno } from '../utils/resumoDaPelada'
 
 type Aba = 'temporada' | 'peladas'
+const qtd = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`
 const media = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
 
-/** Histórico das peladas encerradas e ranking da temporada (no perfil de quem entrou com o Google). */
-export function Historico({ onVoltar }: { onVoltar: () => void }) {
+/** Histórico das peladas encerradas e ranking da temporada (no perfil de quem entrou com o Google). O início fica no menu da foto. */
+export function Historico() {
   const conta = useConta()
   const { peladas, apagar } = useHistorico()
   const [aba, setAba] = useState<Aba>('temporada')
   const [aberta, setAberta] = useState<PeladaNoHistorico | null>(null)
+  // Turma e ano (temporada): as peladas sem turma (de antes das turmas) ficam com a primeira
+  const { turmas } = useTurmas()
+  const [turmaEscolhida, setTurmaEscolhida] = useState<string | null>(null)
+  const turma = turmas?.find((t) => t.id === turmaEscolhida) ?? turmas?.[0] ?? null
+  const daTurma = peladas && turma ? peladasDaTurma(peladas, turma.id, turmas?.[0]?.id ?? null) : (peladas ?? [])
+  const anos = anosDasPeladas(daTurma)
+  const [anoEscolhido, setAnoEscolhido] = useState<number | null>(null)
+  const ano = anoEscolhido !== null && anos.includes(anoEscolhido) ? anoEscolhido : anos[0]
 
   return (
     <div className="scr" style={{ height: '100dvh' }}>
-      <Barra titulo="Histórico" sub={peladas?.length ? `${peladas.length} ${peladas.length === 1 ? 'pelada' : 'peladas'}` : ''} />
+      <Barra titulo="Histórico" sub={turma ? `${turma.nome} · ${daTurma.length} ${daTurma.length === 1 ? 'pelada' : 'peladas'}` : ''} />
       <div className="conteudo">
         {!conta.logado && conta.perfil !== undefined && (
           <section className="panel pb" style={{ display: 'grid', gap: 8 }}>
@@ -29,41 +40,105 @@ export function Historico({ onVoltar }: { onVoltar: () => void }) {
         )}
         {conta.logado && (
           <>
+            {/* várias turmas: escolhe de qual é o histórico; vários anos: a temporada */}
+            {!!turmas && turmas.length > 0 && (
+              <section className="panel">
+                <div className="ph">Turma{turmas.length > 1 && <span className="sub">{turmas.indexOf(turma!) + 1} de {turmas.length}</span>}</div>
+                <div className="pb"><CarrosselDeTurmas turmas={turmas} turma={turma?.id ?? null} onEscolher={setTurmaEscolhida} /></div>
+              </section>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <button className={'chip' + (aba === 'temporada' ? ' on' : '')} onClick={() => setAba('temporada')}>Temporada</button>
               <button className={'chip' + (aba === 'peladas' ? ' on' : '')} onClick={() => setAba('peladas')}>Peladas</button>
             </div>
             {peladas === null && <div className="vazio">Carregando…</div>}
-            {peladas?.length === 0 && (
-              <div className="vazio">Nenhuma pelada guardada ainda. Ao encerrar uma pelada, os resultados vêm para cá.</div>
+            {peladas !== null && daTurma.length === 0 && (
+              <div className="vazio">Nenhuma pelada guardada {turma ? `na ${turma.nome}` : ''} ainda. Ao encerrar uma pelada, os resultados vêm para cá.</div>
             )}
-            {!!peladas?.length && (aba === 'temporada' ? <Temporada peladas={peladas} /> : <ListaDePeladas peladas={peladas} onAbrir={setAberta} />)}
+            {aba === 'temporada' && anos.length > 0 && (
+              <section className="panel">
+                <div className="ph">Temporada{anos.length > 1 && <span className="sub">{anos.length} temporadas</span>}</div>
+                <div className="pb">
+                  {/* da mais antiga para a mais nova: → vai para a seguinte */}
+                  <Carrossel itens={[...anos].reverse()} atual={ano} onEscolher={setAnoEscolhido} nome={(a) => `Temporada ${a}`}
+                    rotulo={{ anterior: 'Temporada anterior', proximo: 'Próxima temporada' }} />
+                </div>
+              </section>
+            )}
+            {daTurma.length > 0 && (aba === 'temporada'
+              ? <Relatorio peladas={daTurma} ano={ano} turma={turma} />
+              : <ListaDePeladas peladas={daTurma} onAbrir={setAberta} />)}
           </>
         )}
-      </div>
-      <div className="rodape">
-        <button className="btn w sm" onClick={onVoltar}><Icone nome="inicio" /> Início</button>
       </div>
       {aberta && <PeladaAberta pelada={aberta} onFechar={() => setAberta(null)} onApagar={() => { setAberta(null); void apagar(aberta.id) }} />}
     </div>
   )
 }
 
-/** Ranking somando todas as peladas: vitórias, artilharia e goleiros. */
-function Temporada({ peladas }: { peladas: PeladaNoHistorico[] }) {
-  const t = temporada(peladas)
-  const artilheiros = artilhariaDaTemporada(t)
+/** Relatório da temporada da turma (PLANO.md, seção 15.2): destaques, Time do ano e o ranking. */
+function Relatorio({ peladas, ano, turma }: { peladas: PeladaNoHistorico[]; ano: number; turma: Turma | null }) {
+  const jogadoresDaTurma = useJogadoresDaTurma(turma?.id ?? null)
+  const r = relatorioDoAno(peladas, jogadoresDaTurma, ano)
   const col = { width: 34, textAlign: 'center' as const }
+  const [gerando, setGerando] = useState(false)
+  const compartilhar = async () => {
+    setGerando(true)
+    await imagemDoTimeDoAno(r, turma?.nome ?? 'Minha pelada').then((img) => compartilharImagem(img, `dois-ou-dez-time-do-ano-${ano}`)).catch(() => null)
+    setGerando(false)
+  }
+  const destaque = (titulo: string, nome: string | undefined, detalhe: string) => (
+    <div className="panel" style={{ padding: '10px 12px', display: 'grid', gap: 2, alignContent: 'start' }}>
+      <div className="mut" style={{ fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', fontWeight: 700 }}>{titulo}</div>
+      <div className="num" style={{ fontSize: 22, color: 'var(--navy)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nome ?? '—'}</div>
+      <div className="mut">{nome ? detalhe : 'Ainda não tem'}</div>
+    </div>
+  )
   return (
     <>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        {destaque('Artilheiro do ano', r.artilheiro?.nome, qtd(r.artilheiro?.gols ?? 0, 'gol', 'gols'))}
+        {destaque('Goleiro do ano', r.goleiroDoAno?.nome, `${media(r.goleiroDoAno?.media ?? 0)} gols sofridos por jogo`)}
+        {destaque('Mais vitórias', r.jogadores[0]?.nome, qtd(r.jogadores[0]?.vitorias ?? 0, 'vitória', 'vitórias'))}
+        {destaque('Mais presente', r.maisPresente?.nome, `${r.maisPresente?.peladas ?? 0} de ${qtd(r.peladas, 'pelada', 'peladas')}`)}
+      </div>
+
       <section className="panel">
-        <div className="ph">Vitórias<span className="sub">{t.peladas} {t.peladas === 1 ? 'pelada' : 'peladas'}</span></div>
+        <div className="ph">Time do ano<span className="sub">presença · gols</span></div>
+        {r.timeDoAno.length === 0 && <div className="pb mut">O Time do ano aparece com as peladas encerradas.</div>}
+        {r.timeDoAno.map((j, i) => (
+          <div key={j.id} className="tr" style={{ borderTop: i ? '1px solid #e3e8d6' : 0 }}>
+            <span className="num" style={{ width: 22, fontSize: 18 }}>{i + 1}</span>
+            <span className="nome" style={{ flex: 1 }}>{j.nome}{r.artilheiro?.id === j.id && ' ⚽'}</span>
+            <span className="mut">{qtd(j.gols, 'gol', 'gols')}</span>
+            <span className="num" style={{ width: 52, textAlign: 'center', fontSize: 20 }}>{j.peladas}/{r.peladas}</span>
+          </div>
+        ))}
+        {r.goleiroDoAno && (
+          <div className="tr" style={{ borderTop: '1px solid #e3e8d6' }}>
+            <span className="no g">G</span>
+            <span className="nome" style={{ flex: 1 }}>{r.goleiroDoAno.nome}</span>
+            <span className="mut">goleiro do ano</span>
+          </div>
+        )}
+        <div className="pb" style={{ display: 'grid', gap: 8 }}>
+          <div className="mut">Quem mais veio às peladas do ano; no empate, quem fez mais gols. Precisa de pelo menos {qtd(r.minimo, 'pelada', 'peladas')} (65% do ano).</div>
+          {r.timeDoAno.length > 0 && (
+            <button className="btn" disabled={gerando} onClick={compartilhar}>
+              <Icone nome="compartilhar" /> {gerando ? 'Gerando a imagem…' : 'Compartilhar o Time do ano'}
+            </button>
+          )}
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="ph">Vitórias<span className="sub">{r.peladas} {r.peladas === 1 ? 'pelada' : 'peladas'}</span></div>
         <div className="tr mut" style={{ minHeight: 30, fontSize: 12 }}>
           <span style={{ width: 22 }} /><span className="nome" style={{ flex: 1 }}>Jogador</span>
           <span style={col}>PEL</span><span style={col}>J</span><span style={col}>V</span>
         </div>
-        {t.jogadores.map((j, i) => (
-          <div key={j.nome} className="tr" style={{ borderTop: '1px solid #e3e8d6' }}>
+        {r.jogadores.map((j, i) => (
+          <div key={j.id} className="tr" style={{ borderTop: '1px solid #e3e8d6' }}>
             <span className="num" style={{ width: 22, fontSize: 18 }}>{i + 1}</span>
             <span className="nome" style={{ flex: 1 }}>{j.nome}</span>
             <span style={col}>{j.peladas}</span><span style={col}>{j.jogos}</span>
@@ -71,11 +146,12 @@ function Temporada({ peladas }: { peladas: PeladaNoHistorico[] }) {
           </div>
         ))}
       </section>
-      {artilheiros.length > 0 && (
+
+      {r.jogadores.some((j) => j.gols > 0) && (
         <section className="panel">
           <div className="ph">Artilharia<span className="sub">⚽ gols · 👑 artilheiro do dia</span></div>
-          {artilheiros.map((j, i) => (
-            <div key={j.nome} className="tr" style={{ borderTop: i ? '1px solid #e3e8d6' : 0 }}>
+          {[...r.jogadores].filter((j) => j.gols > 0).sort((a, b) => b.gols - a.gols || b.artilheiroDoDia - a.artilheiroDoDia || a.peladas - b.peladas).map((j, i) => (
+            <div key={j.id} className="tr" style={{ borderTop: i ? '1px solid #e3e8d6' : 0 }}>
               <span className="num" style={{ width: 22, fontSize: 18 }}>{i + 1}</span>
               <span className="nome" style={{ flex: 1 }}>{j.nome}</span>
               {j.artilheiroDoDia > 0 && <span className="mut">👑 {j.artilheiroDoDia}</span>}
@@ -84,14 +160,15 @@ function Temporada({ peladas }: { peladas: PeladaNoHistorico[] }) {
           ))}
         </section>
       )}
-      {t.goleiros.length > 0 && (
+
+      {r.goleiros.length > 0 && (
         <section className="panel">
           <div className="ph">Goleiros<span className="sub">gols sofridos por jogo</span></div>
-          {t.goleiros.map((g, i) => (
+          {r.goleiros.map((g, i) => (
             <div key={g.nome} className="tr" style={{ borderTop: i ? '1px solid #e3e8d6' : 0 }}>
               <span className="num" style={{ width: 22, fontSize: 18 }}>{i + 1}</span>
               <span className="nome" style={{ flex: 1 }}>{g.nome}</span>
-              <span className="mut">{g.jogos} jogos · {g.sofridos} gols</span>
+              <span className="mut">{qtd(g.peladas, 'pelada', 'peladas')} · {qtd(g.jogos, 'jogo', 'jogos')}</span>
               <span className="num" style={{ width: 40, textAlign: 'center', fontSize: 20 }}>{media(g.media)}</span>
             </div>
           ))}

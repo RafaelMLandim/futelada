@@ -18,6 +18,7 @@ export const configPadrao: Config = {
   som: true,
   acrescimos: true,
   sortearInicio: true,
+  turma: null,
   pagamento: { ativo: false, valorCampo: 0, modo: 'proporcional', valorFixo: 0, chavePix: '', recebedor: '', confirmarAuto: false },
 }
 
@@ -33,6 +34,8 @@ export function novaSessao(config: Config = configPadrao): Estado {
     goleiros: { A: null, B: null },
     historico: [],
     subiram: [],
+    machucados: [],
+    foraDoJogo: [],
     proximoNumero: 1,
     pagamentos: {},
     cobranca: null,

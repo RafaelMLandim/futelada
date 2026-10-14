@@ -62,3 +62,33 @@ export async function deitarTela(deitar: boolean): Promise<void> {
     // não deixou travar: a chave gira o desenho sozinha
   }
 }
+
+/**
+ * Código deste celular (para as 10 peladas grátis valerem por celular, não só por conta). No app de
+ * loja, é o código que o celular dá para o app (no Android não muda ao reinstalar); no navegador, um código guardado
+ * no próprio navegador. Não é dado pessoal.
+ */
+export async function codigoDoAparelho(): Promise<string> {
+  if (nativo()) {
+    const { Device } = await import('@capacitor/device')
+    return `${Capacitor.getPlatform()}-${(await Device.getId()).identifier}`
+  }
+  try {
+    let id = localStorage.getItem('app:aparelho')
+    if (!id) {
+      id = `web-${crypto.randomUUID()}`
+      localStorage.setItem('app:aparelho', id)
+    }
+    return id
+  } catch {
+    return 'web-sem-armazenamento'
+  }
+}
+
+/** Abre um link fora do app (no app de loja, no navegador do celular). */
+export async function abrirLink(url: string) {
+  window.open(url, '_blank', 'noopener')
+}
+
+/** Páginas do site com os termos de uso, a política de privacidade e como excluir a conta. */
+export const paginaDoSite = (pagina: 'termos' | 'privacidade' | 'excluir-conta') => `${enderecoDoSite()}/${pagina}.html`

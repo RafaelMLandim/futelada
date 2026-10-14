@@ -4,11 +4,13 @@ import { Icone } from '../../components/Icone'
 import { Moeda } from '../../components/Moeda'
 import { empate, empateSaemOsDois } from '../../logic'
 import type { Pelada } from '../../store/usePelada'
-import type { Lado } from '../../types/pelada'
+import type { Estado, Lado } from '../../types/pelada'
 import { somDeMoeda } from '../../utils/sons'
 
 // Cara = time da esquerda (A), Coroa = time da direita (B)
-export function Empate({ pelada, onFechar }: { pelada: Pelada; onFechar: () => void }) {
+export function Empate({ pelada, onEncerrar, onFechar }: {
+  pelada: Pelada; onEncerrar: (saem: Lado[], encerrar: (e: Estado) => Estado) => void; onFechar: () => void
+}) {
   const { estado } = pelada.app
   const [fase, setFase] = useState<'parada' | 'girando' | 'pronta'>('parada')
   const [lado, setLado] = useState<Lado>('A')
@@ -29,8 +31,8 @@ export function Empate({ pelada, onFechar }: { pelada: Pelada; onFechar: () => v
     timer.current = window.setTimeout(() => setFase('pronta'), 1400)
   }
   const confirmar = () => {
-    pelada.aplicar((e) => empate(e, lado), true)
     onFechar()
+    onEncerrar(saemOsDois ? ['A', 'B'] : [lado], (e) => empate(e, lado))
   }
 
   const face = fase === 'parada' ? '?' : lado === 'A' ? 'Cara' : 'Coroa'

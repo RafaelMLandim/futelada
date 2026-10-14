@@ -24,10 +24,12 @@ export function atualizarSubiram(antes: Estado, depois: Estado): Estado {
   if (!antes.emCampo && depois.emCampo && antes.historico.length === 0) return { ...depois, subiram: [] }
   const de = timeDeCadaJogador(antes)
   const para = timeDeCadaJogador(depois)
+  // substituto de machucado que voltou para o time antigo não "subiu": voltou para o lugar dele
+  const voltou = (id: string, numero: number) => antes.machucados.some((m) => m.substituto?.id === id && m.substituto.deTime === numero)
   const mudaram: Subiu[] = []
   for (const [id, numero] of para) {
     const anterior = de.get(id)
-    if (anterior !== undefined && anterior !== numero) mudaram.push({ jogadorId: id, de: anterior, para: numero })
+    if (anterior !== undefined && anterior !== numero && !voltou(id, numero)) mudaram.push({ jogadorId: id, de: anterior, para: numero })
   }
   return mudaram.length ? { ...depois, subiram: mudaram } : depois
 }

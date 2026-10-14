@@ -1,13 +1,18 @@
 import { useRef, useState, type FormEvent } from 'react'
 import {
   adicionarJogador, blocosDaFila, comecar, sortearPrimeirosTimes, novoJogador, podeComecar, removerJogador,
-  LADOS, resumoPagamentos, subiuDe, todosOsJogadores,
+  LADOS, parecidoNaTurma, quemCostumaVir, resumoPagamentos, subiuDe, sugestoes, todosOsJogadores, type JogadorDaTurma,
 } from '../logic'
+import { useJogadoresDaTurma } from '../store/turmas'
+import { contarUso, usePlano } from '../store/plano'
+import { TelaPremium } from '../components/TelaPremium'
 import { Aviso } from '../components/Aviso'
 import { Barra } from '../components/Barra'
+import { BotaoDesfazer } from '../components/BotaoDesfazer'
 import { Camisa } from '../components/Camisa'
 import { Icone } from '../components/Icone'
 import { Subiu } from '../components/Subiu'
+import { ListaDeMachucados } from '../components/Machucado'
 import type { Pelada } from '../store/usePelada'
 import { SEM_COLETE } from '../utils/cores'
 import { useConfirmar } from '../utils/confirmacao'
@@ -28,14 +33,30 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
   const blocos = blocosDaFila(estado)
   const emJogo = estado.emCampo !== null
 
+  // Turma: os jogadores de sempre (sugestões ao digitar, "quem costuma vir", "é ele?")
+  const turma = useJogadoresDaTurma(estado.config.turma)
+  const naLista = todosOsJogadores(estado)
+  const sugeridos = sugestoes(turma, nome, naLista)
+  const costumamVir = quemCostumaVir(turma, naLista)
+  const [chamando, setChamando] = useState(false)
+  const [ehEle, setEhEle] = useState<{ nome: string; jogador: JogadorDaTurma } | null>(null)
+  /** Entra na fila com o id da turma (assim é a mesma pessoa de uma pelada para a outra). */
+  const entrar = (j: { id: string; nome: string }) => {
+    aplicar((e) => adicionarJogador(e, { id: j.id, nome: j.nome }))
+    setNome('')
+  }
   const adicionar = (ev: FormEvent) => {
     ev.preventDefault()
     if (!nome.trim()) return
-    const existente = todosOsJogadores(estado).find((j) => normalizarNome(j.nome) === normalizarNome(nome))
+    const existente = naLista.find((j) => normalizarNome(j.nome) === normalizarNome(nome))
     if (existente) {
       setRepetido(existente.nome)
       return
     }
+    const daTurma = turma.find((j) => normalizarNome(j.nome) === normalizarNome(nome))
+    if (daTurma) return entrar(daTurma)
+    const parecido = parecidoNaTurma(turma, nome)
+    if (parecido) return setEhEle({ nome: nome.trim(), jogador: parecido })
     aplicar((e) => adicionarJogador(e, novoJogador(nome)))
     setNome('')
   }
@@ -45,7 +66,13 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
       aoConfirmar: () => aplicar((e) => removerJogador(e, id)),
     })
   }
+  // Plano pago (PLANO.md, seção 14): a pelada conta no 1º "Apitar" do dia
+  const plano = usePlano()
+  const [premium, setPremium] = useState(false)
   const apitar = () => {
+    const primeiro = estado.historico.length === 0
+    if (primeiro && !plano.podeComecarPelada) return setPremium(true)
+    if (primeiro && plano.cobrancaAtiva && !plano.premium) void contarUso('peladas').catch(() => null)
     // primeiro jogo: mistura os jogadores dos 2 primeiros times (se ligado nos Ajustes)
     aplicar((e) => comecar(e.config.sortearInicio ? sortearPrimeirosTimes(e) : e), true)
     onApitar()
@@ -57,6 +84,7 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
       <Barra
         titulo={emJogo ? 'Fila' : 'Lista'}
         sub={`${estado.fila.length} ${estado.fila.length === 1 ? 'jogador' : 'jogadores'}`}
+        direita={<BotaoDesfazer pelada={pelada} />}
       />
       <form onSubmit={adicionar} style={{ padding: '12px 12px 0', display: 'flex', gap: 8 }}>
         <label style={{ display: 'flex', flex: 1 }}>
@@ -68,6 +96,21 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
           <Icone nome="mais" />
         </button>
       </form>
+      {/* sugestões da turma enquanto digita; com o campo vazio, "quem costuma vir" */}
+      {sugeridos.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '8px 12px 0', scrollbarWidth: 'none' }} aria-label="Sugestões da turma">
+          {sugeridos.map((j) => (
+            <button key={j.id} className="chip" style={{ flex: 'none', textTransform: 'none', background: '#fff' }} onClick={() => { entrar(j); campo.current?.focus() }}>
+              {j.nome} <span className="mut" style={{ fontSize: 12 }}>· {j.peladas}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {!nome && costumamVir.length > 0 && (
+        <button className="btn w sm" style={{ margin: '8px 12px 0', width: 'auto', textTransform: 'none' }} onClick={() => setChamando(true)}>
+          <Icone nome="times" tamanho={20} /> Quem costuma vir ({costumamVir.length})
+        </button>
+      )}
 
       {/* campo pago: quantos já pagaram; abre QR Pix, link para o grupo e a lista de pagamentos */}
       {estado.config.pagamento.ativo && (() => {
@@ -131,8 +174,46 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
             </section>
           )
         })}
+        <ListaDeMachucados pelada={pelada} />
       </div>
 
+      {/* "quem costuma vir": tocar na ordem em que chegam põe na fila nessa ordem */}
+      {chamando && (
+        <div className="modal" role="dialog" aria-modal="true" aria-label="Quem costuma vir" onClick={() => setChamando(false)}>
+          <section className="panel" onClick={(ev) => ev.stopPropagation()} style={{ width: '100%', maxWidth: 440, maxHeight: '85dvh', display: 'flex', flexDirection: 'column' }}>
+            <div className="ph">Quem costuma vir<span className="sub">toque na ordem de chegada</span></div>
+            <div className="pb" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, overflowY: 'auto' }}>
+              {costumamVir.length === 0 && <div className="mut">Todo mundo da turma já está na lista.</div>}
+              {costumamVir.map((j) => (
+                <button key={j.id} className="chip" style={{ textTransform: 'none' }} onClick={() => entrar(j)}>
+                  {j.nome} <span className="mut" style={{ fontSize: 12 }}>· {j.peladas}</span>
+                </button>
+              ))}
+            </div>
+            <div className="pb" style={{ paddingTop: 0 }}>
+              <button className="btn" onClick={() => setChamando(false)}>Pronto · {estado.fila.length} na lista</button>
+            </div>
+          </section>
+        </div>
+      )}
+      {/* nome novo parecido com alguém da turma */}
+      {ehEle && (
+        <div className="modal" role="alertdialog" aria-modal="true" aria-label="É ele?" onClick={() => setEhEle(null)}>
+          <section className="panel" onClick={(ev) => ev.stopPropagation()}>
+            <div className="ph">É ele?</div>
+            <div className="pb" style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.45 }}>
+              <b>{ehEle.nome}</b> parece com <b>{ehEle.jogador.nome}</b>, da turma ({ehEle.jogador.peladas} {ehEle.jogador.peladas === 1 ? 'pelada' : 'peladas'}).
+            </div>
+            <div className="pb" style={{ paddingTop: 0, display: 'grid', gap: 8 }}>
+              <button className="btn sm" onClick={() => { entrar(ehEle.jogador); setEhEle(null) }}>Sim, é o {ehEle.jogador.nome}</button>
+              <button className="btn w sm" onClick={() => { aplicar((e) => adicionarJogador(e, novoJogador(ehEle.nome))); setNome(''); setEhEle(null) }}>
+                Não, é outra pessoa
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+      {premium && <TelaPremium motivo="peladas" onFechar={() => setPremium(false)} />}
       {repetido && (
         <Aviso titulo="Nome repetido" onFechar={() => { setRepetido(null); campo.current?.focus() }}>
           Já tem um <b>{repetido}</b> na lista. Adicione o sobrenome ou um apelido.

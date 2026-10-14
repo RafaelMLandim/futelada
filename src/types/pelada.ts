@@ -23,6 +23,7 @@ export type Config = {
   acrescimos: boolean // ao acabar o tempo, pode dar acréscimos
   sortearInicio: boolean // no primeiro jogo, mistura os jogadores dos 2 primeiros times (contra panelinha)
   pagamento: ConfigPagamento
+  turma: string | null // turma desta pelada (jogadores de sempre, histórico, relatório); null = sem turma
 }
 
 /** Campo pago: quanto cada um paga e a chave Pix de quem recebe. */
@@ -81,6 +82,18 @@ export type Partida = {
   coletes?: Record<Lado, Colete> // cor que cada lado vestiu nesta partida
 }
 
+/**
+ * Jogador machucado (PLANO.md, seção 3.8.4): fica fora da fila até voltar. `substituto` = quem entrou no lugar
+ * dele e ainda não teve o destino decidido (fica no time ou volta para o antigo); null depois de decidido.
+ */
+export type Machucado = {
+  jogador: Jogador
+  lado: Lado
+  time: number // time em que estava
+  partida: number // partida em que se machucou (número dela: historico.length + 1)
+  substituto: { id: string; nome: string; deTime: number; antesDe: string | null } | null // antesDe: quem vinha logo atrás dele na fila
+}
+
 /** Jogador que mudou de time na última movimentação (e de qual time veio). */
 export type Subiu = { jogadorId: string; de: number; para: number }
 
@@ -95,6 +108,8 @@ export type Estado = {
   goleiros: Record<Lado, string | null> // goleiro fixo de cada gol (null = sem goleiro fixo)
   historico: Partida[]
   subiram: Subiu[] // quem mudou de time na última movimentação
+  machucados: Machucado[] // fora da fila até voltar
+  foraDoJogo: { lado: Lado; jogador: Jogador }[] // jogou a partida em andamento e saiu dela (machucado, substituto que voltou)
   proximoNumero: number // número do próximo time novo (só nasce quando chega gente)
   pagamentos: Record<string, Pagamento> // campo pago: quem avisou/pagou (por id do jogador)
   cobranca: string | null // código do link de pagamento na nuvem (null = ainda não compartilhado)

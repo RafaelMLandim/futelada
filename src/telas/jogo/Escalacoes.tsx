@@ -1,8 +1,9 @@
 import { CartoesDoJogador } from '../../components/Cartao'
 import { Subiu } from '../../components/Subiu'
-import { LADOS, cartoesDoJogador, subiuDe, escolherGoleiro, expulso, restanteAzul, trocarGoleiros } from '../../logic'
+import { Troca } from '../../components/Machucado'
+import { LADOS, cartoesDoJogador, subiuDe, substitutoDe, escolherGoleiro, expulso, restanteAzul, trocarGoleiros } from '../../logic'
 import type { Pelada } from '../../store/usePelada'
-import type { Colete, Jogador, Lado, Partida } from '../../types/pelada'
+import type { Colete, Jogador, Lado, Partida, Time } from '../../types/pelada'
 import { textoSobre } from '../../utils/cores'
 import { formatarTempo } from '../../utils/formatar'
 
@@ -19,6 +20,9 @@ const ROTULO: Record<Resultado, { texto: string; classe: string }> = {
   empatou: { texto: 'Empatou', classe: 't-y' },
 }
 
+/** Desfez o fim de uma partida: os times que estavam em campo antes de desfazer (para o efeito de volta). */
+export type Volta = { id: number; times: Record<Lado, Time> }
+
 /** Faixa na cor do colete com o número do time (e a etiqueta do fim de partida). */
 function FaixaDoTime({ numero, colete, etiqueta }: { numero: number; colete: Colete; etiqueta: { texto: string; classe: string } | null }) {
   return (
@@ -33,8 +37,8 @@ function FaixaDoTime({ numero, colete, etiqueta }: { numero: number; colete: Col
 }
 
 // Os dois times em campo, com goleiro fixo, gols e cartões. Tocar no jogador abre as ações.
-export function Escalacoes({ pelada, decorrido, transicao, onJogador }: {
-  pelada: Pelada; decorrido: number; transicao: Partida | null; onJogador: (lado: Lado, jogador: Jogador) => void
+export function Escalacoes({ pelada, decorrido, transicao, volta, onJogador }: {
+  pelada: Pelada; decorrido: number; transicao: Partida | null; volta: Volta | null; onJogador: (lado: Lado, jogador: Jogador) => void
 }) {
   const { app, aplicar } = pelada
   const { estado } = app
@@ -52,14 +56,17 @@ export function Escalacoes({ pelada, decorrido, transicao, onJogador }: {
     const antes = transicao ? (lado === 'A' ? transicao.timeA : transicao.timeB) : null
     const trocou = antes !== null && antes.numero !== time.numero
     const resultado = transicao ? resultadoDe(transicao, lado) : null
-    const etiqueta = trocou ? { texto: '↑ Entra', classe: 't-y' } : resultado ? ROTULO[resultado] : null
+    const saindo = volta && volta.times[lado].numero !== time.numero ? volta.times[lado] : null
+    const etiqueta = volta ? { texto: saindo ? '↶ Voltou' : '↶ Desfeito', classe: 't-y' }
+      : trocou ? { texto: '↑ Entra', classe: 't-y' } : resultado ? ROTULO[resultado] : null
 
     const atual = (
       <div>
         <FaixaDoTime numero={time.numero} colete={colete} etiqueta={etiqueta} />
-        {config.goleiros.length > 0 && (
-          <div className="tr" style={{ minHeight: 38, fontSize: 14, paddingRight: 4 }}>
-            <span className="no g">G</span>
+        {/* Sempre aparece: com goleiros fixos, escolhe quem está no gol; sem, fica "Goleiro" (no gol dele, a busca diz quem foi) */}
+        <div className="tr" style={{ minHeight: 38, fontSize: 14, paddingRight: 4 }}>
+          <span className="no g">G</span>
+          {config.goleiros.length > 0 ? (
             <label className="nome" style={{ display: 'flex' }}>
               <span className="vh">Goleiro do Time {time.numero}</span>
               <select className="sel" value={goleiros[lado] ?? ''}
@@ -68,8 +75,8 @@ export function Escalacoes({ pelada, decorrido, transicao, onJogador }: {
                 {config.goleiros.map((g) => <option key={g} value={g}>{g}</option>)}
               </select>
             </label>
-          </div>
-        )}
+          ) : <span className="nome mut">Goleiro</span>}
+        </div>
         {time.jogadores.map((j, i) => {
           const fora = expulso(estado, j.id)
           const azul = restanteAzul(estado, j.id, decorrido)
@@ -78,7 +85,7 @@ export function Escalacoes({ pelada, decorrido, transicao, onJogador }: {
               aria-label={`Ações de ${j.nome}`} onClick={() => onJogador(lado, j)}>
               <span className="no">{i + 1}</span>
               <span className="nome" style={{ flex: '0 1 auto', textDecoration: fora ? 'line-through' : undefined }}>{j.nome}</span>
-              <Subiu de={subiuDe(estado, j.id)} />
+              {substitutoDe(estado, j.id) ? <Troca de={substitutoDe(estado, j.id)!.jogador.nome} /> : <Subiu de={subiuDe(estado, j.id)} />}
               <CartoesDoJogador cores={cartoesDoJogador(estado, j.id).map((c) => c.cor)} expulso={fora} />
               {azul > 0 && !fora && <span className="tag" style={{ background: 'var(--azul)', color: '#fff', height: 20, fontSize: 13 }}>{formatarTempo(azul)}</span>}
             </button>
@@ -88,9 +95,24 @@ export function Escalacoes({ pelada, decorrido, transicao, onJogador }: {
     )
 
     return (
-      <div key={`${lado}-${transicao?.numero ?? 0}`} className={resultado === 'venceu' && !trocou ? 'coluna-venceu' : undefined}
+      <div key={`${lado}-${transicao?.numero ?? 0}-${volta?.id ?? 0}`} className={resultado === 'venceu' && !trocou && !volta ? 'coluna-venceu' : undefined}
         style={lado === 'A' ? { borderRight: '2px solid #e3e8d6' } : undefined}>
-        {trocou && antes ? (
+        {saindo ? (
+          // Desfez: o time certo desce de cima e empurra o errado de volta para a fila
+          <div className="empurra">
+            <div className="trilho">
+              <div className="novo">{atual}</div>
+              <div className="velho" aria-hidden="true">
+                <FaixaDoTime numero={saindo.numero} colete={colete} etiqueta={null} />
+                {saindo.jogadores.map((j, i) => (
+                  <div key={j.id} className="tr" style={{ minHeight: 40, fontSize: 14 }}>
+                    <span className="no">{i + 1}</span><span className="nome">{j.nome}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : trocou && antes ? (
           <div className="pilha troca">
             <div className="velho" aria-hidden="true">
               <FaixaDoTime numero={antes.numero} colete={colete} etiqueta={resultado ? ROTULO[resultado] : null} />

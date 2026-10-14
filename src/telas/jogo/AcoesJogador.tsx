@@ -2,14 +2,16 @@ import type { ReactNode } from 'react'
 import { Bola } from '../../components/Bola'
 import { Cartao } from '../../components/Cartao'
 import { Icone } from '../../components/Icone'
+import { Cruz } from '../../components/Machucado'
 import { darCartao, outro } from '../../logic'
 import type { Pelada } from '../../store/usePelada'
 import type { CorCartao, Jogador, Lado } from '../../types/pelada'
 
-// Menu ao tocar num jogador em campo: gol, cartões e "foi embora".
-export function AcoesJogador({ pelada, lado, jogador, decorrido, onGol, onSaiu, onFechar }: {
+// Menu ao tocar num jogador em campo: gol, cartões, machucou e "foi embora".
+export function AcoesJogador({ pelada, lado, jogador, decorrido, onGol, onSaiu, onMachucou, onFechar }: {
   pelada: Pelada; lado: Lado; jogador: Jogador; decorrido: number
-  onGol: (lado: Lado, autor: Jogador, contra?: boolean) => void; onSaiu: (id: string, nome: string) => void; onFechar: () => void
+  onGol: (lado: Lado, autor: Jogador, contra?: boolean) => void; onSaiu: (id: string, nome: string) => void
+  onMachucou: (lado: Lado, jogador: Jogador) => void; onFechar: () => void
 }) {
   const { estado } = pelada.app
   if (!estado.emCampo) return null
@@ -43,6 +45,7 @@ export function AcoesJogador({ pelada, lado, jogador, decorrido, onGol, onSaiu, 
           {opcao('Cartão amarelo', <Cartao cor="amarelo" tamanho={20} />, () => cartao('amarelo'))}
           {opcao('Cartão vermelho · sai da partida', <Cartao cor="vermelho" tamanho={20} />, () => cartao('vermelho'))}
           {opcao(`Cartão azul · ${minutos} min fora`, <Cartao cor="azul" tamanho={20} />, () => cartao('azul'))}
+          {opcao('Machucou · o próximo da fila entra', <Cruz tamanho={22} />, () => { onFechar(); onMachucou(lado, jogador) })}
           {opcao('Foi embora', <Icone nome="saiu" />, () => { onFechar(); onSaiu(jogador.id, jogador.nome) }, 'btn r sm')}
         </div>
       </section>

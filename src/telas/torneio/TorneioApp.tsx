@@ -11,6 +11,10 @@ import { Jogos } from './Jogos'
 import { TabelaTorneio } from './TabelaTorneio'
 import { Times } from './Times'
 import { useVoltar } from '../../utils/voltar'
+import { TelaPremium } from '../../components/TelaPremium'
+import { comoCriarTorneio, TIMES_DO_TORNEIO_GRATIS } from '../../logic/plano'
+import { contarUso, usarCreditoDeTorneio, usePlano } from '../../store/plano'
+import { useConfirmar } from '../../utils/confirmacao'
 
 type Aba = 'times' | 'jogos' | 'jogo' | 'tabela' | 'ajustes'
 
@@ -21,6 +25,10 @@ export function TorneioApp({ onInicio }: { onInicio: () => void }) {
   const [abaEscolhida, setAba] = useState<Aba | null>(null)
   const [jogoAberto, setJogoAberto] = useState<string | null>(null)
   const { compartilhado } = hook
+  // Plano pago (PLANO.md, seção 14): o 1º torneio é grátis (até 8 times); depois, Torneio avulso
+  const plano = usePlano()
+  const [premium, setPremium] = useState(false)
+  const confirmar = useConfirmar()
 
   // Entrou pelo link de convite (?entrar=CÓDIGO)
   const { entrar } = hook
@@ -59,16 +67,28 @@ export function TorneioApp({ onInicio }: { onInicio: () => void }) {
   }
 
   if (!torneio) {
-    return (
+    return (<>
       <CriarTorneio
         onEntrar={hook.podeCompartilhar ? (cod) => hook.entrar(cod) : undefined}
-        onCriar={(t) => {
-          hook.criar(t)
+        onCriar={async (t) => {
+          const como = comoCriarTorneio(plano)
+          if (como === 'bloqueado') return setPremium(true)
+          if (como === 'credito') {
+            // o servidor desconta 1 crédito (precisa de internet)
+            const usou = await usarCreditoDeTorneio().catch(() => null)
+            if (usou === false) return setPremium(true)
+            if (usou === null) {
+              return confirmar({ titulo: 'Sem internet', mensagem: 'Para usar o crédito de torneio, o celular precisa de internet. Tente de novo.', botao: 'OK', aoConfirmar: () => {} })
+            }
+          }
+          if (como === 'gratis') void contarUso('torneios').catch(() => null)
+          hook.criar(como === 'gratis' ? { ...t, limiteDeTimes: TIMES_DO_TORNEIO_GRATIS } : t)
           setAba('times')
           // com nuvem configurada, o torneio já nasce compartilhado (se não der, fica no celular)
           if (hook.podeCompartilhar) void hook.compartilhar().catch(() => null)
         }} />
-    )
+      {premium && <TelaPremium motivo="torneio" onFechar={() => setPremium(false)} />}
+    </>)
   }
   const aba: Aba = abaEscolhida ?? (torneio.emAndamento.length ? 'jogo' : torneio.sorteado ? 'jogos' : 'times')
 

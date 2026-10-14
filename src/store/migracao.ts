@@ -30,6 +30,8 @@ export function completarEstado(e: Partial<Estado> | undefined): Estado {
     cartoes: e?.cartoes ?? [],
     historico: (e?.historico ?? []).map(completarPartida),
     subiram: e?.subiram ?? [],
+    machucados: e?.machucados ?? [],
+    foraDoJogo: e?.foraDoJogo ?? [],
     pagamentos: e?.pagamentos ?? {},
     cobranca: e?.cobranca ?? null,
     caixaLancado: e?.caixaLancado ?? false,
@@ -44,5 +46,6 @@ export function completarApp(app: Partial<AppState>): AppState {
     iniciada: app.iniciada ?? false,
     crono: app.crono ?? cronoZerado,
     ...(app.configAntes && { configAntes: app.configAntes }),
+    ...(app.desfazer && { desfazer: app.desfazer.map((d) => ({ ...d, estado: completarEstado(d.estado) })) }),
   }
 }

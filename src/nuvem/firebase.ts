@@ -3,19 +3,21 @@
 
 import { initializeApp } from 'firebase/app'
 import {
-  GoogleAuthProvider, getAuth, getRedirectResult, linkWithCredential, linkWithRedirect, onIdTokenChanged, signInAnonymously,
-  signInWithCredential, signInWithRedirect, signOut, type User,
+  EmailAuthProvider, GoogleAuthProvider, createUserWithEmailAndPassword, deleteUser, getAuth, getRedirectResult, linkWithCredential, linkWithRedirect, onIdTokenChanged,
+  reauthenticateWithCredential, reauthenticateWithPopup, signInAnonymously, updateProfile, signInWithCredential, signInWithEmailAndPassword, signInWithRedirect, signOut, type User,
 } from 'firebase/auth'
 import {
-  addDoc, collection, deleteDoc, doc, getDoc, getDocs, initializeFirestore, onSnapshot, orderBy, persistentLocalCache, query,
-  persistentMultipleTabManager, setDoc, writeBatch,
+  addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, initializeFirestore, onSnapshot, orderBy, persistentLocalCache, query,
+  persistentMultipleTabManager, setDoc, where, writeBatch, type DocumentReference,
 } from 'firebase/firestore'
 import type { DadosNuvem, Operacao } from '../logic/torneio'
 import type { PartidaTorneio, ResultadoJogo } from '../types/torneio'
 import { nativo } from '../utils/nativo'
 import { baseDaNuvem, baseParaNuvem } from './formato'
 import { entrarComUmToque, prepararUmToque } from './umToque'
-import type { AvisoPagamento, CobrancaNuvem, Lancamento, MesarioNoCampo, Nuvem, PeladaNoHistorico, Perfil } from './tipos'
+import { CONTADORES_ZERADOS, PLANO_VAZIO, type Contadores, type DadosDoPlano, type Plano } from '../logic/plano'
+import type { JogadorDaTurma } from '../logic/turma'
+import type { AvisoPagamento, CobrancaNuvem, Lancamento, MesarioNoCampo, Nuvem, PeladaNoHistorico, Perfil, Turma } from './tipos'
 
 export const configFirebase = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -65,10 +67,13 @@ export function criarNuvemFirebase(): Nuvem {
     return {
       uid: u.uid, nome: u.displayName ?? google?.displayName ?? null, email: u.email ?? google?.email ?? null,
       foto: u.photoURL ?? google?.photoURL ?? null, anonimo: u.isAnonymous,
+      comSenha: !google && u.providerData.some((p) => p.providerId === 'password'),
     }
   }
   const caixa = (dono: string) => collection(db, 'usuarios', dono, 'caixa')
   const historico = (dono: string) => collection(db, 'usuarios', dono, 'peladas')
+  const turmas = (dono: string) => collection(db, 'usuarios', dono, 'turmas')
+  const jogadoresDaTurma = (dono: string, turma: string) => collection(db, 'usuarios', dono, 'turmas', turma, 'jogadores')
   /** Acompanha uma coleção do perfil de quem está logado (refaz ao entrar/sair; vazio sem login). */
   function ouvirDoPerfil<T>(colecao: (dono: string) => ReturnType<typeof collection>, aoMudar: (itens: T[]) => void, aoErro?: (e: Error) => void) {
     let parar = () => {}
@@ -85,6 +90,15 @@ export function criarNuvemFirebase(): Nuvem {
         (s) => aoMudar(s.docs.map((d) => ({ ...(d.data() as object), id: d.id }) as T)), (e) => aoErro?.(e))
     })
     return () => { pararAuth(); parar() }
+  }
+
+  /** Apaga em lotes (um lote do Firestore aceita até 500). */
+  async function apagarTudo(refs: DocumentReference[]) {
+    for (let i = 0; i < refs.length; i += 400) {
+      const lote = writeBatch(db)
+      refs.slice(i, i + 400).forEach((r) => lote.delete(r))
+      await lote.commit()
+    }
   }
 
   const torneio = (codigo: string) => doc(db, 'torneios', codigo)
@@ -235,6 +249,21 @@ export function criarNuvemFirebase(): Nuvem {
         else throw e
       }
     },
+    async entrarComEmail(email, senha) {
+      await logado
+      await signInWithEmailAndPassword(auth, email, senha)
+    },
+    async criarContaComEmail(email, senha, nome) {
+      await logado
+      const atual = auth.currentUser
+      // o anônimo vira a conta nova (mesmo uid: o que já era deste celular continua); se não der, cria do zero
+      const { user } = atual?.isAnonymous
+        ? await linkWithCredential(atual, EmailAuthProvider.credential(email, senha))
+        : await createUserWithEmailAndPassword(auth, email, senha)
+      // o nome aparece no app e para os mesários (sem ele, apareceria o e-mail)
+      await updateProfile(user, { displayName: nome })
+      await user.getIdToken(true) // avisa a tela do nome novo
+    },
     async sair() {
       // no app, sai também da conta do celular (na próxima vez dá para escolher outra)
       if (nativo()) await import('@capacitor-firebase/authentication').then(({ FirebaseAuthentication }) => FirebaseAuthentication.signOut()).catch(() => null)
@@ -262,6 +291,124 @@ export function criarNuvemFirebase(): Nuvem {
     async apagarPelada(id) {
       const dono = await uid()
       await deleteDoc(doc(historico(dono), id))
+    },
+
+    // ---- turmas ----
+    ouvirTurmas(aoMudar) {
+      let parar = () => {}
+      let dono: string | null | undefined
+      const pararAuth = onIdTokenChanged(auth, (u) => {
+        const agora = u && !u.isAnonymous ? u.uid : null
+        if (agora === dono) return
+        dono = agora
+        parar()
+        parar = () => {}
+        if (!agora) { aoMudar([]); return }
+        parar = onSnapshot(query(turmas(agora), orderBy('criadaEm')),
+          (s) => aoMudar(s.docs.map((d) => ({ ...(d.data() as Omit<Turma, 'id'>), id: d.id }))))
+      })
+      return () => { pararAuth(); parar() }
+    },
+    async criarTurma(nome) {
+      const dono = await uid()
+      const ref = doc(turmas(dono))
+      void setDoc(ref, { nome, criadaEm: Date.now() }) // sem internet, sobe quando voltar
+      return ref.id
+    },
+    ouvirJogadoresDaTurma(turma, aoMudar) {
+      let parar = () => {}
+      let vivo = true
+      void uid().then((dono) => {
+        if (!vivo) return
+        parar = onSnapshot(jogadoresDaTurma(dono, turma),
+          (s) => aoMudar(s.docs.map((d) => ({ ...(d.data() as Omit<JogadorDaTurma, 'id'>), id: d.id }))))
+      })
+      return () => { vivo = false; parar() }
+    },
+    async registrarPeladaNaTurma(turma, jogadores, data) {
+      const dono = await uid()
+      const lote = writeBatch(db)
+      for (const j of jogadores) {
+        lote.set(doc(jogadoresDaTurma(dono, turma), j.id), { nome: j.nome, peladas: increment(1), ultimaPelada: data }, { merge: true })
+      }
+      void lote.commit().catch((e) => console.error('Não deu para atualizar a turma', e))
+    },
+    async importarTurma(turma, jogadores, peladas) {
+      const dono = await uid()
+      const lote = writeBatch(db)
+      for (const { id, ...j } of jogadores) lote.set(doc(jogadoresDaTurma(dono, turma), id), puro(j))
+      for (const p of peladas) lote.set(doc(historico(dono), p), { turma }, { merge: true })
+      await lote.commit()
+    },
+    // ---- plano pago: o plano só o servidor grava; os contadores só sobem de 1 em 1 (regras) ----
+    ouvirPlano(aparelho, aoMudar) {
+      const dados: DadosDoPlano = { plano: null, contadores: null, aparelho: null, config: null }
+      const avisar = () => aoMudar({ ...dados })
+      let parar: (() => void)[] = []
+      let vivo = true
+      void uid().then((dono) => {
+        if (!vivo) return
+        // sem permissão ou sem internet: fica null (o app não trava ninguém sem saber)
+        const ouvirDoc = <T,>(ref: ReturnType<typeof doc>, guardar: (v: T | undefined) => void) =>
+          onSnapshot(ref, (s) => { guardar(s.data() as T | undefined); avisar() }, () => {})
+        parar = [
+          ouvirDoc<Plano>(doc(db, 'planos', dono), (v) => { dados.plano = { ...PLANO_VAZIO, ...v } }),
+          ouvirDoc<Contadores>(doc(db, 'contadores', dono), (v) => { dados.contadores = { ...CONTADORES_ZERADOS, ...v } }),
+          ouvirDoc<{ peladas: number }>(doc(db, 'aparelhos', aparelho), (v) => { dados.aparelho = v?.peladas ?? 0 }),
+          ouvirDoc<{ ativa: boolean }>(doc(db, 'config', 'cobranca'), (v) => { dados.config = { ativa: v?.ativa === true } }),
+        ]
+      })
+      return () => { vivo = false; parar.forEach((f) => f()) }
+    },
+    async contarUso(tipo, aparelho) {
+      const dono = await uid()
+      // sem internet, sobe quando a conexão voltar
+      void setDoc(doc(db, 'contadores', dono), { [tipo]: increment(1) }, { merge: true }).catch((e) => console.error('Não deu para contar', e))
+      if (tipo === 'peladas') void setDoc(doc(db, 'aparelhos', aparelho), { peladas: increment(1) }, { merge: true }).catch(() => {})
+    },
+
+    async usarCreditoDeTorneio() {
+      await logado
+      const { getFunctions, httpsCallable } = await import('firebase/functions')
+      const usar = httpsCallable<void, { ok: boolean }>(getFunctions(app, 'southamerica-east1'), 'usarCreditoDeTorneio')
+      return (await usar()).data.ok
+    },
+
+    async removerTurma(turma, peladas) {
+      const dono = await uid()
+      await apagarTudo([
+        ...(await getDocs(jogadoresDaTurma(dono, turma))).docs.map((d) => d.ref),
+        ...peladas.map((p) => doc(historico(dono), p)),
+        doc(turmas(dono), turma),
+      ])
+    },
+
+    async excluirConta(senha) {
+      await logado
+      const u = auth.currentUser
+      if (!u || u.isAnonymous) return
+      // o Google só deixa apagar a conta com login recente: confirma a conta antes de apagar qualquer dado
+      if (senha !== undefined) await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email ?? '', senha))
+      else if (Date.now() - Date.parse(u.metadata.lastSignInTime ?? '') > 4 * 60_000) {
+        const r = nativo() ? await tokenDoCelular() : await entrarComUmToque()
+        if (r === 'fechou') throw new Error('cancelou')
+        if (r === 'indisponivel') await reauthenticateWithPopup(u, new GoogleAuthProvider())
+        else await reauthenticateWithCredential(u, GoogleAuthProvider.credential(r.token))
+      }
+      const dono = u.uid
+      const docs = async (q: Parameters<typeof getDocs>[0]) => (await getDocs(q)).docs.map((d) => d.ref as DocumentReference)
+      const refs: DocumentReference[] = [...await docs(caixa(dono)), ...await docs(historico(dono))]
+      for (const t of await docs(turmas(dono))) refs.push(...await docs(jogadoresDaTurma(dono, t.id)), t)
+      for (const t of await docs(query(collection(db, 'torneios'), where('nuvem.organizador', '==', dono)))) {
+        for (const sub of [partidas(t.id), resultados(t.id), campos(t.id)]) refs.push(...await docs(sub))
+        refs.push(t)
+      }
+      for (const c of await docs(query(collection(db, 'cobrancas'), where('organizador', '==', dono)))) refs.push(...await docs(avisos(c.id)), c)
+      await apagarTudo(refs)
+      // os contadores de uso (sem nome nem e-mail) e o plano comprado ficam (PLANO.md, seção 14)
+      await deleteUser(u)
+      if (nativo()) await import('@capacitor-firebase/authentication').then(({ FirebaseAuthentication }) => FirebaseAuthentication.signOut()).catch(() => null)
+      await signInAnonymously(auth)
     },
   }
 }

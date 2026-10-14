@@ -1,5 +1,6 @@
 // Tipos do estado do aplicativo (o que fica salvo no celular).
 
+import type { Desfazer } from '../store/desfazer'
 import type { Config, Estado } from './pelada'
 
 export type Cronometro = {
@@ -12,4 +13,5 @@ export type AppState = {
   iniciada: boolean // passou da tela de configuração
   crono: Cronometro
   configAntes?: Config // ajustes de quando esta pelada nasceu (cancelar volta para eles)
+  desfazer?: Desfazer[] // últimas ações do jogo, da mais antiga para a mais recente
 }

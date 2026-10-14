@@ -15,10 +15,10 @@ export function adicionarJogador(estado: Estado, jogador: Jogador): Estado {
   return numerarFila({ ...estado, fila: [...estado.fila, jogador] })
 }
 
-/** Todos os jogadores da sessão: em campo e na fila. */
+/** Todos os jogadores da sessão: em campo, na fila e machucados. */
 export function todosOsJogadores(estado: Estado): Jogador[] {
   const campo = estado.emCampo ? [...estado.emCampo.A.jogadores, ...estado.emCampo.B.jogadores] : []
-  return [...campo, ...estado.fila]
+  return [...campo, ...estado.fila, ...estado.machucados.map((m) => m.jogador)]
 }
 
 /**
@@ -26,6 +26,13 @@ export function todosOsJogadores(estado: Estado): Jogador[] {
  * Em campo: o primeiro da fila entra no lugar dele (e a fila sobe).
  */
 export function removerJogador(estado: Estado, id: string): Estado {
+  // machucado que foi embora: sai da lista de machucados; substituto que foi embora: não há mais o que decidir
+  const machucados = estado.machucados
+    .filter((m) => m.jogador.id !== id)
+    .map((m) => (m.substituto?.id === id ? { ...m, substituto: null } : m))
+  if (machucados.length !== estado.machucados.length || machucados.some((m, i) => m !== estado.machucados[i])) {
+    estado = { ...estado, machucados }
+  }
   if (estado.fila.some((j) => j.id === id)) {
     return numerarFila({ ...estado, fila: estado.fila.filter((j) => j.id !== id) })
   }

@@ -6,15 +6,21 @@ import { useContext, useState } from 'react'
 import { VoltarAoInicio } from '../components/navegacao'
 import { artilharia, cartoesDoDia, goleirosMenosVazados, peladaParaGuardar, placarDosColetes, vitoriasPorJogador } from '../logic'
 import { guardarNoHistorico, useConta } from '../store/conta'
+import { registrarNaTurma } from '../store/turmas'
 import type { Pelada } from '../store/usePelada'
 import type { Partida } from '../types/pelada'
 import { corDoTimeDaPelada, textoSobre } from '../utils/cores'
 import { useConfirmar } from '../utils/confirmacao'
 import { dataHoje } from '../utils/formatar'
+import { GolsCorrigiveis } from './jogo/GolsDaPartida'
 import { compartilharFicha, compartilharImagem, imagemDoResumo, nomeDoArquivo } from '../utils/resumoDaPelada'
 
 /** Encerra guardando no histórico (fora do componente: usa o relógio). */
-const guardar = (estado: Parameters<typeof peladaParaGuardar>[0]) => void guardarNoHistorico(peladaParaGuardar(estado, Date.now(), dataHoje())).catch(() => null)
+const guardar = (estado: Parameters<typeof peladaParaGuardar>[0]) => {
+  const agora = Date.now()
+  void guardarNoHistorico(peladaParaGuardar(estado, agora, dataHoje())).catch(() => null)
+  void registrarNaTurma(estado, agora).catch(() => null) // quem jogou: +1 de presença na turma
+}
 
 type Linha = { numero: number; j: number; v: number; e: number; d: number }
 
@@ -64,6 +70,9 @@ export function Tabela({ pelada }: { pelada: Pelada }) {
     return ok
   }
   const [encerrando, setEncerrando] = useState(false)
+  // partida aberta nos resultados (gols dela, para marcar quem fez depois)
+  const [partidaAberta, setPartidaAberta] = useState<number | null>(null)
+  const aberta = historico.find((p) => p.numero === partidaAberta)
   const [fichaGerando, setFichaGerando] = useState<string | null>(null)
   const ficha = async (id: string, nome: string) => {
     setFichaGerando(id)
@@ -111,15 +120,18 @@ export function Tabela({ pelada }: { pelada: Pelada }) {
         <section className="panel">
           <div className="ph">Resultados<span className="sub">{historico.length} partidas</span></div>
           {historico.length === 0 && <div className="pb mut">Nenhuma partida terminou ainda.</div>}
+          {historico.length > 0 && <div className="mut" style={{ padding: '4px 12px', fontSize: 11 }}>Toque na partida para ver os gols e marcar quem fez.</div>}
           {historico.map((p) => ( // da partida 1 (mais antiga) até a última
-            <div key={p.numero} className="tr" style={{ minHeight: 48 }}>
+            <button key={p.numero} className="tr" aria-label={`Partida ${p.numero}`} onClick={() => setPartidaAberta(p.numero)}
+              style={{ minHeight: 48, width: '100%', border: 0, font: 'inherit', color: 'var(--navy)', textAlign: 'left', cursor: 'pointer' }}>
               <span className="no">{p.numero}</span>
               <Camisa cor={corDoTime(p.timeA.numero)} tamanho={18} />
               <span className="nome" style={{ fontSize: 14, fontWeight: p.resultado === 'A' ? 800 : 600 }}>Time {p.timeA.numero}</span>
               <span className="led num" style={{ fontSize: 20, padding: '3px 8px', boxShadow: 'none', borderWidth: 1 }}>{p.placar[0]}-{p.placar[1]}</span>
               <span className="nome" style={{ fontSize: 14, textAlign: 'right', fontWeight: p.resultado === 'B' ? 800 : 600 }}>Time {p.timeB.numero}</span>
               <Camisa cor={corDoTime(p.timeB.numero)} tamanho={18} />
-            </div>
+              {p.gols.some((g) => !g.autor) && <span className="tag t-warn" title="Gol sem autor">?</span>}
+            </button>
           ))}
         </section>
 
@@ -227,6 +239,20 @@ export function Tabela({ pelada }: { pelada: Pelada }) {
         <button className="btn r sm" onClick={fimDaPelada}><Icone nome="lixo" tamanho={20} /> Encerrar pelada</button>
       </div>
 
+      {aberta && (
+        <div className="modal" role="dialog" aria-modal="true" aria-label={`Partida ${aberta.numero}`} onClick={() => setPartidaAberta(null)}>
+          <section className="panel" onClick={(ev) => ev.stopPropagation()}>
+            <div className="ph">Partida {aberta.numero}<span className="sub">Time {aberta.timeA.numero} {aberta.placar[0]} x {aberta.placar[1]} Time {aberta.timeB.numero}</span></div>
+            <div className="pb" style={{ display: 'grid', gap: 8 }}>
+              {aberta.gols.length === 0
+                ? <div className="mut">Nenhum gol nesta partida.</div>
+                : <GolsCorrigiveis pelada={pelada} partida={aberta.numero} gols={aberta.gols} times={{ A: aberta.timeA, B: aberta.timeB }}
+                    coletes={aberta.coletes ?? estado.config.coletes} goleiros={aberta.goleiros} />}
+              <button className="btn w sm" onClick={() => setPartidaAberta(null)}>Fechar</button>
+            </div>
+          </section>
+        </div>
+      )}
       {encerrando && (
         <div className="modal" role="dialog" aria-modal="true" aria-label="Encerrar a pelada" onClick={() => setEncerrando(false)}>
           <section className="panel" onClick={(ev) => ev.stopPropagation()}>

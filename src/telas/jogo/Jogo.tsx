@@ -1,18 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { Barra } from '../../components/Barra'
+import { BotaoDesfazer } from '../../components/BotaoDesfazer'
 import { Icone } from '../../components/Icone'
 import { Camisa } from '../../components/Camisa'
-import { LADOS, acabouPorGols, blocosDaFila, gol, removerJogador, restanteAzul, vitoria } from '../../logic'
+import { LADOS, acabouPorGols, blocosDaFila, encerrarComSubstitutos, gol, inverterColetes, machucou, outro, removerJogador, restanteAzul, substitutosParaDecidir, vitoria, type Decisao } from '../../logic'
 import { tempoDecorrido, tempoTotalMs } from '../../store/cronometro'
 import type { Pelada } from '../../store/usePelada'
-import type { Jogador, Lado, Partida } from '../../types/pelada'
+import type { Estado, Jogador, Lado, Machucado, Partida } from '../../types/pelada'
+import { ListaDeMachucados } from '../../components/Machucado'
+import { DecidirSubstitutos } from './DecidirSubstitutos'
 import { apitoFim, apitoInicio, somDeGol } from '../../utils/sons'
 import { useConfirmar } from '../../utils/confirmacao'
 import { textoSobre } from '../../utils/cores'
 import { formatarTempo } from '../../utils/formatar'
 import { AcoesJogador } from './AcoesJogador'
 import { Empate } from './Empate'
-import { Escalacoes } from './Escalacoes'
+import { Escalacoes, type Volta } from './Escalacoes'
 import { EscolherAcrescimos } from '../../components/EscolherAcrescimos'
 import { GolsDaPartida } from './GolsDaPartida'
 import { Placar } from './Placar'
@@ -27,22 +30,29 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
   const [escolhendoAcrescimos, setEscolhendoAcrescimos] = useState(false)
   const [golDe, setGolDe] = useState<Lado | null>(null)
   const [acoes, setAcoes] = useState<{ lado: Lado; jogador: Jogador } | null>(null)
+  // Fim da partida com substituto de machucado num time que sai: antes, decide o destino dele
+  const [decidir, setDecidir] = useState<{ pendentes: Machucado[]; encerrar: (e: Estado) => Estado } | null>(null)
   // Aviso de "fim de jogo" que aparece por alguns segundos quando a partida acaba no gol
   const [transicao, setTransicao] = useState<Partida | null>(null)
   // Quando uma partida termina (vitória, gol que decide ou empate), anima a troca nas escalações.
   // Começa com o total atual para não mostrar ao abrir a tela.
   const partidasAntes = useRef(estado.historico.length)
+  // Desfez o fim de uma partida: efeito de volta (os times que estavam em campo dão lugar aos de antes)
+  const [volta, setVolta] = useState<Volta | null>(null)
+  const emCampoAntes = useRef(estado.emCampo)
   useEffect(() => {
     const total = estado.historico.length
     if (total > partidasAntes.current) setTransicao(estado.historico[total - 1])
     else setTransicao(null)
+    setVolta(total < partidasAntes.current && emCampoAntes.current ? { id: Date.now(), times: emCampoAntes.current } : null)
     partidasAntes.current = total
   }, [estado.historico])
+  useEffect(() => { emCampoAntes.current = estado.emCampo }, [estado.emCampo])
   useEffect(() => {
-    if (!transicao) return
-    const id = window.setTimeout(() => setTransicao(null), 3800)
+    if (!transicao && !volta) return
+    const id = window.setTimeout(() => { setTransicao(null); setVolta(null) }, 3800)
     return () => clearTimeout(id)
-  }, [transicao])
+  }, [transicao, volta])
   const [, tique] = useState(0)
 
   // Atualiza o relógio enquanto roda
@@ -97,7 +107,7 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
   if (!estado.emCampo) {
     return (
       <div className="scr">
-        <Barra titulo="Em campo" sub="Nenhuma partida rolando" />
+        <Barra titulo="Em campo" sub="Nenhuma partida rolando" direita={<BotaoDesfazer pelada={pelada} />} />
         <div className="conteudo">
           <div className="vazio">Monte a lista e apite a primeira partida.</div>
           <button className="btn" onClick={onLista}>Ir para a lista <Icone nome="seta" /></button>
@@ -142,11 +152,41 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
       aoConfirmar: fazer,
     })
   }
-  const venceu = (lado: Lado) =>
-    encerrarCom(`vitória do Time ${estado.emCampo![lado].numero}`, () => aplicar((e) => vitoria(e, lado), true))
+  // Encerra a partida (vitória ou empate). Se um time que sai tem substituto de machucado, pergunta antes.
+  const encerrarPartida = (saem: Lado[], encerrar: (e: Estado) => Estado) => {
+    const pendentes = substitutosParaDecidir(estado, saem)
+    if (pendentes.length) return setDecidir({ pendentes, encerrar })
+    aplicar((e) => encerrarComSubstitutos(e, {}, encerrar), true)
+  }
+  const decidido = (decisoes: Record<string, Decisao>) => {
+    if (!decidir) return
+    aplicar((e) => encerrarComSubstitutos(e, decisoes, decidir.encerrar), true)
+    setDecidir(null)
+  }
+  // quem venceu fica (o substituto dele também); a pergunta é só para o time que perdeu
+  const vencer = (lado: Lado) => encerrarPartida([outro(lado)], (e) => vitoria(e, lado))
+  const venceu = (lado: Lado) => encerrarCom(`vitória do Time ${estado.emCampo![lado].numero}`, () => vencer(lado))
   const abrirEmpate = () => encerrarCom('empate', () => setEmpateManual(true))
   // Quem está ganhando (null = empatado): o botão de fim de jogo segue o placar
   const lider: Lado | null = golsA === golsB ? null : golsA > golsB ? 'A' : 'B'
+  const machucouJogador = (lado: Lado, jogador: Jogador) => {
+    const quem = proximo?.[0]?.nome
+    confirmar({
+      titulo: 'Machucou?',
+      mensagem: quem
+        ? `${jogador.nome} se machucou? ${quem} entra no lugar e ${jogador.nome} vai para os machucados (pode voltar nesta partida).`
+        : `${jogador.nome} se machucou? Não tem ninguém na fila para entrar: o time fica com um a menos.`,
+      botao: 'Machucou',
+      aoConfirmar: () => aplicar((e) => machucou(e, lado, jogador.id)),
+    })
+  }
+  // O app estava com as cores ao contrário do campo: os dois lados trocam de colete
+  const trocarColetes = () => confirmar({
+    titulo: 'Inverter os coletes?',
+    mensagem: `O Time ${emCampo.A.numero} fica com o colete ${coletes.B.nome} e o Time ${emCampo.B.numero} com o ${coletes.A.nome}. Os gols e o placar continuam com cada time.`,
+    botao: 'Inverter',
+    aoConfirmar: () => aplicar(inverterColetes),
+  })
   const saiu = (id: string, nome: string) => {
     const quem = proximo?.[0]?.nome
     confirmar({
@@ -160,9 +200,14 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
 
   return (
     <div className="scr">
-      <Barra titulo="Em campo" sub={`Partida ${estado.historico.length + 1}`} />
+      {/* desfazer o fim de uma partida (volta o relógio dela) não apita de novo */}
+      <Barra titulo="Em campo" sub={`Partida ${estado.historico.length + 1}`} direita={<BotaoDesfazer pelada={pelada} antes={(d) => { if (d.crono) avisou.current = acabouPorGols(d.estado) || tempoDecorrido(d.crono) >= tempoTotalMs(cfg.tempoMin, d.crono) }} />} />
       <div className="conteudo" style={{ gap: 10 }}>
         <Placar estado={estado} decorrido={decorrido} rodando={app.crono.rodando} fim={fim} acrescimoMin={app.crono.acrescimoMin} />
+
+        <div className="row" style={{ justifyContent: 'center', marginTop: -4 }}>
+          <button className="tag t-y" style={{ border: 0, cursor: 'pointer' }} onClick={trocarColetes}>⇄ Inverter coletes</button>
+        </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8 }}>
           {LADOS.map((lado) => (
@@ -178,7 +223,9 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
 
         <GolsDaPartida pelada={pelada} />
 
-        <Escalacoes pelada={pelada} decorrido={decorrido} transicao={transicao} onJogador={(lado, jogador) => setAcoes({ lado, jogador })} />
+        <Escalacoes pelada={pelada} decorrido={decorrido} transicao={transicao} volta={volta} onJogador={(lado, jogador) => setAcoes({ lado, jogador })} />
+
+        <ListaDeMachucados pelada={pelada} />
 
         {/* Um botão só, que segue o placar: não tem como dar a vitória para o time errado */}
         <section className={'panel' + (fim ? ' destaque' : '')}>
@@ -204,7 +251,10 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
         </button>
       </div>
 
-      {empateAberto && <Empate pelada={pelada} onFechar={fecharEmpate} />}
+      {empateAberto && <Empate pelada={pelada} onEncerrar={encerrarPartida} onFechar={fecharEmpate} />}
+      {decidir && estado.emCampo && (
+        <DecidirSubstitutos estado={estado} pendentes={decidir.pendentes} onConfirmar={decidido} onCancelar={() => setDecidir(null)} />
+      )}
       {fimDoTempoAberto && estado.emCampo && (
         <div className="modal" role="dialog" aria-modal="true" aria-label="Acabou o tempo">
           <section className="panel">
@@ -218,7 +268,7 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
               </div>
               {golsA === golsB
                 ? <button className="btn" onClick={() => { setTempoDispensadoEm(chaveDoTempo); setEmpateManual(true) }}>Encerrar · ir para a moeda</button>
-                : <button className="btn" onClick={() => aplicar((e) => vitoria(e, golsA > golsB ? 'A' : 'B'), true)}>
+                : <button className="btn" onClick={() => vencer(golsA > golsB ? 'A' : 'B')}>
                     Encerrar · Time {estado.emCampo[golsA > golsB ? 'A' : 'B'].numero} venceu
                   </button>}
               {podeDarAcrescimos && <button className="btn w sm" onClick={() => setEscolhendoAcrescimos(true)}><Icone nome="play" /> Dar acréscimos</button>}
@@ -231,7 +281,7 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
       {golDe && <QuemFezGol pelada={pelada} lado={golDe} onGol={marcar} onFechar={() => setGolDe(null)} />}
       {acoes && (
         <AcoesJogador pelada={pelada} lado={acoes.lado} jogador={acoes.jogador} decorrido={decorrido}
-          onGol={marcar} onSaiu={saiu} onFechar={() => setAcoes(null)} />
+          onGol={marcar} onSaiu={saiu} onMachucou={machucouJogador} onFechar={() => setAcoes(null)} />
       )}
     </div>
   )

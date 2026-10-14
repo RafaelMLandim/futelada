@@ -25,7 +25,7 @@ export function comecar(estado: Estado): Estado {
   if (!podeComecar(estado)) throw new Error('Jogadores insuficientes para começar')
   const a = tirarProximoTime(estado)
   const b = tirarProximoTime(a.estado)
-  return sincronizarGoleiros({ ...b.estado, emCampo: { A: a.time, B: b.time }, placar: [0, 0], gols: [], cartoes: [] })
+  return sincronizarGoleiros({ ...b.estado, emCampo: { A: a.time, B: b.time }, placar: [0, 0], gols: [], cartoes: [], foraDoJogo: [] })
 }
 
 /** Gol para `lado`. Gol contra: `autor` é do outro time (não conta na artilharia dele). */

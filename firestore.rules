@@ -10,6 +10,38 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
+    // ---- Plano pago (PLANO.md, seção 14) ----
+    // O plano (Premium, créditos de torneio) só o servidor grava; o dono só lê.
+    match /planos/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+    }
+    // Liga/desliga a cobrança (muda no console do Firebase, sem versão nova do app).
+    match /config/{doc} {
+      allow read: if true;
+    }
+    // Uso da conta: o app só consegue somar 1 (numa pelada ou num torneio); não zera nem apaga.
+    match /contadores/{uid} {
+      function uso(d, campo) { return d.get(campo, 0); }
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['peladas', 'torneios'])
+        && uso(request.resource.data, 'peladas') + uso(request.resource.data, 'torneios') == 1
+        && uso(request.resource.data, 'peladas') >= 0 && uso(request.resource.data, 'torneios') >= 0;
+      allow update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['peladas', 'torneios'])
+        && uso(request.resource.data, 'peladas') >= uso(resource.data, 'peladas')
+        && uso(request.resource.data, 'torneios') >= uso(resource.data, 'torneios')
+        && uso(request.resource.data, 'peladas') + uso(request.resource.data, 'torneios')
+           == uso(resource.data, 'peladas') + uso(resource.data, 'torneios') + 1;
+    }
+    // Peladas feitas em cada celular (qualquer conta): só soma 1; ninguém lista os celulares.
+    match /aparelhos/{id} {
+      allow get: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.keys().hasOnly(['peladas']) && request.resource.data.peladas == 1;
+      allow update: if request.auth != null && request.resource.data.keys().hasOnly(['peladas'])
+        && request.resource.data.peladas == resource.data.peladas + 1;
+    }
+
     // Campo pago da pelada (PLANO.md, seção 12): o organizador publica a cobrança; quem tem o
     // link lê e avisa "já paguei" no próprio registro; só o organizador marca "pago" (a não ser
     // que ele tenha ligado a confirmação automática). Ninguém de fora desfaz um "pago".

@@ -17,6 +17,7 @@ export function usePelada() {
     iniciar: () => dispatch({ tipo: 'iniciar' }),
     crono: (rodando: boolean) => dispatch({ tipo: 'crono', rodando }),
     acrescimos: (min: number) => dispatch({ tipo: 'acrescimos', min }),
+    desfazer: () => dispatch({ tipo: 'desfazer' }),
     encerrar: () => {
       salvar(reducer(atual.current, { tipo: 'encerrar' })) // salva já: em seguida o app volta para o início
       dispatch({ tipo: 'encerrar' })

@@ -8,10 +8,16 @@ import { entrarNaFila, tirarProximoTime } from './fila'
 export function registrarPartida(estado: Estado, resultado: Partida['resultado'], sairam: number[]): Estado {
   const { emCampo } = estado
   if (!emCampo) return estado
+  // quem jogou e saiu no meio (machucado, substituto que voltou) também jogou a partida
+  const comQuemSaiu = (lado: Lado) => {
+    const time = emCampo[lado]
+    const sairam = estado.foraDoJogo.filter((f) => f.lado === lado && !time.jogadores.some((j) => j.id === f.jogador.id)).map((f) => f.jogador)
+    return sairam.length ? { ...time, jogadores: [...time.jogadores, ...sairam] } : time
+  }
   const partida: Partida = {
     numero: estado.historico.length + 1,
-    timeA: emCampo.A,
-    timeB: emCampo.B,
+    timeA: comQuemSaiu('A'),
+    timeB: comQuemSaiu('B'),
     placar: estado.placar,
     resultado,
     sairam,
@@ -34,7 +40,7 @@ export function substituirTimes(estado: Estado, lados: Lado[], fica?: { lado: La
     atual = r.estado
     campo[lado] = r.time
   }
-  return { ...atual, emCampo: campo, placar: [0, 0], gols: [], cartoes: [] }
+  return { ...atual, emCampo: campo, placar: [0, 0], gols: [], cartoes: [], foraDoJogo: [] }
 }
 
 /** Manda os times para o fim da fila, na ordem dada (cada um mantém o número). */

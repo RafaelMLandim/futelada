@@ -39,6 +39,13 @@ export function artilharia(estado: Estado): Artilheiro[] {
       }
     }
   }
+  // Quem jogou só no gol não está nos times: conta como jogo cada partida em que fez gol
+  for (const p of [...estado.historico.map((x) => x.gols), estado.gols]) {
+    for (const id of new Set(p.map((g) => g.autorId))) {
+      const a = id?.startsWith('goleiro:') ? mapa.get(id) : undefined
+      if (a) a.jogos++
+    }
+  }
   for (const c of [...estado.historico.flatMap((p) => p.cartoes), ...estado.cartoes]) {
     const a = mapa.get(c.jogadorId)
     if (a && !c.porDoisAmarelos) a.cartoes++

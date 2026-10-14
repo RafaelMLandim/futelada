@@ -3,6 +3,7 @@
 // - cartinha de um jogador (também 9:16);
 
 import { artilharia, criterioDoArtilheiro, fichaDoJogador, goleirosMenosVazados, selecaoDaPelada } from '../logic'
+import type { RelatorioDoAno } from '../logic'
 import type { Estado } from '../types/pelada'
 import { dataHoje } from './formatar'
 import { compartilharArquivoNativo, nativo } from './nativo'
@@ -89,11 +90,11 @@ async function prepararTela(altura: number): Promise<{ c: Ctx; tela: HTMLCanvasE
   return { c: tela.getContext('2d')!, tela, r: { logo, bola, artilheiro, goleiro } }
 }
 
-function cabecalho(c: Ctx, r: Recursos, titulo: string) {
+function cabecalho(c: Ctx, r: Recursos, titulo: string, sub = dataHoje().toUpperCase()) {
   c.fillStyle = NAVY; c.fillRect(0, 0, L, 210)
   if (r.logo) c.drawImage(r.logo, 36, 22, 166, 166)
   texto(c, titulo, 222, 112, { tam: 84, cor: AMARELO, max: L - 260 })
-  texto(c, dataHoje().toUpperCase(), 224, 162, { tam: 34, cor: CINZA, peso: 600, fonte: NORMAL })
+  texto(c, sub, 224, 162, { tam: 34, cor: CINZA, peso: 600, fonte: NORMAL, max: L - 260 })
   c.fillStyle = AMARELO; c.fillRect(0, 210, L, 10)
 }
 
@@ -138,7 +139,15 @@ function estadio(c: Ctx, topo: number, base: number) {
  * cada jogador é uma peça com a camisa (nº = vitórias), a plaquinha do nome e os gols.
  * O goleiro menos vazado fica no gol.
  */
-function selecaoNoCampo(c: Ctx, estado: Estado, r: Recursos, topo: number, base: number, comTitulo = true) {
+/** O que vai no campo: os jogadores da seleção (com a plaquinha), quem leva a bolinha e o goleiro. */
+type SelecaoParaDesenhar = { jogadores: { id: string; nome: string }[]; artilheiroId?: string; goleiro: string | null; vazio: string }
+
+const selecaoDoDia = (estado: Estado): SelecaoParaDesenhar => ({
+  jogadores: selecaoDaPelada(estado), artilheiroId: artilharia(estado)[0]?.id, goleiro: goleirosMenosVazados(estado)[0]?.nome ?? null,
+  vazio: 'A seleção aparece quando a primeira partida terminar',
+})
+
+function selecaoNoCampo(c: Ctx, sel: SelecaoParaDesenhar, r: Recursos, topo: number, base: number, comTitulo = true) {
   c.save()
   c.beginPath(); c.rect(0, topo, L, base - topo); c.clip()
   estadio(c, topo, base)
@@ -184,9 +193,8 @@ function selecaoNoCampo(c: Ctx, estado: Estado, r: Recursos, topo: number, base:
   c.stroke()
 
   // peças
-  const selecao = selecaoDaPelada(estado)
-  const artilheiroId = artilharia(estado)[0]?.id
-  const goleiro = goleirosMenosVazados(estado)[0]
+  const selecao = sel.jogadores
+  const { artilheiroId } = sel
   const linhas = formacao(selecao.length)
   // o gol sempre tem uma peça: o goleiro menos vazado ou, sem goleiro fixo, só o "G" (sem nome)
   const niveis = linhas.length + 1
@@ -229,7 +237,7 @@ function selecaoNoCampo(c: Ctx, estado: Estado, r: Recursos, topo: number, base:
     }
   }
   if (selecao.length === 0) {
-    texto(c, 'A seleção aparece quando a primeira partida terminar', L / 2, (cTopo + cBase) / 2, { tam: 34, peso: 600, fonte: NORMAL, alinha: 'center', max: L - 160 })
+    texto(c, sel.vazio, L / 2, (cTopo + cBase) / 2, { tam: 34, peso: 600, fonte: NORMAL, alinha: 'center', max: L - 160 })
   }
   let i = 0
   linhas.forEach((qtd, li) => {
@@ -245,7 +253,7 @@ function selecaoNoCampo(c: Ctx, estado: Estado, r: Recursos, topo: number, base:
       peca(x, v, j.nome, '', j.id === artilheiroId, AMARELO, NAVY, espaco) // camisa sem número; bolinha só no artilheiro
     }
   })
-  if (selecao.length) peca(L / 2, vs[linhas.length], goleiro?.nome ?? '', 'G', false, '#fff', NAVY)
+  if (selecao.length) peca(L / 2, vs[linhas.length], sel.goleiro ?? '', 'G', false, '#fff', NAVY)
   c.restore()
 }
 
@@ -262,18 +270,31 @@ const paraPng = (tela: HTMLCanvasElement): Promise<Blob> =>
 // ---------- imagens ----------
 
 /** Faixa com os troféus: silhueta dourada do artilheiro chutando e do goleiro voando, em pedestal. */
-function trofeusNaFaixa(c: Ctx, estado: Estado, r: Recursos, y: number, altura: number) {
+/** Os dois troféus: título, nome e detalhe de cada um (null = ninguém). */
+type Premio = { nome: string; detalhe: string } | null
+type Premios = { chuteira: Premio; luva: Premio; tituloChuteira?: string; tituloLuva?: string; semChuteira?: string; semLuva?: string }
+
+function premiosDoDia(estado: Estado): Premios {
+  // um só artilheiro (com os critérios de desempate); o critério aparece se houve empate em gols
+  const artilheiros = artilharia(estado)
+  const artilheiro = artilheiros[0]
+  const criterio = criterioDoArtilheiro(artilheiros)
+  const goleiro = goleirosMenosVazados(estado)[0]
+  return {
+    chuteira: artilheiro ? { nome: artilheiro.nome, detalhe: plural(artilheiro.gols, 'gol', 'gols') + (criterio ? ` · desempate: ${criterio}` : '') } : null,
+    luva: goleiro ? { nome: goleiro.nome, detalhe: `${plural(goleiro.sofridos, 'gol sofrido', 'gols sofridos')} em ${plural(goleiro.jogos, 'jogo', 'jogos')}` } : null,
+    semLuva: 'Sem goleiro fixo hoje',
+  }
+}
+
+function trofeusNaFaixa(c: Ctx, premios: Premios, r: Recursos, y: number, altura: number) {
   const fundo = c.createLinearGradient(0, y, 0, y + altura)
   fundo.addColorStop(0, '#0a1626'); fundo.addColorStop(1, NAVY)
   c.fillStyle = fundo; c.fillRect(0, y, L, altura)
   c.fillStyle = AMARELO; c.fillRect(0, y, L, 8)
   c.fillStyle = 'rgba(255,210,63,.35)'; c.fillRect(L / 2 - 1, y + 40, 2, altura - 80)
 
-  // um só artilheiro (com os critérios de desempate); o critério aparece se houve empate em gols
-  const artilheiros = artilharia(estado)
-  const artilheiro = artilheiros[0]
-  const criterio = criterioDoArtilheiro(artilheiros)
-  const goleiro = goleirosMenosVazados(estado)[0]
+  const { chuteira, luva } = premios
   const base = y + 214 // topo do pedestal
   const premio = (x: number, titulo: string, nome: string, detalhe: string, desenhar: () => void) => {
     const luz = c.createRadialGradient(x, base - 70, 10, x, base - 70, 190)
@@ -285,11 +306,9 @@ function trofeusNaFaixa(c: Ctx, estado: Estado, r: Recursos, y: number, altura: 
     texto(c, nome, x, base + 168, { tam: 52, alinha: 'center', max: 480 })
     texto(c, detalhe, x, base + 202, { tam: 26, cor: CINZA, peso: 600, fonte: NORMAL, alinha: 'center', max: 480 })
   }
-  premio(L / 4, 'CHUTEIRA DE OURO', artilheiro?.nome ?? '—',
-    artilheiro ? plural(artilheiro.gols, 'gol', 'gols') + (criterio ? ` · desempate: ${criterio}` : '') : 'Nenhum gol com autor',
+  premio(L / 4, premios.tituloChuteira ?? 'CHUTEIRA DE OURO', chuteira?.nome ?? '—', chuteira?.detalhe ?? premios.semChuteira ?? 'Nenhum gol com autor',
     () => silhuetaDourada(c, r.artilheiro, L / 4, base - 4, 240, 180))
-  premio((L * 3) / 4, 'LUVA DE OURO', goleiro?.nome ?? '—',
-    goleiro ? `${plural(goleiro.sofridos, 'gol sofrido', 'gols sofridos')} em ${plural(goleiro.jogos, 'jogo', 'jogos')}` : 'Sem goleiro fixo hoje',
+  premio((L * 3) / 4, premios.tituloLuva ?? 'LUVA DE OURO', luva?.nome ?? '—', luva?.detalhe ?? premios.semLuva ?? 'Sem goleiro fixo',
     () => silhuetaDourada(c, r.goleiro, (L * 3) / 4, base - 8, 320, 180))
 }
 
@@ -298,9 +317,31 @@ export async function imagemDoResumo(estado: Estado): Promise<Blob> {
   const { c, tela, r } = await prepararTela(ALTURA)
   cabecalho(c, r, 'SELEÇÃO DA PELADA')
   const faixa = ALTURA - 98 - 430 // embaixo do campo: chuteira e luva de ouro
-  selecaoNoCampo(c, estado, r, 220, faixa, false)
-  trofeusNaFaixa(c, estado, r, faixa, 430)
+  selecaoNoCampo(c, selecaoDoDia(estado), r, 220, faixa, false)
+  trofeusNaFaixa(c, premiosDoDia(estado), r, faixa, 430)
   rodape(c, ALTURA - 98, 98, numerosDoDia(estado))
+  return paraPng(tela)
+}
+
+/**
+ * Time do ano da turma (1080×1920): quem mais veio às peladas (no empate, mais gols) no campo ("11/11"),
+ * o goleiro do ano no gol e, embaixo, o artilheiro e o goleiro do ano.
+ */
+export async function imagemDoTimeDoAno(r: RelatorioDoAno, turma: string): Promise<Blob> {
+  const { c, tela, r: recursos } = await prepararTela(ALTURA)
+  cabecalho(c, recursos, 'TIME DO ANO', `TEMPORADA ${r.ano} · ${turma.toUpperCase()}`)
+  const faixa = ALTURA - 98 - 430
+  selecaoNoCampo(c, {
+    jogadores: r.timeDoAno.map((j) => ({ id: j.id, nome: `${j.nome} · ${j.peladas}/${r.peladas}` })),
+    artilheiroId: r.artilheiro?.id, goleiro: r.goleiroDoAno?.nome ?? null,
+    vazio: 'O Time do ano aparece com as peladas encerradas',
+  }, recursos, 220, faixa, false)
+  trofeusNaFaixa(c, {
+    tituloChuteira: 'ARTILHEIRO DO ANO', tituloLuva: 'GOLEIRO DO ANO',
+    chuteira: r.artilheiro ? { nome: r.artilheiro.nome, detalhe: `${plural(r.artilheiro.gols, 'gol', 'gols')} em ${plural(r.artilheiro.peladas, 'pelada', 'peladas')}` } : null,
+    luva: r.goleiroDoAno ? { nome: r.goleiroDoAno.nome, detalhe: `${r.goleiroDoAno.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} gols sofridos por jogo` } : null,
+  }, recursos, faixa, 430)
+  rodape(c, ALTURA - 98, 98, `${plural(r.peladas, 'pelada', 'peladas')} no ano · número = presença`)
   return paraPng(tela)
 }
 

@@ -215,6 +215,34 @@ fila [M, N, A, B, C, D] → blocos **[M, N, A, B]** e **[C, D]**.
   (anda com o cronômetro da partida) e o celular vibra quando ele pode voltar.
 - A Tabela mostra os cartões do dia por jogador.
 
+### 3.8.4 Machucado e substituto
+- Toque no jogador em campo → **Machucou**: o **primeiro da fila** entra no lugar e o machucado vai para a lista
+  **Machucados** (não sobe na fila). Ícones: **cruz** no machucado (como no Winning Eleven) e **setas de troca**
+  no substituto.
+- **Voltou na mesma partida:** volta para o lugar dele e o substituto volta para o lugar dele na fila — a lista
+  fica exatamente como era (vale também com dois machucados, em qualquer ordem).
+- **Fim da partida com substituto em campo:**
+  - o time dele **venceu** (ou empatou e ficou): ele **fica** no time, sem pergunta;
+  - o time dele **saiu de campo**: quem organiza decide — **fica no time** (vai para o fim da fila com ele) ou
+    **volta para o time antigo** (o lugar dele na fila; em geral entra em campo já). Proteção para quem entrou
+    no fim de um jogo perdido não perder a vez. O ícone de troca some depois da decisão.
+- **Depois que a partida dele acabou**, o machucado só volta para o **fim da fila** (mesmo que o time tenha ganhado).
+  A cruz some quando ele sai da lista de machucados (voltou ou foi embora).
+- Conta como **presente**: a partida em que se machucou fica no histórico com ele (e com o substituto).
+
+### 3.8.5 Correções no meio da pelada
+
+- **Marcar quem fez depois:** gol marcado com "Não sei" fica "Sem autor". Tocando no autor (na tela do jogo, ou na Tabela → tocar na partida que já acabou) dá para marcar ou trocar quem fez, inclusive como gol contra. Placar e resultado não mudam; a artilharia muda.
+- **Inverter coletes:** botão "⇄ Inverter coletes" embaixo do placar, com confirmação. Os dois lados trocam de cor (o app estava ao contrário do campo); times, gols e placar continuam iguais.
+- **Desfazer:** botão ↶ na barra do topo (Jogo e Lista). Pergunta o que vai desfazer ("o fim da partida 3 (vitória do Time 2)") e volta a lista e o jogo como estavam. Guarda as últimas 10 ações do jogo (gol, fim de partida, machucado, cartão, entrada/saída na lista, coletes, goleiro). Desfazer um fim de partida volta também o relógio dela; nas escalações, o time certo desce de cima empurrando o errado de volta para a fila ("↶ Voltou" / "↶ Desfeito"). Pagamentos, link de pagamento, caixa e ajustes (tempo, som…) não voltam junto. Ao encerrar ou cancelar a pelada, some.
+
+### 3.8.6 Gol do goleiro
+
+- A linha **G** aparece sempre nas escalações. Com goleiros fixos, escolhe-se quem está no gol; sem goleiro fixo, fica escrito só "Goleiro".
+- No "Quem fez?" há o botão **🧤 Goleiro**, que também vale para o gol contra, com o goleiro do outro time.
+  - Com goleiro fixo, o botão mostra o nome dele e o gol vai direto para ele. O id é `goleiro:<nome>`, e cada partida em que ele fez gol conta como um jogo no desempate da artilharia.
+  - Sem goleiro fixo, quem vai para o gol é **sempre alguém da lista**. O botão abre uma busca entre a lista do dia, a turma e os goleiros fixos. Não dá para criar um nome novo. O gol entra no id do jogador e na artilharia dele.
+
 ### 3.9 Regra geral
 - **Nunca existem dois times incompletos** ao mesmo tempo (garantido pela fila única).
 
@@ -630,4 +658,172 @@ Hoje já dá para usar. Antes de vender para clientes:
 8. **Monitoramento de erros** e **backup**.
 
 **Mais à frente**
-9. Pelada na nuvem também (histórico e estatísticas ao longo das semanas).
+9. Pelada na nuvem também (histórico e estatísticas ao longo das semanas). (Feito: 12.2.)
+10. **Cobrança:** ver seção 14 (sem anúncios; planos pagos pela loja).
+
+## 14. Plano pago (app de loja)
+
+Decidido em 07/10: **sem anúncios**; o app é vendido como **aplicativo de loja** (Play Store
+primeiro, App Store depois). Só o **organizador** paga; mesários e jogadores usam de graça.
+
+### 14.1 Planos (decidido em 07/10: sem plano grátis para sempre)
+
+| Plano | Preço | O que libera |
+|---|---|---|
+| **10 peladas grátis** | R$ 0 | Tudo liberado nas 10 primeiras peladas (por conta **e** por celular) |
+| **Pelada Premium** | R$ 14,90/mês ou **R$ 119/ano** | Peladas ilimitadas com tudo: estatísticas, imagens, Pix + caixa, histórico e ranking, elenco |
+| **Torneio avulso** | R$ 34,90 por torneio | 1 torneio **compartilhado** (mesários, vários campos, ao vivo), times ilimitados (o crédito não vence). **O 1º é grátis** (até 8 times) |
+| **Liga / Arena** (2ª fase) | R$ 49,90/mês | Torneios ilimitados + Pelada Premium + vários organizadores na mesma conta |
+
+- **Só o organizador paga.** Mesários e jogadores nunca pagam (link do Pix, acompanhar o torneio…).
+- **O que conta como 1 pelada:** o 1º "Apitar" do dia. Montar a lista e cancelar não gasta. Pelada
+  aberta de um dia para o outro é encerrada na virada do dia (a seguinte conta como nova).
+- **Contador no servidor** (`usuarios/{uid}/plano.peladasUsadas`) e **por celular** (código do app no
+  aparelho, que não muda ao reinstalar; não é dado pessoal): 10 por conta e 10 por celular, o que acabar
+  primeiro. Sem internet a pelada funciona e conta quando a conexão voltar.
+- No app: "Pelada 7 de 10 grátis"; aviso na 9ª e na 10ª; na 11ª, a tela de assinatura. **Nada se perde**:
+  histórico e peladas antigas continuam visíveis.
+- Turma revezando organizador (cada um com o seu celular e conta) não é bloqueado: dá trabalho e cada
+  um vira um usuário que conhece o app.
+- **Imagens para o WhatsApp** sempre com a marca do app (é a propaganda que os jogadores veem).
+
+### 14.2 Como o pagamento funciona
+- Dentro do app, assinaturas e compras digitais **têm que** passar pela loja (Google Play Billing /
+  Apple In-App Purchase; taxa de 15%). O Pix do campo pago continua direto entre jogadores e
+  organizador (serviço do mundo real: as lojas permitem).
+- **RevenueCat** entre o app e as lojas: um código só para Android e iPhone; cuida de teste grátis,
+  renovação, cancelamento e reembolso. Grátis até US$ 2.500/mês de receita. O usuário no RevenueCat
+  é o **uid do Firebase** (a conta Google do organizador).
+- **Produtos na loja:**
+  - assinatura `pelada_premium` com dois planos: mensal (R$ 14,90) e anual (R$ 119) — o "grátis" são as
+    10 peladas, controladas pelo app (sem pedir cartão);
+  - compra avulsa `premium_12_meses` (R$ 119), **consumível**: 12 meses de Premium **sem renovação** —
+    existe para quem quer pagar no **Pix** (no Google Play, o Pix só vale para compras avulsas, não para
+    assinaturas; decidido em 08/10). Comprar de novo soma mais 12 meses a partir do vencimento;
+  - compra avulsa `torneio_avulso` (R$ 34,90), **consumível**: cada compra vira 1 crédito de torneio
+    (aceita Pix);
+  - (2ª fase) assinatura `liga` (R$ 49,90/mês).
+- **Formas de pagamento** (quem cuida é a loja): assinatura com cartão, saldo do Google Play, PayPal,
+  Mercado Pago, PicPay; compras avulsas (Premium 12 meses, Torneio avulso) também com **Pix**.
+- **Quem decide se a pessoa pagou é o servidor, nunca o celular:** o RevenueCat avisa o Firebase
+  (extensão oficial do RevenueCat para Firebase ou um webhook numa Cloud Function), que grava em
+  `planos/{uid}` → `{ premiumAte: <data>, assinatura: true|false, creditosTorneio: n, liga: até <data> }`
+  (`assinatura: false` = Premium avulso de 12 meses, que não renova sozinho).
+  As regras do Firestore **proíbem o app de escrever** nesse documento.
+- **Usar um crédito de torneio** (compartilhar o torneio) é uma função no servidor
+  (`usarCreditoDeTorneio`): confere o saldo, desconta 1 e marca o torneio como pago (`torneios/{código}.pago`).
+  As regras só deixam mesários entrarem em torneio pago (ou no 1º grátis até 8 times).
+
+### 14.3 Travas no app (o que muda nas telas)
+- **Começar pelada** (o 1º "Apitar"): sem Premium e sem peladas grátis sobrando, abre a tela
+  "Pelada Premium" (o que libera, preço mensal/anual). Contador "Pelada n de 10 grátis" no início.
+- **Compartilhar torneio** (e "Convidar mesários"): sem crédito, abre "Torneio avulso" (R$ 34,90) ou
+  "Liga". O 1º torneio até 8 times passa direto.
+- **Torneio no celular com mais de 8 times:** pede o torneio avulso.
+- **Tela "Meu plano"** (no menu da foto): plano atual, validade, créditos de torneio, "Restaurar compras"
+  e "Gerenciar assinatura" (abre a loja).
+- Quem já usava antes do plano pago: **período de cortesia** (ex.: 30 dias de Premium) para não perder nada.
+
+### 14.4 O que precisa antes de cobrar
+1. **Empresa:** o organizador do app já tem **ME** (07/10). Conta do Play Console como **organização**
+   (CNPJ + número D-U-N-S, grátis) e **perfil de pagamentos** no CNPJ (US$ 25, verificação). Conferir com o
+   contador se o CNAE cobre venda de app (ex.: 6203-1/00, licenciamento de programas não customizáveis).
+   **Nota fiscal:** no Brasil quem vende ao usuário é o Google (Google Commerce Ltd., "merchant of record");
+   a ME emite **uma nota por mês contra o Google** (exportação de serviço), não uma por assinante.
+2. **Firebase no plano Blaze** (pago por uso; necessário para as funções do servidor). Custo perto de zero no início.
+3. **Conta no RevenueCat** ligada ao Play Console.
+4. **Termos de uso e política de privacidade** (página no site) e o formulário de "segurança de dados".
+   Feito (09/10, local): `public/termos.html`, `public/privacidade.html` (LGPD; controladora: a ME). Links no
+   login ("Ao entrar, você concorda…") e no menu da foto. Falta o formulário de segurança de dados no Play Console.
+5. **Excluir conta dentro do app** (exigência da Play Store para apps com login) + página no site para pedir.
+   Feito (09/10, local): menu da foto → "Excluir conta" (pede o Google de novo se o login for antigo; apaga
+   histórico, turmas, caixa, torneios e cobranças do dono e a conta; ficam `contadores`/`aparelhos`, sem nome,
+   e `planos`, registro de compra). Página `public/excluir-conta.html` (link para o Play Console).
+   D-U-N-S: pedido em 09/10 pelo Dunsguide (CIAL, a D&B no Brasil), aguardando.
+6. **Chave de assinatura oficial** do app (a de teste não serve). Conta de organização não precisa do teste
+   fechado de 14 dias com 12 pessoas (exigido só de contas pessoais novas) — confirmar ao criar a conta.
+
+### 14.5 Ordem de implementação
+1. ✅ **Conta com plano** (08/10): `planos/{uid}` (só o servidor grava; o dono lê) + tela **"Meu plano"** no
+   menu da foto.
+2. ✅ **Travas** (08/10), com a cobrança **desligada** até o lançamento (`config/cobranca.ativa`, muda no
+   console do Firebase, sem versão nova do app):
+   - 1º "Apitar" da pelada: conta 1 (conta em `contadores/{uid}.peladas` e celular em `aparelhos/{código}`);
+     sem Premium e sem grátis sobrando, abre a tela "Pelada Premium" e a pelada não começa.
+   - Início: "Pelada 3 de 10 grátis" / "Peladas grátis usadas".
+   - Torneio: o 1º é grátis e nasce com `limiteDeTimes: 8` (o 9º time abre o "Torneio avulso"); do 2º em diante,
+     sem crédito, abre o "Torneio avulso". Com crédito, por enquanto cria sem descontar (falta o passo 3).
+   - O **contador não precisa de servidor**: as regras só deixam somar 1 (não zera, não pula, não apaga) —
+     testado no emulador (`npm run test:regras`). Código do celular: `@capacitor/device` (não muda ao
+     reinstalar); no navegador, um código guardado no navegador (mais fraco).
+   - Enquanto a cobrança está desligada, nada é contado (ninguém gasta as grátis antes do lançamento).
+3. **Funções no servidor** (Blaze ativo em 09/10, teste grátis do Google Cloud até 08/01/2027 — antes disso,
+   "Fazer upgrade" para conta paga): `functions/` (Node 22, região `southamerica-east1`).
+   - `avisoDeCompra`: webhook do RevenueCat (senha no cabeçalho, segredo `REVENUECAT_WEBHOOK`); grava
+     `planos/{uid}` com `functions/plano.js` (assinatura: data da loja; 12 meses: soma 365 dias; torneio: +1
+     crédito; reembolso desfaz). Cada aviso conta uma vez (`avisosDeCompra/{id}`). O `app_user_id` no
+     RevenueCat tem de ser o uid do Firebase.
+   - `usarCreditoDeTorneio` (chamada do app): desconta 1 crédito; o app só cria o torneio se der certo.
+   - Testes: `cd functions && npm test` (regras) e emulador (aviso → Premium, senha errada → 401).
+   - **Publicado em 09/10.** Endereço do webhook (colar no RevenueCat):
+     `https://southamerica-east1-dois-ou-dez.cloudfunctions.net/avisoDeCompra`, cabeçalho
+     `Authorization: Bearer <senha>`; a senha fica só em `~/.config/dois-ou-dez/revenuecat-webhook.txt`.
+   - **RevenueCat (10/10):** conta criada, projeto "Dois ou Dez", app "Dois ou Dez (Android)" (`app.doisoudez`,
+     sem a credencial do Play ainda) e webhook "Servidor Dois ou Dez" (produção e sandbox, todos os eventos)
+     — evento de teste chegou e passou na senha. Falta: credencial (conta de serviço) do Play, produtos,
+     entitlement e o SDK no app (passo 4).
+4. **RevenueCat + Play Billing** no app Android (produtos de teste no Play Console) e as telas de compra.
+5. **Contador das 10 peladas** (conta + celular), cortesia de quem já usava, excluir conta, termos e política.
+6. Teste fechado na Play Store → lançamento. Depois: iPhone e a Liga / Arena.
+
+## 15. A turma: reaproveitar a lista e o relatório da temporada
+
+Objetivo: o mesmo jogador ser reconhecido de uma pelada para a outra, para o app montar o
+**relatório da temporada** (artilheiro do ano, time do ano…) e para a lista sair mais rápido.
+Sem dado pessoal: só o **apelido** (o mesmo que já se digita hoje). Fica no perfil do organizador.
+
+### 15.1 Jogadores da turma (reaproveitar a lista)
+- **Turmas:** `usuarios/{uid}/turmas/{turmaId}` → `{ nome, criadaEm }`. Todo nome que joga uma pelada
+  vira um **jogador da turma**: `usuarios/{uid}/turmas/{turmaId}/jogadores/{id}` →
+  `{ nome, peladas, ultimaPelada, arquivado }`. O `id` é o mesmo em todas as peladas daquela turma.
+- **Na Lista, ao digitar** ("JU…"): sugestões da turma (sem acento/maiúsculas; começa igual ou uma letra
+  trocada), com "12 peladas". Tocar adiciona com o id dele.
+- **"Quem costuma vir"**: botão que mostra a turma, os mais frequentes primeiro; tocar na ordem em que
+  chegam põe na fila nessa ordem (montar a lista sem digitar).
+- **Nome novo parecido** com alguém da turma: "Parece com JOÃO S. — é ele?" (Sim / Não, é outra pessoa).
+- **Dois iguais de verdade** (dois "JOÃO"): pede para diferenciar ("JOÃO PEDRO"), como a lista já faz.
+- **Tela "Turma"** (no Histórico): renomear, juntar duplicados, arquivar quem parou de vir (o histórico
+  dele fica).
+- **Peladas antigas:** na 1ª vez, o app monta a turma com os nomes do histórico, junta os iguais (sem
+  acento/maiúsculas) e mostra os parecidos para você decidir (juntar ou separar).
+
+### 15.2 Relatório da temporada (no Histórico → Temporada)
+- **Temporada = o ano** (2026, 2027…), com um seletor de ano.
+- **Artilheiro do ano:** mais gols (desempate: menos peladas, depois mais vezes artilheiro do dia).
+- **Time do ano:** os jogadores que **mais vezes entraram na Seleção da pelada** (a seleção do dia já existe
+  para cada pelada), um time inteiro (tamanho da linha) + o **goleiro do ano**. Mostra "9× na seleção".
+  Desempate: mais vitórias, mais gols, mais presença.
+- **Goleiro do ano:** menor média de gols sofridos por jogo (com um mínimo de jogos).
+- **Mais vitórias**, **mais presente** (peladas) e o ranking completo (o que já existe).
+- **Imagem para compartilhar** "Time do ano 2026" no campo, igual à seleção da pelada (com a marca do app).
+- Como o histórico guarda todos os jogos de cada pelada, o relatório vale **também para as peladas que já
+  aconteceram** (reconhecidas pelo nome até a turma existir; depois, pelo id).
+
+### 15.3 Decisões (07/10)
+- **Presença mínima** para o Time do ano e o Goleiro do ano: **65% das peladas** da turma no ano (gente assídua; antes era 25%).
+- **Time do ano** (07/10): quem mais veio às peladas; no empate, mais gols, depois mais vitórias.
+- **Várias turmas** desde o começo ("Pelada de terça", "Pelada de sábado"): cada uma com seus jogadores,
+  histórico e relatório. A pelada nova escolhe a turma (fica a última usada). Peladas antigas vão para
+  uma turma "Minha pelada".
+- **Temporada = o ano.**
+- Entra no Premium (14.1): nas 10 peladas grátis e depois no Premium.
+
+### 15.4 Ordem de implementação
+1. ✅ Turma montada a partir do histórico + `id` estável nas peladas novas (sugestões na Lista).
+2. ✅ "Quem costuma vir" e "É ele?" para nomes parecidos.
+3. ✅ Relatório: seletor de ano, artilheiro, time do ano, goleiro do ano + imagem do Time do ano.
+4. ⏳ Tela "Turma" (renomear, juntar, arquivar). Já dá para **remover a turma** nos Ajustes (apaga os jogadores e as peladas dela, com confirmação).
+
+Feito em 07/10: turmas na nuvem (`usuarios/{uid}/turmas/{id}` + `jogadores/`), escolha da turma nos
+Ajustes, importação automática das peladas antigas para "Minha pelada", Histórico com abas Temporada /
+Peladas por turma e ano. Testes: `turma.test.ts`, `relatorio.test.ts` + e2e no navegador.

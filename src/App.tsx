@@ -58,7 +58,7 @@ export default function App() {
   const tela = modo === 'pelada' ? <PeladaApp />
     : modo === 'torneio' ? <TorneioApp onInicio={inicio} />
     : modo === 'caixa' ? <Caixa onVoltar={inicio} />
-    : modo === 'historico' ? <Historico onVoltar={inicio} />
+    : modo === 'historico' ? <Historico />
     : null
   // o menu da foto (no topo) tem "Voltar ao início"
   if (tela) return <VoltarAoInicio.Provider value={inicio}>{tela}</VoltarAoInicio.Provider>

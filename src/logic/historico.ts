@@ -6,7 +6,7 @@ import { normalizarNome } from '../utils/formatar'
 import { artilharia, goleirosMenosVazados, vitoriasPorJogador } from './estatisticas'
 
 /** Uma pelada encerrada, como fica guardada: o estado do dia só com as partidas terminadas. */
-export type PeladaGuardada = { data: number; dia: string; estado: Estado }
+export type PeladaGuardada = { data: number; dia: string; estado: Estado; turma?: string }
 
 /**
  * O que vai para o histórico ao encerrar: as partidas terminadas e a configuração.
@@ -15,9 +15,10 @@ export type PeladaGuardada = { data: number; dia: string; estado: Estado }
 export function peladaParaGuardar(estado: Estado, data: number, dia: string): PeladaGuardada {
   return {
     data, dia,
+    ...(estado.config.turma && { turma: estado.config.turma }),
     estado: {
       ...estado,
-      fila: [], filaTimes: [], emCampo: null, placar: [0, 0], gols: [], cartoes: [], subiram: [],
+      fila: [], filaTimes: [], emCampo: null, placar: [0, 0], gols: [], cartoes: [], subiram: [], machucados: [], foraDoJogo: [],
       pagamentos: {}, cobranca: null,
     },
   }

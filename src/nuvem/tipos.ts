@@ -1,5 +1,7 @@
 import type { DadosNuvem, Operacao } from '../logic/torneio'
 import type { PeladaGuardada } from '../logic/historico'
+import type { DadosDoPlano } from '../logic/plano'
+import type { JogadorDaTurma } from '../logic/turma'
 import type { StatusPagamento } from '../types/pelada'
 
 /** Cobrança do campo pago na nuvem (o link que vai para o grupo). */
@@ -13,10 +15,13 @@ export type CobrancaNuvem = {
   confirmarAuto: boolean // "Já paguei" já vale como pago
   jogadores: { id: string; nome: string }[]
 }
-/** Quem está usando o app: anônimo (sem login) ou com a conta Google. */
-export type Perfil = { uid: string; nome: string | null; email: string | null; foto: string | null; anonimo: boolean }
+/** Quem está usando o app: anônimo (sem login), com a conta Google ou com e-mail e senha. */
+export type Perfil = { uid: string; nome: string | null; email: string | null; foto: string | null; anonimo: boolean; comSenha?: boolean }
 /** Lançamento do caixa da pelada (fica no perfil de quem fez login). */
 export type Lancamento = { id: string; tipo: 'entrada' | 'saida'; valor: number; descricao: string; data: number }
+/** Turma ("Pelada de terça"): os jogadores de sempre de uma pelada. */
+export type Turma = { id: string; nome: string; criadaEm: number }
+
 /** Pelada encerrada no histórico (fica no perfil de quem fez login). */
 export type PeladaNoHistorico = PeladaGuardada & { id: string }
 
@@ -58,6 +63,10 @@ export interface Nuvem {
   ouvirPerfil(aoMudar: (perfil: Perfil | null) => void): () => void
   /** Entra com o Google, mantendo o que já era deste celular (torneios, cobranças). */
   entrarComGoogle(): Promise<void>
+  /** Entra com e-mail e senha (conta criada no app). */
+  entrarComEmail(email: string, senha: string): Promise<void>
+  /** Cria a conta com nome, e-mail e senha (erro auth/email-already-in-use se o e-mail já tem conta). */
+  criarContaComEmail(email: string, senha: string, nome: string): Promise<void>
   sair(): Promise<void>
   /** Lançamentos do caixa de quem está logado (vazio sem login), do mais novo ao mais antigo. */
   ouvirCaixa(aoMudar: (lancamentos: Lancamento[]) => void, aoErro?: (e: Error) => void): () => void
@@ -67,4 +76,28 @@ export interface Nuvem {
   ouvirHistorico(aoMudar: (peladas: PeladaNoHistorico[]) => void, aoErro?: (e: Error) => void): () => void
   guardarPelada(pelada: PeladaGuardada): Promise<void>
   apagarPelada(id: string): Promise<void>
+
+  // ---- turmas (jogadores de sempre; PLANO.md, seção 15) ----
+  ouvirTurmas(aoMudar: (turmas: Turma[]) => void): () => void
+  criarTurma(nome: string): Promise<string>
+  ouvirJogadoresDaTurma(turma: string, aoMudar: (jogadores: JogadorDaTurma[]) => void): () => void
+  /** Pelada encerrada: quem jogou ganha +1 de presença (e entra na turma, se for novo). */
+  registrarPeladaNaTurma(turma: string, jogadores: { id: string; nome: string }[], data: number): Promise<void>
+  /** Primeira vez: cria a turma com os jogadores das peladas antigas e liga essas peladas a ela. */
+  importarTurma(turma: string, jogadores: JogadorDaTurma[], peladas: string[]): Promise<void>
+  // ---- plano pago (PLANO.md, seção 14) ----
+  /** Plano (só o servidor grava), o que a conta e este celular já usaram e se a cobrança está ligada. */
+  ouvirPlano(aparelho: string, aoMudar: (dados: DadosDoPlano) => void): () => void
+  /** Soma 1 no uso da conta (e, na pelada, no do celular). As regras só deixam somar 1. */
+  contarUso(tipo: 'peladas' | 'torneios', aparelho: string): Promise<void>
+  /** Torneio novo com crédito: o servidor desconta 1. false = não tinha crédito. */
+  usarCreditoDeTorneio(): Promise<boolean>
+
+  /** Remove a turma, os jogadores dela e as peladas dela no histórico. */
+  removerTurma(turma: string, peladas: string[]): Promise<void>
+  /**
+   * Exclui a conta Google do app e tudo o que ela criou (histórico, turmas, caixa, torneios, cobranças).
+   * Pode pedir a conta do Google de novo (o Google exige login recente). Erro "cancelou" = desistiu.
+   */
+  excluirConta(senha?: string): Promise<void>
 }
