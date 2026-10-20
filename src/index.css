@@ -204,9 +204,8 @@ label { min-width: 0; }
   45% { transform: translateY(-110px) rotateX(990deg); }
   100% { transform: translateY(0) rotateX(1980deg); }
 }
-/* Fim de partida nas escalações: o vencedor brilha; quem saiu leva um X rápido e dá lugar a quem entra,
+/* Fim de partida nas escalações: quem saiu leva um X rápido e dá lugar a quem entra,
    que fica piscando em amarelo até o fim da troca (3,8 s), para quem chama os jogadores achar logo */
-.coluna-venceu { animation: brilhar 1.1s ease-in-out .2s 2; position: relative; z-index: 1; }
 /* Troca: o conteúdo velho e o novo ficam empilhados no mesmo lugar */
 .pilha { display: grid; position: relative; }
 .pilha > * { grid-area: 1 / 1; }
@@ -233,7 +232,6 @@ label { min-width: 0; }
 .empurra .trilho { position: relative; animation: empurrar .9s cubic-bezier(.5, 0, .3, 1) .35s both; }
 .empurra .velho { position: absolute; left: 0; right: 0; top: 100%; }
 @keyframes empurrar { from { transform: translateY(-100%); } to { transform: none; } }
-@keyframes brilhar { 50% { box-shadow: inset 0 0 0 4px var(--amarelo), 0 0 22px var(--amarelo); } }
 @keyframes chamar { 50% { opacity: 1; } }
 @keyframes riscar { to { stroke-dashoffset: 0; } }
 @keyframes sair { to { opacity: 0; transform: translateY(14px); } }
@@ -241,7 +239,6 @@ label { min-width: 0; }
 @keyframes sumir { to { opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .coluna-venceu { animation: none; }
   .troca .velho, .troca .novo, .xis, .xis line { animation-duration: .01s; }
   .chamando::after { animation: none; opacity: .6; }
   .empurra .trilho { animation-duration: .01s; }

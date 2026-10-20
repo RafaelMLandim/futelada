@@ -117,7 +117,7 @@ export function Escalacoes({ pelada, decorrido, transicao, volta, onJogador }: {
 
     return (
       <div key={`${lado}-${transicao?.numero ?? 0}-${volta?.id ?? 0}`}
-        className={[resultado === 'venceu' && !trocou && !volta && 'coluna-venceu', chamando(lado) && (trocou ? 'chamando depois-da-troca' : 'chamando')].filter(Boolean).join(' ') || undefined}
+        className={chamando(lado) ? (trocou ? 'chamando depois-da-troca' : 'chamando') : undefined}
         style={lado === 'A' ? { borderRight: '2px solid #e3e8d6' } : undefined}>
         {saindo ? (
           // Desfez: o time certo desce de cima e empurra o errado de volta para a fila
