@@ -36,9 +36,25 @@ function FaixaDoTime({ numero, colete, etiqueta }: { numero: number; colete: Col
   )
 }
 
+/**
+ * Linha do goleiro do time que está saindo (só para mostrar): tem a mesma altura da linha de verdade, para as
+ * duas colunas ficarem alinhadas durante a troca. `comGoleirosFixos`: aparece como a caixinha de escolher.
+ */
+function LinhaDoGoleiro({ nome, comGoleirosFixos }: { nome: string | null; comGoleirosFixos: boolean }) {
+  return (
+    <div className="tr" style={{ minHeight: 38, fontSize: 14, paddingRight: 4 }}>
+      <span className="no g">G</span>
+      {comGoleirosFixos
+        ? <span className="nome" style={{ display: 'flex' }}><select className="sel" disabled tabIndex={-1} value=""><option value="">{nome ?? 'sem goleiro'}</option></select></span>
+        : <span className="nome mut">Goleiro</span>}
+    </div>
+  )
+}
+
 // Os dois times em campo, com goleiro fixo, gols e cartões. Tocar no jogador abre as ações.
 export function Escalacoes({ pelada, decorrido, transicao, volta, onJogador }: {
-  pelada: Pelada; decorrido: number; transicao: Partida | null; volta: Volta | null; onJogador: (lado: Lado, jogador: Jogador) => void
+  pelada: Pelada; decorrido: number; transicao: Partida | null; volta: Volta | null
+  onJogador?: (lado: Lado, jogador: Jogador) => void // sem ações (quem só acompanha): os jogadores não abrem nada
 }) {
   const { app, aplicar } = pelada
   const { estado } = app
@@ -47,6 +63,11 @@ export function Escalacoes({ pelada, decorrido, transicao, volta, onJogador }: {
 
   const { A, B } = emCampo
   const lider = A.vitoriasSeguidas >= B.vitoriasSeguidas ? A : B
+  // O time que acabou de entrar fica piscando até o play da partida (para quem chama os jogadores achar logo)
+  const ultima = estado.historico.at(-1)
+  const naoComecou = !app.crono.rodando && app.crono.acumulado === 0
+  const chamando = (lado: Lado) => !!ultima && naoComecou && !volta
+    && emCampo[lado].numero !== ultima.timeA.numero && emCampo[lado].numero !== ultima.timeB.numero
 
   // Fim de partida: por alguns segundos, a coluna de quem saiu recebe um X e os
   // nomes dão lugar aos do time que entra; a coluna de quem ficou mostra o resultado.
@@ -58,7 +79,7 @@ export function Escalacoes({ pelada, decorrido, transicao, volta, onJogador }: {
     const resultado = transicao ? resultadoDe(transicao, lado) : null
     const saindo = volta && volta.times[lado].numero !== time.numero ? volta.times[lado] : null
     const etiqueta = volta ? { texto: saindo ? '↶ Voltou' : '↶ Desfeito', classe: 't-y' }
-      : trocou ? { texto: '↑ Entra', classe: 't-y' } : resultado ? ROTULO[resultado] : null
+      : trocou || chamando(lado) ? { texto: '↑ Entra', classe: 't-y' } : resultado ? ROTULO[resultado] : null
 
     const atual = (
       <div>
@@ -69,7 +90,7 @@ export function Escalacoes({ pelada, decorrido, transicao, volta, onJogador }: {
           {config.goleiros.length > 0 ? (
             <label className="nome" style={{ display: 'flex' }}>
               <span className="vh">Goleiro do Time {time.numero}</span>
-              <select className="sel" value={goleiros[lado] ?? ''}
+              <select className="sel" value={goleiros[lado] ?? ''} disabled={!onJogador}
                 onChange={(ev) => aplicar((e) => escolherGoleiro(e, lado, ev.target.value || null))}>
                 <option value="">sem goleiro</option>
                 {config.goleiros.map((g) => <option key={g} value={g}>{g}</option>)}
@@ -81,8 +102,8 @@ export function Escalacoes({ pelada, decorrido, transicao, volta, onJogador }: {
           const fora = expulso(estado, j.id)
           const azul = restanteAzul(estado, j.id, decorrido)
           return (
-            <button key={j.id} className="tr linha-jogador" style={{ minHeight: 40, fontSize: 14, opacity: fora ? 0.55 : 1 }}
-              aria-label={`Ações de ${j.nome}`} onClick={() => onJogador(lado, j)}>
+            <button key={j.id} className="tr linha-jogador" style={{ minHeight: 40, fontSize: 14, opacity: fora ? 0.55 : 1 }} disabled={!onJogador}
+              aria-label={`Ações de ${j.nome}`} onClick={() => onJogador?.(lado, j)}>
               <span className="no">{i + 1}</span>
               <span className="nome" style={{ flex: '0 1 auto', textDecoration: fora ? 'line-through' : undefined }}>{j.nome}</span>
               {substitutoDe(estado, j.id) ? <Troca de={substitutoDe(estado, j.id)!.jogador.nome} /> : <Subiu de={subiuDe(estado, j.id)} />}
@@ -95,7 +116,8 @@ export function Escalacoes({ pelada, decorrido, transicao, volta, onJogador }: {
     )
 
     return (
-      <div key={`${lado}-${transicao?.numero ?? 0}-${volta?.id ?? 0}`} className={resultado === 'venceu' && !trocou && !volta ? 'coluna-venceu' : undefined}
+      <div key={`${lado}-${transicao?.numero ?? 0}-${volta?.id ?? 0}`}
+        className={[resultado === 'venceu' && !trocou && !volta && 'coluna-venceu', chamando(lado) && (trocou ? 'chamando depois-da-troca' : 'chamando')].filter(Boolean).join(' ') || undefined}
         style={lado === 'A' ? { borderRight: '2px solid #e3e8d6' } : undefined}>
         {saindo ? (
           // Desfez: o time certo desce de cima e empurra o errado de volta para a fila
@@ -104,6 +126,7 @@ export function Escalacoes({ pelada, decorrido, transicao, volta, onJogador }: {
               <div className="novo">{atual}</div>
               <div className="velho" aria-hidden="true">
                 <FaixaDoTime numero={saindo.numero} colete={colete} etiqueta={null} />
+                <LinhaDoGoleiro nome={null} comGoleirosFixos={config.goleiros.length > 0} />
                 {saindo.jogadores.map((j, i) => (
                   <div key={j.id} className="tr" style={{ minHeight: 40, fontSize: 14 }}>
                     <span className="no">{i + 1}</span><span className="nome">{j.nome}</span>
@@ -116,6 +139,7 @@ export function Escalacoes({ pelada, decorrido, transicao, volta, onJogador }: {
           <div className="pilha troca">
             <div className="velho" aria-hidden="true">
               <FaixaDoTime numero={antes.numero} colete={colete} etiqueta={resultado ? ROTULO[resultado] : null} />
+              <LinhaDoGoleiro nome={transicao?.goleiros?.[lado] ?? null} comGoleirosFixos={config.goleiros.length > 0} />
               {antes.jogadores.map((j, i) => (
                 <div key={j.id} className="tr" style={{ minHeight: 40, fontSize: 14 }}>
                   <span className="no">{i + 1}</span><span className="nome">{j.nome}</span>
@@ -138,7 +162,7 @@ export function Escalacoes({ pelada, decorrido, transicao, volta, onJogador }: {
       <div className="ph">
         <span className="row" style={{ gap: 8 }}>
           Escalações
-          {goleiros.A && goleiros.B && (
+          {onJogador && goleiros.A && goleiros.B && (
             <button className="tag t-y" style={{ border: 0, cursor: 'pointer' }} onClick={() => aplicar(trocarGoleiros)}>⇄ Trocar G</button>
           )}
         </span>

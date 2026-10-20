@@ -43,6 +43,15 @@ export function gol(estado: Estado, lado: Lado, autor: Jogador | null = null, te
   return { ...estado, placar, gols: [...estado.gols, novo] }
 }
 
+/** Quem deu o passe para o gol de número `indice` da partida (null = ninguém ou não sabe). */
+export function passe(estado: Estado, indice: number, jogador: Jogador | null): Estado {
+  const atual = estado.gols[indice]
+  if (!atual) return estado
+  const { assistenciaId: _id, assistencia: _nome, ...semPasse } = atual
+  const novo: Gol = jogador ? { ...semPasse, assistenciaId: jogador.id, assistencia: jogador.nome } : semPasse
+  return { ...estado, gols: estado.gols.map((g, i) => (i === indice ? novo : g)) }
+}
+
 /** Algum time chegou ao limite de gols? (sem limite configurado, nunca) */
 export function acabouPorGols(estado: Estado): boolean {
   const { gols } = estado.config

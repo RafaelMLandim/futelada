@@ -3,7 +3,7 @@
 // ao mesmo tempo. Dura até ser apagado: serve para um dia ou para semanas.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { campeao, diferencas, juntar, novoCodigo, regrasPadrao, separar } from '../logic/torneio'
+import { campeao, converterGoleirosAntigos, diferencas, juntar, novoCodigo, regrasPadrao, separar } from '../logic/torneio'
 import { nuvemDisponivel, obterNuvem, type Nuvem } from '../nuvem'
 import type { MesarioNoCampo } from '../nuvem/tipos'
 import type { PartidaTorneio, Torneio } from '../types/torneio'
@@ -14,13 +14,16 @@ const CHAVE_ATIVO = 'torneio:ativo'
 /** Torneio compartilhado que este celular está acompanhando. */
 export type Ativo = { codigo: string; campo: number | null; nome?: string; campeao?: string }
 
-/** Completa torneios salvos por versões antigas (antes dos jogos simultâneos, dos tempos e da prorrogação). */
+/**
+ * Completa torneios salvos por versões antigas (antes dos jogos simultâneos, dos tempos, da prorrogação
+ * e do goleiro como jogador do time).
+ */
 export function completar(t: Torneio): Torneio {
   const antigo = t.emAndamento as unknown
   const emAndamento: PartidaTorneio[] = Array.isArray(antigo)
     ? antigo
     : antigo ? [{ ...(antigo as PartidaTorneio), campo: 1 }] : []
-  return { ...t, regras: { ...regrasPadrao, ...t.regras }, emAndamento }
+  return converterGoleirosAntigos({ ...t, regras: { ...regrasPadrao, ...t.regras }, emAndamento })
 }
 
 const ler = <T,>(chave: string): T | null => {

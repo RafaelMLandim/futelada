@@ -98,6 +98,7 @@ function Relatorio({ peladas, ano, turma }: { peladas: PeladaNoHistorico[]; ano:
     <>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         {destaque('Artilheiro do ano', r.artilheiro?.nome, qtd(r.artilheiro?.gols ?? 0, 'gol', 'gols'))}
+        {r.garcom && destaque('Garçom do ano', r.garcom.nome, qtd(r.garcom.assistencias, 'assistência', 'assistências'))}
         {destaque('Goleiro do ano', r.goleiroDoAno?.nome, `${media(r.goleiroDoAno?.media ?? 0)} gols sofridos por jogo`)}
         {destaque('Mais vitórias', r.jogadores[0]?.nome, qtd(r.jogadores[0]?.vitorias ?? 0, 'vitória', 'vitórias'))}
         {destaque('Mais presente', r.maisPresente?.nome, `${r.maisPresente?.peladas ?? 0} de ${qtd(r.peladas, 'pelada', 'peladas')}`)}

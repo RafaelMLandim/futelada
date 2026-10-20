@@ -483,6 +483,19 @@ src/
   Grupo A sempre no Campo 1, Grupo B no Campo 2… (mais grupos que campos: revezam).
   A lista mostra o próximo jogo de cada campo livre. O mata-mata usa qualquer campo.
 
+### 9.5.3 Goleiro no torneio
+
+- **O goleiro é um jogador do time**, marcado com `goleiro: true`. Cada time tem exatamente um goleiro, obrigatório no cadastro. Como é um jogador comum, cartão, suspensão, substituição, pênalti, artilharia e estatísticas valem para ele sem regra especial.
+- **No jogo**, ele começa em campo, no gol. O jogo guarda qual jogador em campo está no gol de cada lado, em `partida.goleiros`.
+  - **Do banco:** o reserva que substitui o goleiro, pela substituição normal, vira o goleiro.
+  - **Da linha:** "Ir para o gol" nas ações do jogador faz quem está na linha virar o goleiro. Os dois trocam de posição, sem contar substituição.
+  - **Goleiro expulso:** o gol fica vazio e o app já pergunta quem vai para o gol. Só alguém da linha pode ir, e o time fica com um a menos, porque ninguém entra no lugar de expulso.
+  - **Goleiro suspenso:** o jogo começa com o gol vazio. Alguém da linha vai para o gol, ou um reserva entra direto no gol, sem contar substituição.
+- **Gols sofridos e "goleiro menos vazado"** usam quem estava no gol na hora.
+- **Torneios antigos**, que guardavam `goleiro: "NOME"` fora da lista, são convertidos ao abrir: o nome vira um jogador do time com o id `<time>-goleiro`. Cada celular converte do mesmo jeito.
+- **Sem "marcar o gol depois".** No torneio o gol é sempre dado ao jogador na hora.
+- **Sem desfazer.** O torneio é acompanhado por vários celulares pela nuvem, e um resultado encerrado muda a tabela, a classificação e a chave. Para corrigir um gol durante o jogo, usa-se "remover gol".
+
 ### 9.6 O que reaproveita da pelada
 | Já temos | No torneio |
 |---|---|
@@ -725,11 +738,16 @@ primeiro, App Store depois). Só o **organizador** paga; mesários e jogadores u
 - Quem já usava antes do plano pago: **período de cortesia** (ex.: 30 dias de Premium) para não perder nada.
 
 ### 14.4 O que precisa antes de cobrar
-1. **Empresa:** o organizador do app já tem **ME** (07/10). Conta do Play Console como **organização**
-   (CNPJ + número D-U-N-S, grátis) e **perfil de pagamentos** no CNPJ (US$ 25, verificação). Conferir com o
-   contador se o CNAE cobre venda de app (ex.: 6203-1/00, licenciamento de programas não customizáveis).
-   **Nota fiscal:** no Brasil quem vende ao usuário é o Google (Google Commerce Ltd., "merchant of record");
-   a ME emite **uma nota por mês contra o Google** (exportação de serviço), não uma por assinante.
+1. **Conta do Play Console como pessoa física** (decidido em 16/10). A conta de organização pedia o número
+   D-U-N-S, e o pedido grátis pelo Dunsguide (CIAL) exigia uma planilha comercial, os 3 últimos balanços e
+   SPED contábil: burocrático demais. A conta pessoal:
+   - custa US$ 25 e pede verificação de identidade com documento;
+   - mostra o nome de quem publica na loja;
+   - por ser **conta pessoal nova**, precisa de **teste fechado com 12 testadores por 14 dias** antes de publicar em produção.
+   **Recebimento:** o perfil de pagamentos fica no CPF. Ver com o contador como declarar (receita do exterior,
+   carnê-leão) ou migrar para a ME depois. Dá para transferir o app para uma conta de organização no futuro.
+   (Plano antigo: conta de organização no CNPJ da ME, com D-U-N-S. O pedido no Dunsguide ficou incompleto em
+   16/10; nada foi enviado na etapa de dados da empresa.)
 2. **Firebase no plano Blaze** (pago por uso; necessário para as funções do servidor). Custo perto de zero no início.
 3. **Conta no RevenueCat** ligada ao Play Console.
 4. **Termos de uso e política de privacidade** (página no site) e o formulário de "segurança de dados".
@@ -739,9 +757,17 @@ primeiro, App Store depois). Só o **organizador** paga; mesários e jogadores u
    Feito (09/10, local): menu da foto → "Excluir conta" (pede o Google de novo se o login for antigo; apaga
    histórico, turmas, caixa, torneios e cobranças do dono e a conta; ficam `contadores`/`aparelhos`, sem nome,
    e `planos`, registro de compra). Página `public/excluir-conta.html` (link para o Play Console).
-   D-U-N-S: pedido em 09/10 pelo Dunsguide (CIAL, a D&B no Brasil), aguardando.
-6. **Chave de assinatura oficial** do app (a de teste não serve). Conta de organização não precisa do teste
-   fechado de 14 dias com 12 pessoas (exigido só de contas pessoais novas) — confirmar ao criar a conta.
+6. **Chave de assinatura oficial** do app (a de teste não serve).
+7. **Teste fechado:** 12 testadores (contas Google) com o app instalado pela Play Store durante 14 dias seguidos,
+   antes de pedir a publicação em produção (exigência para conta pessoal nova).
+8. **Material da loja pronto (16/10), na pasta `loja/`:**
+   - textos e respostas dos formulários;
+   - ícone, imagem de destaque e 8 capturas;
+   - o roteiro do teste fechado e a lista de verificação para quando a conta for aprovada.
+
+   O app de loja sai com `npm run android:loja` (`.aab` assinado com a chave de upload, que fica em
+   `~/.config/dois-ou-dez/`, fora do Git, e já está cadastrada no Firebase). Depois do 1º envio, cadastrar no
+   Firebase a chave de assinatura do Google (está em `loja/README.md`).
 
 ### 14.5 Ordem de implementação
 1. ✅ **Conta com plano** (08/10): `planos/{uid}` (só o servidor grava; o dono lê) + tela **"Meu plano"** no
@@ -827,3 +853,52 @@ Sem dado pessoal: só o **apelido** (o mesmo que já se digita hoje). Fica no pe
 Feito em 07/10: turmas na nuvem (`usuarios/{uid}/turmas/{id}` + `jogadores/`), escolha da turma nos
 Ajustes, importação automática das peladas antigas para "Minha pelada", Histórico com abas Temporada /
 Peladas por turma e ano. Testes: `turma.test.ts`, `relatorio.test.ts` + e2e no navegador.
+
+## 16. Pelada compartilhada (acompanhar e passar o controle)
+
+**Por quê:** numa pelada o celular de quem organizava descarregou e tudo parou. Compartilhar a pelada resolve isso. O recurso é **grátis**, porque serve para ajudar quem monta a pelada.
+
+### 16.1 Papéis (o mesmo modelo dos mesários do torneio, seção 10.2)
+- **Dono:** quem criou a pelada. Compartilha dois links.
+- **Quem acompanha** (`?ver=CÓDIGO`):
+  - **Abre sem login**, como o link de pagamento.
+  - Vê **Fila, Jogo e Tabela ao vivo**: placar, cronômetro, gols e a fila.
+  - Não vê Ajustes e não tem nenhuma ação: não marca gol, não dá cartão, não encerra, não desfaz nem mexe na lista.
+- **Quem assume o controle** (link de controle, com uma chave secreta):
+  - Pede login.
+  - Vira quem marca a pelada. **Só um celular controla por vez**, como o campo travado do mesário. O celular anterior passa a só acompanhar.
+  - O dono retoma o controle com um toque.
+- **Encerrar a pelada:** o encerramento vai sempre para o **histórico, o caixa e a turma do dono**, nunca para os de quem ajudou.
+
+### 16.2 Nuvem
+- **`peladas/{código}`:** `{ dono, nomeDoDono, controlador, nomeDoControlador, app (estado + cronômetro), encerrada, atualizadaEm }`.
+  - Qualquer celular com o login anônimo lê.
+  - Só o `controlador` grava. A pilha do desfazer não vai para a nuvem: quem assume começa sem ter o que desfazer.
+- **`peladas/{código}/privado/chave`:** a chave do link de controle. Só o dono lê.
+- **Assumir o controle:** quem tem o link grava a chave em `pedidos/{uid}` e troca o `controlador`. A regra confere se a chave bate. O dono retoma sem chave.
+- O cronômetro vai como horários (início e acumulado). Cada celular calcula o tempo pelo próprio relógio.
+- **Quem assume não mexe na pelada salva no próprio celular:** a pelada de outra pessoa fica só na memória.
+- **Na tela:**
+  - **Pelada encerrada:** quem assiste e quem ajudou caem direto na **Tabela final**, com a faixa "Pelada encerrada" e a data do dia da pelada. Fica só para ver, sem ação nenhuma, sem as abas Fila e Jogo e sem levar ao resto do app (quem recebeu o link não usa a plataforma). A Tabela já tem resultados, classificação, artilharia, seleção, cartões e o botão de compartilhar o resumo.
+  - O dono vê a mesma tela quando quem ajudou encerra, com o botão "Fechar".
+  - Quem está no controle aparece numa faixa no topo.
+  - O dono que não está no controle só acompanha, com o botão "Retomar o controle".
+  - **Quem ajudou encerrou:** o celular do dono guarda sozinho no histórico e na turma dele, porque só ele grava na própria conta. Depois mostra o resultado final com "guardada no seu histórico". Se o celular do dono estiver desligado nessa hora, a pelada fica na nuvem e é guardada quando ele abrir o app.
+
+### 16.2.1 Links no app instalado (App Links, 18/10)
+- **Com o app instalado:** os links do site (`?ver=`, `?controle=`, `?pagar=`, `?entrar=`) abrem dentro do app, já logado na conta da pessoa.
+- **Sem o app:** os links abrem no navegador. Para acompanhar, a pessoa entra como anônima, sem login.
+- **Como funciona:**
+  - o manifesto Android declara os links do site;
+  - o site publica `/.well-known/assetlinks.json` com as impressões digitais das chaves (por isso o `firebase.json` deixa passar a pasta `.well-known`);
+  - `src/utils/linksDoApp.ts` põe os parâmetros do link no endereço antes de o App carregar.
+- **Chaves no `assetlinks.json`:** hoje, a de upload e a de teste (debug). **Depois do 1º envio à Play Store, incluir a chave de assinatura do Google.**
+
+### 16.3 Etapas
+1. ✅ Link para acompanhar (`?ver=`): o dono publica e quem acompanha vê só para leitura.
+2. ✅ Passar o controle (`?controle=…&chave=…`):
+   - chave secreta e um celular por vez;
+   - retomar o controle;
+   - encerramento indo para o histórico do dono;
+   - QR code para passar de um celular para o outro.
+3. Testar no Firebase de verdade, depois de publicar as regras (`firestore.rules`).

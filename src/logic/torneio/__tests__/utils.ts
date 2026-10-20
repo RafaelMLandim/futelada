@@ -19,7 +19,11 @@ export function torneioCom(n: number, formato: Formato, regras: Partial<RegrasTo
   let t = novoTorneio('Copa', { ...regrasPadrao, formato, ...regras })
   for (let i = 1; i <= n; i++) {
     const time = novoTime(`Time ${i}`, '#000')
-    time.jogadores = Array.from({ length: jogadores }, (_, k) => ({ ...novoJogador(`T${i}J${k + 1}`) }))
+    // todo time tem goleiro (o primeiro da lista, marcado como goleiro) e os `jogadores` de linha
+    time.jogadores = [
+      { id: `${time.id}-goleiro`, nome: `Goleiro ${time.nome}`, goleiro: true },
+      ...Array.from({ length: jogadores }, (_, k) => ({ ...novoJogador(`T${i}J${k + 1}`) })),
+    ]
     time.fechado = true
     t = adicionarTime(t, time)
   }

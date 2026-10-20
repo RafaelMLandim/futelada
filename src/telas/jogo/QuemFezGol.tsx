@@ -103,3 +103,40 @@ export function QuemFezGol({ pelada, lado, onGol, onFechar }: {
       naoSei="Não sei · só marcar o gol" onEscolher={(autor, contra) => onGol(lado, autor, contra)} onFechar={onFechar} />
   )
 }
+
+// Assistências ligadas: depois de quem fez o gol, pergunta quem deu o passe (Troféu Garçom).
+export function QuemDeuOPasse({ pelada, lado, autorId, onPasse, onFechar }: {
+  pelada: Pelada; lado: Lado; autorId: string; onPasse: (jogador: Jogador | null) => void; onFechar: () => void
+}) {
+  const { estado } = pelada.app
+  if (!estado.emCampo) return null
+  const time = estado.emCampo[lado]
+  const goleiroFixo = estado.goleiros[lado]
+  const companheiros = [...time.jogadores, ...(goleiroFixo ? [jogadorGoleiro(goleiroFixo)] : [])].filter((j) => j.id !== autorId)
+  const escolher = (jogador: Jogador | null) => {
+    onFechar()
+    onPasse(jogador)
+  }
+  return (
+    <div className="modal" role="dialog" aria-modal="true" aria-label="Quem deu o passe?" onClick={() => escolher(null)}>
+      <section className="panel" onClick={(ev) => ev.stopPropagation()}>
+        <div className="ph">
+          <span className="row" style={{ gap: 8 }}>
+            <Camisa cor={estado.config.coletes[lado].cor} contorno="#fff" />Gol do Time {time.numero}
+          </span>
+        </div>
+        <div className="pb" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>Quem deu o passe?</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+            {companheiros.map((j) => (
+              <button key={j.id} className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }} onClick={() => escolher(j)}>
+                {j.id.startsWith('goleiro:') ? `🧤 ${j.nome}` : j.nome}
+              </button>
+            ))}
+          </div>
+          <button className="btn sm" onClick={() => escolher(null)}>Ninguém · não sei</button>
+        </div>
+      </section>
+    </div>
+  )
+}

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Barra } from '../../components/Barra'
 import { Camisa } from '../../components/Camisa'
 import { Icone } from '../../components/Icone'
-import { adicionarTime, editarTime, novoTime, removerTime, timesJogando } from '../../logic/torneio'
+import { adicionarTime, editarTime, goleiroDoTime, jogadoresDeLinha, novoTime, removerTime, timesJogando } from '../../logic/torneio'
 import type { TorneioHook } from '../../store/torneio'
 import type { TimeTorneio } from '../../types/torneio'
 import { CORES_TORNEIO, textoSobre } from '../../utils/cores'
@@ -58,8 +58,8 @@ export function Times({ hook, onSorteio }: { hook: TorneioHook; onSorteio: () =>
                   <Icone nome="editar" tamanho={14} /> Editar
                 </button>}
             </div>
-            {time.goleiro && <div className="tr"><span className="no g">G</span><span className="nome">{time.goleiro}</span></div>}
-            {time.jogadores.map((j, i) => (
+            {goleiroDoTime(time) && <div className="tr"><span className="no g">G</span><span className="nome">{goleiroDoTime(time)!.nome}</span></div>}
+            {jogadoresDeLinha(time).map((j, i) => (
               <div key={j.id} className="tr" style={{ minHeight: 36, fontSize: 14, color: i >= linha ? 'var(--mut)' : undefined }}>
                 <span className="no" style={i >= linha ? { background: '#9aa4ae' } : undefined}>{i + 1}</span>
                 <span className="nome">{j.nome}</span>

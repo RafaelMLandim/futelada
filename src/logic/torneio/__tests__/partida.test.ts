@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   campoDoJogo, campoLiberadoDosGrupos, camposLivres, cartaoNaPartida, proximosPorCampo, encerrarPartida, golNaPartida, iniciarPartida, jogosDisponiveis, jogosParaComecar,
-  removerGolDaPartida, situacaoDisciplinar, substituirNaPartida, timesDoJogo,
+  jogadoresDeLinha, removerGolDaPartida, situacaoDisciplinar, substituirNaPartida, timesDoJogo,
 } from '..'
 import type { Torneio } from '../../../types/torneio'
 import { sorteado, torneioCom } from './utils'
@@ -17,7 +17,6 @@ function comecarPrimeiro(t: Torneio) {
 describe('jogo do torneio', () => {
   it('gols contam no placar, o goleiro do outro time sofre, e o resultado vai para a tabela', () => {
     const base = sorteado(torneioCom(4, 'pontos'))
-    base.times.forEach((x) => { x.goleiro = `Goleiro ${x.nome}` })
     let { t, jogo, A, B } = comecarPrimeiro(base)
     t = golNaPartida(t, jogo.id, 'A', A.jogadores[0])
     t = golNaPartida(t, jogo.id, 'A', null)
@@ -44,8 +43,8 @@ describe('jogo do torneio', () => {
 
   it('substituição respeita expulsão; quem entrou conta como "jogou"', () => {
     let { t, jogo, A } = comecarPrimeiro(sorteado(torneioCom(2, 'pontos')))
-    const [j1, j2] = A.jogadores
-    const [r1, r2] = A.jogadores.slice(4)
+    const [j1, j2] = jogadoresDeLinha(A)
+    const [r1, r2] = jogadoresDeLinha(A).slice(4)
     t = cartaoNaPartida(t, jogo.id, 'A', j1, 'vermelho', 0)
     expect(() => substituirNaPartida(t, jogo.id, 'A', j1.id, r1.id)).toThrow('Expulso')
     t = substituirNaPartida(t, jogo.id, 'A', j2.id, r1.id)

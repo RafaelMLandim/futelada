@@ -16,8 +16,13 @@ export function definirAutorDoGol(estado: Estado, partida: number | null, indice
   const trocar = (gols: Gol[]): Gol[] | null => {
     const g = gols[indice]
     if (!g) return null
-    const { contra: _antes, ...resto } = g
-    const novo: Gol = { ...resto, autorId: autor?.id ?? null, autor: autor?.nome ?? null, ...(contra && autor && { contra: true }) }
+    const { contra: _antes, assistenciaId, assistencia, ...resto } = g
+    // o passe continua valendo se ainda é gol de alguém do time e não foi o próprio autor que deu
+    const mantemPasse = assistenciaId && autor && !contra && assistenciaId !== autor.id
+    const novo: Gol = {
+      ...resto, autorId: autor?.id ?? null, autor: autor?.nome ?? null, ...(contra && autor && { contra: true }),
+      ...(mantemPasse && { assistenciaId, assistencia }),
+    }
     return gols.map((x, k) => (k === indice ? novo : x))
   }
   if (partida === null) {

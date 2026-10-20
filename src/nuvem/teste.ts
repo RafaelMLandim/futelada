@@ -153,6 +153,23 @@ export function criarNuvemDeTeste(servidor: string): Nuvem {
     ouvirCobranca() { return () => {} },
     async avisarPagamento() { throw new Error('Campo pago só funciona com o Firebase') },
     async apagarCobranca() {},
+    // pelada compartilhada: no servidor de teste (outro "celular" acompanha ao vivo)
+    async criarPeladaCompartilhada(codigo, dados, chave) {
+      await fetch(url('pelada-criar', codigo), { method: 'POST', body: JSON.stringify({ dados, chave, uid: await this.usuario() }) })
+    },
+    async publicarPeladaCompartilhada(codigo, dados) {
+      await fetch(url('pelada-publicar', codigo), { method: 'POST', body: JSON.stringify({ dados, uid: await this.usuario() }) })
+    },
+    async assumirControleDaPelada(codigo, chave, nome) {
+      const resposta = await fetch(url('pelada-assumir', codigo), { method: 'POST', body: JSON.stringify({ chave, nome, uid: await this.usuario() }) })
+      return resposta.ok
+    },
+    ouvirPeladaCompartilhada(codigo, aoMudar, aoErro) {
+      const fonte = new EventSource(url('pelada-ouvir', codigo))
+      fonte.onmessage = (evento) => aoMudar(JSON.parse(evento.data))
+      fonte.onerror = () => aoErro?.(new Error('servidor de teste fora do ar'))
+      return () => fonte.close()
+    },
 
   }
 }

@@ -2,7 +2,8 @@ import type { DadosNuvem, Operacao } from '../logic/torneio'
 import type { PeladaGuardada } from '../logic/historico'
 import type { DadosDoPlano } from '../logic/plano'
 import type { JogadorDaTurma } from '../logic/turma'
-import type { StatusPagamento } from '../types/pelada'
+import type { Cronometro } from '../types/app'
+import type { Estado, StatusPagamento } from '../types/pelada'
 
 /** Cobrança do campo pago na nuvem (o link que vai para o grupo). */
 export type CobrancaNuvem = {
@@ -15,6 +16,20 @@ export type CobrancaNuvem = {
   confirmarAuto: boolean // "Já paguei" já vale como pago
   jogadores: { id: string; nome: string }[]
 }
+/**
+ * Pelada compartilhada (PLANO.md, seção 16): o que quem acompanha vê ao vivo. O cronômetro vai como
+ * horários (cada celular calcula o tempo pelo próprio relógio).
+ */
+export type PeladaCompartilhada = {
+  dono: string // uid de quem criou a pelada (o encerramento vai para o histórico dele)
+  nomeDoDono: string | null
+  controlador: string // uid de quem marca a pelada agora (só ele grava; um celular por vez)
+  nomeDoControlador: string | null
+  app: { estado: Estado; crono: Cronometro }
+  encerrada: boolean // acabou (encerrada ou cancelada): o link mostra o resultado final
+  atualizadaEm: number
+}
+
 /** Quem está usando o app: anônimo (sem login), com a conta Google ou com e-mail e senha. */
 export type Perfil = { uid: string; nome: string | null; email: string | null; foto: string | null; anonimo: boolean; comSenha?: boolean }
 /** Lançamento do caixa da pelada (fica no perfil de quem fez login). */
@@ -58,6 +73,19 @@ export interface Nuvem {
   avisarPagamento(codigo: string, jogadorId: string, aviso: AvisoPagamento | null): Promise<void>
   /** Pelada cancelada: o link de pagamento deixa de existir (só o organizador). */
   apagarCobranca(codigo: string): Promise<void>
+
+  // ---- pelada compartilhada (PLANO.md, seção 16) ----
+  /** Dono compartilha a pelada: cria na nuvem (ele no controle) e guarda a chave do link de controle. */
+  criarPeladaCompartilhada(codigo: string, dados: Pick<PeladaCompartilhada, 'app' | 'nomeDoDono'>, chave: string): Promise<void>
+  /** Quem está no controle publica a pelada (a cada mudança) para quem acompanha. */
+  publicarPeladaCompartilhada(codigo: string, dados: Pick<PeladaCompartilhada, 'app' | 'encerrada' | 'atualizadaEm'>): Promise<void>
+  /**
+   * Assume o controle da pelada: com a chave do link de controle (quem vai ajudar) ou sem chave (o dono retomando).
+   * false = a chave não confere (ou não é o dono).
+   */
+  assumirControleDaPelada(codigo: string, chave: string | null, nome: string | null): Promise<boolean>
+  /** Acompanha a pelada ao vivo (null = o código não existe). Não precisa de login (conta anônima). */
+  ouvirPeladaCompartilhada(codigo: string, aoMudar: (dados: PeladaCompartilhada | null) => void, aoErro?: (erro: Error) => void): () => void
 
   // ---- conta (login com Google) e caixa da pelada ----
   ouvirPerfil(aoMudar: (perfil: Perfil | null) => void): () => void

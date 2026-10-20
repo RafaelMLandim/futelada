@@ -1,8 +1,10 @@
 // Criação do torneio: regras, cadastro dos times e sorteio (grupos, chave e jogos).
 
-import type { Jogador } from '../../types/pelada'
-import type { JogoTorneio, Origem, RegrasTorneio, TimeTorneio, Torneio } from '../../types/torneio'
+import type { Jogador, Lado } from '../../types/pelada'
+import type { JogadorDoTime, JogoTorneio, Origem, RegrasTorneio, TimeTorneio, Torneio } from '../../types/torneio'
+import { LADOS } from '../lado'
 import { chaveDosGrupos, montarChave } from './chave'
+import { timesDoJogo } from './jogos'
 import { embaralhar, type Aleatorio } from './sorteio'
 import { ordenarSemRepetir, todosContraTodos } from './tabela'
 
@@ -42,7 +44,7 @@ export function novoTorneio(nome: string, regras: RegrasTorneio = regrasPadrao):
 // ---------- Times ----------
 
 export function novoTime(nome: string, cor: string): TimeTorneio {
-  return { id: novoId('time'), nome: nome.trim(), cor, goleiro: null, jogadores: [], fechado: false }
+  return { id: novoId('time'), nome: nome.trim(), cor, jogadores: [], fechado: false }
 }
 
 export function adicionarTime(torneio: Torneio, time: TimeTorneio): Torneio {
@@ -61,9 +63,54 @@ export function removerTime(torneio: Torneio, id: string): Torneio {
 export const adicionarJogadorAoTime = (t: TimeTorneio, jogador: Jogador): TimeTorneio => ({ ...t, jogadores: [...t.jogadores, jogador] })
 export const removerJogadorDoTime = (t: TimeTorneio, id: string): TimeTorneio => ({ ...t, jogadores: t.jogadores.filter((j) => j.id !== id) })
 
-/** Titulares (os primeiros `linha`) e reservas do time. */
+/** O goleiro do time (o jogador marcado com `goleiro`). */
+export const goleiroDoTime = (time: TimeTorneio): JogadorDoTime | null => time.jogadores.find((jogador) => jogador.goleiro) ?? null
+
+/** Os jogadores de linha do time (todos menos o goleiro), na ordem do cadastro. */
+export const jogadoresDeLinha = (time: TimeTorneio): JogadorDoTime[] => time.jogadores.filter((jogador) => !jogador.goleiro)
+
+/** Titulares (os primeiros `linha` jogadores de linha) e reservas do time. */
 export function titularesEReservas(time: TimeTorneio, linha: number) {
-  return { titulares: time.jogadores.slice(0, linha), reservas: time.jogadores.slice(linha) }
+  const deLinha = jogadoresDeLinha(time)
+  return { titulares: deLinha.slice(0, linha), reservas: deLinha.slice(linha) }
+}
+
+/**
+ * Torneios de versões antigas guardavam o goleiro só pelo nome (`goleiro: "NOME"`), fora da lista.
+ * Ele vira um jogador do time marcado como goleiro, com um id que todo celular calcula igual
+ * (o torneio compartilhado é convertido em cada celular). Jogo em andamento: o goleiro entra em campo, no gol.
+ */
+export function converterGoleirosAntigos(torneio: Torneio): Torneio {
+  const times = torneio.times.map((time) => {
+    const { goleiro: nomeAntigo, ...resto } = time as TimeTorneio & { goleiro?: string | null }
+    if (!nomeAntigo?.trim() || goleiroDoTime(resto)) return resto
+    return { ...resto, jogadores: [{ id: `${time.id}-goleiro`, nome: nomeAntigo.trim(), goleiro: true }, ...resto.jogadores] }
+  })
+  const emAndamento = torneio.emAndamento.map((partida) => {
+    if (partida.goleiros) return partida
+    const jogo = torneio.jogos.find((candidato) => candidato.id === partida.jogoId)
+    if (!jogo) return partida
+    const ids = timesDoJogo({ ...torneio, times }, jogo)
+    let { escalacao } = partida
+    const goleiros: Record<Lado, string | null> = { A: null, B: null }
+    for (const lado of LADOS) {
+      const time = times.find((candidato) => candidato.id === ids[lado])
+      const goleiro = time ? goleiroDoTime(time) : null
+      if (!goleiro) continue
+      const jaEsta = [...escalacao.emCampo[lado], ...escalacao.banco[lado], ...escalacao.suspensos[lado]].includes(goleiro.id)
+      if (jaEsta && !escalacao.emCampo[lado].includes(goleiro.id)) continue
+      if (!jaEsta) {
+        escalacao = {
+          ...escalacao,
+          emCampo: { ...escalacao.emCampo, [lado]: [goleiro.id, ...escalacao.emCampo[lado]] },
+          jogaram: { ...escalacao.jogaram, [lado]: [goleiro.id, ...escalacao.jogaram[lado]] },
+        }
+      }
+      goleiros[lado] = goleiro.id
+    }
+    return { ...partida, escalacao, goleiros }
+  })
+  return { ...torneio, times, emAndamento }
 }
 
 // ---------- Sorteio ----------
@@ -75,7 +122,8 @@ export function problemasParaSortear(torneio: Torneio): string[] {
   if (times.length < 2) problemas.push('Cadastre pelo menos 2 times')
   for (const t of times) {
     if (!t.fechado) problemas.push(`Feche o time ${t.nome}`)
-    if (t.jogadores.length < regras.linha) problemas.push(`${t.nome} precisa de pelo menos ${regras.linha} jogadores`)
+    if (!goleiroDoTime(t)) problemas.push(`${t.nome} precisa de um goleiro`)
+    if (jogadoresDeLinha(t).length < regras.linha) problemas.push(`${t.nome} precisa de pelo menos ${regras.linha} jogadores de linha`)
   }
   if (regras.formato === 'grupos') {
     if (regras.grupos < 2) problemas.push('Use pelo menos 2 grupos')

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Barra } from '../../components/Barra'
 import { BotaoDesfazer } from '../../components/BotaoDesfazer'
+import { BotaoCompartilhar } from '../../components/CompartilharPelada'
 import { Icone } from '../../components/Icone'
 import { Camisa } from '../../components/Camisa'
-import { LADOS, acabouPorGols, blocosDaFila, encerrarComSubstitutos, gol, inverterColetes, machucou, outro, removerJogador, restanteAzul, substitutosParaDecidir, vitoria, type Decisao } from '../../logic'
+import { LADOS, acabouPorGols, blocosDaFila, encerrarComSubstitutos, gol, inverterColetes, passe, machucou, outro, removerJogador, restanteAzul, substitutosParaDecidir, vitoria, type Decisao } from '../../logic'
 import { tempoDecorrido, tempoTotalMs } from '../../store/cronometro'
 import type { Pelada } from '../../store/usePelada'
 import type { Estado, Jogador, Lado, Machucado, Partida } from '../../types/pelada'
@@ -13,22 +14,27 @@ import { apitoFim, apitoInicio, somDeGol } from '../../utils/sons'
 import { useConfirmar } from '../../utils/confirmacao'
 import { textoSobre } from '../../utils/cores'
 import { formatarTempo } from '../../utils/formatar'
+import { useSomenteLeitura } from '../../utils/somenteLeitura'
 import { AcoesJogador } from './AcoesJogador'
 import { Empate } from './Empate'
 import { Escalacoes, type Volta } from './Escalacoes'
 import { EscolherAcrescimos } from '../../components/EscolherAcrescimos'
 import { GolsDaPartida } from './GolsDaPartida'
 import { Placar } from './Placar'
-import { QuemFezGol } from './QuemFezGol'
+import { QuemDeuOPasse, QuemFezGol } from './QuemFezGol'
 
 export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void }) {
   const { app, aplicar, crono, acrescimos } = pelada
   const { estado } = app
   const confirmar = useConfirmar()
+  // quem só acompanha (link ?ver=) vê o jogo ao vivo, sem nenhum botão de ação e sem apito
+  const somenteLeitura = useSomenteLeitura()
   const [empateManual, setEmpateManual] = useState(false)
   const [tempoDispensadoEm, setTempoDispensadoEm] = useState<string | null>(null)
   const [escolhendoAcrescimos, setEscolhendoAcrescimos] = useState(false)
   const [golDe, setGolDe] = useState<Lado | null>(null)
+  // assistências ligadas: gol recém-marcado esperando "quem deu o passe?"
+  const [passeDe, setPasseDe] = useState<{ indice: number; lado: Lado; autorId: string } | null>(null)
   const [acoes, setAcoes] = useState<{ lado: Lado; jogador: Jogador } | null>(null)
   // Fim da partida com substituto de machucado num time que sai: antes, decide o destino dele
   const [decidir, setDecidir] = useState<{ pendentes: Machucado[]; encerrar: (e: Estado) => Estado } | null>(null)
@@ -75,12 +81,13 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
   useEffect(() => {
     if (fim && !avisou.current) {
       avisou.current = true
+      if (somenteLeitura) return
       if (cfg.som) apitoFim()
       navigator.vibrate?.([300, 150, 300, 150, 600])
       if (app.crono.rodando) crono(false)
     }
     if (!fim) avisou.current = false
-  }, [fim, app.crono.rodando, crono, cfg.som])
+  }, [fim, app.crono.rodando, crono, cfg.som, somenteLeitura])
 
   // A moeda abre pelo botão ou sozinha quando o tempo acaba empatado (até ser fechada)
   const empateAberto = empateManual
@@ -88,7 +95,7 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
   // Modal "Acabou o tempo": abre sozinho quando o tempo (ou os acréscimos) esgota com o relógio
   // parado, até a pessoa escolher nesta partida. Acréscimos só uma vez e se estiver ligado.
   const chaveDoTempo = `${estado.historico.length}:${app.crono.acrescimoMin ?? 0}`
-  const fimDoTempoAberto = acabouTempo && !app.crono.rodando && !empateAberto && !escolhendoAcrescimos && tempoDispensadoEm !== chaveDoTempo
+  const fimDoTempoAberto = !somenteLeitura && acabouTempo && !app.crono.rodando && !empateAberto && !escolhendoAcrescimos && tempoDispensadoEm !== chaveDoTempo
   const podeDarAcrescimos = cfg.acrescimos && !app.crono.acrescimoMin
   const comecarAcrescimos = (min: number) => {
     setEscolhendoAcrescimos(false)
@@ -100,16 +107,16 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
   const azuisAtivos = estado.cartoes.filter((c) => c.cor === 'azul' && restanteAzul(estado, c.jogadorId, decorrido) > 0).length
   const azuisAntes = useRef(azuisAtivos)
   useEffect(() => {
-    if (azuisAtivos < azuisAntes.current) navigator.vibrate?.([200, 100, 200])
+    if (azuisAtivos < azuisAntes.current && !somenteLeitura) navigator.vibrate?.([200, 100, 200])
     azuisAntes.current = azuisAtivos
-  }, [azuisAtivos])
+  }, [azuisAtivos, somenteLeitura])
 
   if (!estado.emCampo) {
     return (
       <div className="scr">
-        <Barra titulo="Em campo" sub="Nenhuma partida rolando" direita={<BotaoDesfazer pelada={pelada} />} />
+        <Barra titulo="Em campo" sub="Nenhuma partida rolando" direita={somenteLeitura ? undefined : <div className="row" style={{ gap: 6 }}><BotaoCompartilhar /><BotaoDesfazer pelada={pelada} /></div>} />
         <div className="conteudo">
-          <div className="vazio">Monte a lista e apite a primeira partida.</div>
+          <div className="vazio">{somenteLeitura ? 'Nenhuma partida rolando agora.' : 'Monte a lista e apite a primeira partida.'}</div>
           <button className="btn" onClick={onLista}>Ir para a lista <Icone nome="seta" /></button>
         </div>
       </div>
@@ -128,6 +135,7 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
   // Gol: toca o som; ao chegar no limite de gols, apita o fim (sem encerrar sozinho)
   const marcar = (lado: Lado, autor: Jogador | null, contra = false) => {
     aplicar((e) => gol(e, lado, autor, decorrido, contra))
+    if (cfg.assistencias && autor && !contra) setPasseDe({ indice: estado.gols.length, lado, autorId: autor.id })
     const chegouNoLimite = cfg.gols !== null && estado.placar[lado === 'A' ? 0 : 1] + 1 >= cfg.gols
     if (!chegouNoLimite) {
       if (cfg.som) somDeGol()
@@ -201,15 +209,22 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
   return (
     <div className="scr">
       {/* desfazer o fim de uma partida (volta o relógio dela) não apita de novo */}
-      <Barra titulo="Em campo" sub={`Partida ${estado.historico.length + 1}`} direita={<BotaoDesfazer pelada={pelada} antes={(d) => { if (d.crono) avisou.current = acabouPorGols(d.estado) || tempoDecorrido(d.crono) >= tempoTotalMs(cfg.tempoMin, d.crono) }} />} />
+      <Barra titulo="Em campo" sub={`Partida ${estado.historico.length + 1}`} direita={somenteLeitura ? undefined : (
+        <div className="row" style={{ gap: 6 }}>
+          <BotaoCompartilhar />
+          <BotaoDesfazer pelada={pelada} antes={(d) => { if (d.crono) avisou.current = acabouPorGols(d.estado) || tempoDecorrido(d.crono) >= tempoTotalMs(cfg.tempoMin, d.crono) }} />
+        </div>
+      )} />
       <div className="conteudo" style={{ gap: 10 }}>
         <Placar estado={estado} decorrido={decorrido} rodando={app.crono.rodando} fim={fim} acrescimoMin={app.crono.acrescimoMin} />
 
-        <div className="row" style={{ justifyContent: 'center', marginTop: -4 }}>
-          <button className="tag t-y" style={{ border: 0, cursor: 'pointer' }} onClick={trocarColetes}>⇄ Inverter coletes</button>
-        </div>
+        {!somenteLeitura && (
+          <div className="row" style={{ justifyContent: 'center', marginTop: -4 }}>
+            <button className="tag t-y" style={{ border: 0, cursor: 'pointer' }} onClick={trocarColetes}>⇄ Inverter coletes</button>
+          </div>
+        )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8 }}>
+        {!somenteLeitura && <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8 }}>
           {LADOS.map((lado) => (
             <button key={lado} className="btn w sm" onClick={() => setGolDe(lado)}>
               <Camisa cor={coletes[lado].cor} tamanho={20} /> Gol T{estado.emCampo![lado].numero}
@@ -219,16 +234,16 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
             aria-label={app.crono.rodando ? 'Pausar' : 'Iniciar cronômetro'} onClick={alternarCrono}>
             <Icone nome={app.crono.rodando ? 'pausa' : 'play'} />
           </button>
-        </div>
+        </div>}
 
         <GolsDaPartida pelada={pelada} />
 
-        <Escalacoes pelada={pelada} decorrido={decorrido} transicao={transicao} volta={volta} onJogador={(lado, jogador) => setAcoes({ lado, jogador })} />
+        <Escalacoes pelada={pelada} decorrido={decorrido} transicao={transicao} volta={volta} onJogador={somenteLeitura ? undefined : (lado, jogador) => setAcoes({ lado, jogador })} />
 
         <ListaDeMachucados pelada={pelada} />
 
         {/* Um botão só, que segue o placar: não tem como dar a vitória para o time errado */}
-        <section className={'panel' + (fim ? ' destaque' : '')}>
+        {!somenteLeitura && <section className={'panel' + (fim ? ' destaque' : '')}>
           <div className="ph">Fim de jogo</div>
           <div className="pb" style={{ display: 'grid', gap: 6 }}>
             {lider
@@ -238,7 +253,7 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
               : <button className="btn w" onClick={abrirEmpate}>Empatou · ir para a moeda</button>}
             <div className="mut" style={{ textAlign: 'center', fontSize: 12 }}>O resultado segue o placar. Errou um gol? Corrija o placar antes.</div>
           </div>
-        </section>
+        </section>}
 
         <button className="panel row" style={{ padding: '8px 10px', cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit' }} onClick={onLista}>
           <span className="tag t-y">Próximo</span>
@@ -279,6 +294,10 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
       )}
       {escolhendoAcrescimos && <EscolherAcrescimos onComecar={comecarAcrescimos} onCancelar={() => setEscolhendoAcrescimos(false)} />}
       {golDe && <QuemFezGol pelada={pelada} lado={golDe} onGol={marcar} onFechar={() => setGolDe(null)} />}
+      {passeDe && (
+        <QuemDeuOPasse pelada={pelada} lado={passeDe.lado} autorId={passeDe.autorId}
+          onPasse={(jogador) => { if (jogador) aplicar((e) => passe(e, passeDe.indice, jogador)) }} onFechar={() => setPasseDe(null)} />
+      )}
       {acoes && (
         <AcoesJogador pelada={pelada} lado={acoes.lado} jogador={acoes.jogador} decorrido={decorrido}
           onGol={marcar} onSaiu={saiu} onMachucou={machucouJogador} onFechar={() => setAcoes(null)} />

@@ -6,6 +6,7 @@ import type { JogoTorneio, PartidaTorneio, Torneio } from '../../types/torneio'
 import { alternarCrono, cronoZerado, darAcrescimos } from '../cronometro'
 import { cartoesAoDar } from '../cartoes'
 import { outro } from '../lado'
+import { goleiroDoTime } from './criar'
 import { iniciarEscalacao, substituir } from './escalacao'
 import { jogoPorId, jogosDisponiveis, registrarResultado, timesDoJogo } from './jogos'
 import { duracaoDoPeriodo, rotuloDoPeriodo } from './periodos'
@@ -106,8 +107,16 @@ export function iniciarPartida(t: Torneio, jogoId: string, campo?: number): Torn
   if (!jogo) throw new Error('Esse jogo não pode começar agora')
   const escolhido = campo ?? campoParaJogo(t, jogo)!
   if (!camposLivres(t).includes(escolhido) || !serveNoCampo(t, jogo, escolhido)) throw new Error('Esse campo não está livre para esse jogo')
+  const escalacao = iniciarEscalacao(t, jogo)
+  // o goleiro do time começa no gol (é o primeiro em campo); suspenso, o gol começa vazio
+  const goleiroInicial = (lado: Lado) => {
+    const time = timeDoLado(t, jogoId, lado)
+    const goleiro = time ? goleiroDoTime(time) : null
+    return goleiro && escalacao.emCampo[lado].includes(goleiro.id) ? goleiro.id : null
+  }
   const partida: PartidaTorneio = {
-    jogoId, campo: escolhido, escalacao: iniciarEscalacao(t, jogo), placar: [0, 0], gols: [], cartoes: [], crono: cronoZerado,
+    jogoId, campo: escolhido, escalacao, placar: [0, 0], gols: [], cartoes: [], crono: cronoZerado,
+    goleiros: { A: goleiroInicial('A'), B: goleiroInicial('B') },
   }
   return { ...t, emAndamento: [...t.emAndamento, partida] }
 }
@@ -123,13 +132,55 @@ export const acrescimosNaPartida = (t: Torneio, jogoId: string, min: number): To
 export const cronoDaPartida = (t: Torneio, jogoId: string, rodando: boolean): Torneio =>
   comPartida(t, jogoId, (p) => ({ ...p, crono: alternarCrono(p.crono, rodando) }))
 
+/** Quem está no gol do `lado` agora (um jogador em campo; null = gol vazio ou o goleiro foi expulso). */
+export function goleiroNaPartida(t: Torneio, partida: PartidaTorneio, lado: Lado): Jogador | null {
+  const id = partida.goleiros?.[lado] ?? null
+  if (!id || !partida.escalacao.emCampo[lado].includes(id) || expulsosNaPartida(partida).has(id)) return null
+  return timeDoLado(t, partida.jogoId, lado)?.jogadores.find((jogador) => jogador.id === id) ?? null
+}
+
+/**
+ * O gol está vazio porque o goleiro foi expulso? Aí o time joga com um a menos: só alguém
+ * da linha pode ir para o gol (ninguém entra do banco no lugar de expulso).
+ */
+export function golVazioPorExpulsao(partida: PartidaTorneio, lado: Lado): boolean {
+  const id = partida.goleiros?.[lado] ?? null
+  return id !== null && expulsosNaPartida(partida).has(id)
+}
+
+/**
+ * Alguém vai para o gol do `lado` e vira o goleiro. Da linha: troca de posição (quem estava no gol
+ * fica na linha). Do banco: só com o gol vazio (goleiro suspenso), e não conta como substituição;
+ * com goleiro no gol, quem vem do banco entra pela substituição normal.
+ */
+export function irParaOGol(t: Torneio, jogoId: string, lado: Lado, jogadorId: string): Torneio {
+  return comPartida(t, jogoId, (p) => {
+    if (expulsosNaPartida(p).has(jogadorId)) throw new Error('Expulso não pode ir para o gol')
+    const goleiros = { A: p.goleiros?.A ?? null, B: p.goleiros?.B ?? null, [lado]: jogadorId }
+    if (p.escalacao.emCampo[lado].includes(jogadorId)) return { ...p, goleiros }
+    if (!p.escalacao.banco[lado].includes(jogadorId)) throw new Error('Quem vai para o gol precisa estar em campo ou no banco')
+    if (goleiroNaPartida(t, p, lado) || golVazioPorExpulsao(p, lado)) throw new Error('Do banco, só entra no gol vazio (com goleiro, é substituição)')
+    const { escalacao } = p
+    return {
+      ...p,
+      goleiros,
+      escalacao: {
+        ...escalacao,
+        emCampo: { ...escalacao.emCampo, [lado]: [jogadorId, ...escalacao.emCampo[lado]] },
+        banco: { ...escalacao.banco, [lado]: escalacao.banco[lado].filter((id) => id !== jogadorId) },
+        jogaram: { ...escalacao.jogaram, [lado]: escalacao.jogaram[lado].includes(jogadorId) ? escalacao.jogaram[lado] : [...escalacao.jogaram[lado], jogadorId] },
+      },
+    }
+  })
+}
+
 /**
  * Gol para `lado`; o goleiro do outro time "sofre". Gol contra: `autor` é do outro time (não conta
  * na artilharia dele). `tempoMs` é dentro do tempo atual (com vários tempos, o gol guarda qual foi).
  */
 export function golNaPartida(t: Torneio, jogoId: string, lado: Lado, autor: Jogador | null, tempoMs?: number, contra = false): Torneio {
-  const goleiro = timeDoLado(t, jogoId, outro(lado))?.goleiro ?? null
   return comPartida(t, jogoId, (p) => {
+    const goleiro = goleiroNaPartida(t, p, outro(lado))?.nome ?? null
     const placar: Placar = [...p.placar]
     placar[lado === 'A' ? 0 : 1]++
     const periodo = rotuloDoPeriodo(t.regras, p)
@@ -162,17 +213,19 @@ export function expulsosNaPartida(p: PartidaTorneio): Set<string> {
 }
 
 export function substituirNaPartida(t: Torneio, jogoId: string, lado: Lado, saiId: string, entraId: string): Torneio {
-  return comPartida(t, jogoId, (p) => ({
-    ...p,
-    escalacao: substituir(p.escalacao, lado, saiId, entraId, t.regras.maxSubstituicoes, expulsosNaPartida(p)),
-  }))
+  return comPartida(t, jogoId, (p) => {
+    const escalacao = substituir(p.escalacao, lado, saiId, entraId, t.regras.maxSubstituicoes, expulsosNaPartida(p))
+    // saiu quem estava no gol: quem entra vira o goleiro
+    if (p.goleiros?.[lado] !== saiId) return { ...p, escalacao }
+    return { ...p, escalacao, goleiros: { A: p.goleiros.A, B: p.goleiros.B, [lado]: entraId } }
+  })
 }
 
 /** Encerra o jogo e guarda o resultado. No mata-mata empatado, passe o placar dos pênaltis. */
 export function encerrarPartida(t: Torneio, jogoId: string, penaltis: Placar | null = null, agora = Date.now()): Torneio {
   const p = partidaDoJogo(t, jogoId)
   if (!p) throw new Error('Esse jogo não está em andamento')
-  const goleiros = { A: timeDoLado(t, jogoId, 'A')?.goleiro ?? null, B: timeDoLado(t, jogoId, 'B')?.goleiro ?? null }
+  const goleiros = { A: goleiroNaPartida(t, p, 'A')?.nome ?? null, B: goleiroNaPartida(t, p, 'B')?.nome ?? null }
   const salvo = registrarResultado(t, jogoId, {
     placar: p.placar, penaltis, gols: p.gols, cartoes: p.cartoes, goleiros, jogaram: p.escalacao.jogaram, sequencia: 0,
     encerradoEm: agora,

@@ -4,13 +4,14 @@
 
 import type { Jogador } from '../types/pelada'
 import { normalizarNome } from '../utils/formatar'
-import { artilharia, goleirosMenosVazados, selecaoDaPelada, vitoriasPorJogador } from './estatisticas'
+import { artilharia, garcons, goleirosMenosVazados, selecaoDaPelada, vitoriasPorJogador } from './estatisticas'
 import type { PeladaGuardada } from './historico'
 import { jogaramNaPelada, naTurma, type JogadorDaTurma } from './turma'
 
 export type JogadorNoAno = {
   id: string; nome: string
   peladas: number; jogos: number; vitorias: number; gols: number
+  assistencias: number // passes para gol (Troféu Garçom)
   vezesNaSelecao: number; artilheiroDoDia: number
 }
 export type GoleiroNoAno = { nome: string; peladas: number; jogos: number; sofridos: number; media: number }
@@ -23,6 +24,7 @@ export type RelatorioDoAno = {
   timeDoAno: JogadorNoAno[]
   goleiroDoAno: GoleiroNoAno | null
   artilheiro: JogadorNoAno | null
+  garcom: JogadorNoAno | null // mais assistências no ano
   maisPresente: JogadorNoAno | null
   goleiros: GoleiroNoAno[]
 }
@@ -53,7 +55,7 @@ export function relatorioDoAno(peladas: readonly PeladaGuardada[], turma: readon
   const linhaDe = (j: Jogador) => {
     const k = chave(j)
     const nome = naTurma(turma, j)?.nome ?? j.nome
-    return jogadores.get(k) ?? jogadores.set(k, { id: k, nome, peladas: 0, jogos: 0, vitorias: 0, gols: 0, vezesNaSelecao: 0, artilheiroDoDia: 0 }).get(k)!
+    return jogadores.get(k) ?? jogadores.set(k, { id: k, nome, peladas: 0, jogos: 0, vitorias: 0, gols: 0, assistencias: 0, vezesNaSelecao: 0, artilheiroDoDia: 0 }).get(k)!
   }
 
   for (const { estado } of doAno) {
@@ -65,6 +67,7 @@ export function relatorioDoAno(peladas: readonly PeladaGuardada[], turma: readon
       l.gols += v.gols
     }
     for (const s of selecaoDaPelada(estado)) linhaDe(s).vezesNaSelecao++
+    for (const garcom of garcons(estado)) linhaDe(garcom).assistencias += garcom.assistencias
     const artilheiro = artilharia(estado)[0]
     if (artilheiro) linhaDe(artilheiro).artilheiroDoDia++
     for (const g of goleirosMenosVazados(estado)) {
@@ -86,11 +89,13 @@ export function relatorioDoAno(peladas: readonly PeladaGuardada[], turma: readon
     .slice(0, linha)
   const artilheiro = [...todos].filter((j) => j.gols > 0)
     .sort((a, b) => b.gols - a.gols || a.peladas - b.peladas || b.artilheiroDoDia - a.artilheiroDoDia || ordemNome(a, b))[0] ?? null
+  const garcom = [...todos].filter((j) => j.assistencias > 0)
+    .sort((a, b) => b.assistencias - a.assistencias || a.peladas - b.peladas || ordemNome(a, b))[0] ?? null
   const maisPresente = [...todos].sort((a, b) => b.peladas - a.peladas || b.vitorias - a.vitorias || ordemNome(a, b))[0] ?? null
   const listaGoleiros = [...goleiros.values()]
     .map((g) => ({ ...g, media: g.jogos ? g.sofridos / g.jogos : 0 }))
     .sort((a, b) => a.media - b.media || b.jogos - a.jogos || ordemNome(a, b))
   const goleiroDoAno = listaGoleiros.find((g) => g.peladas >= minimo && g.jogos > 0) ?? null
 
-  return { ano, peladas: doAno.length, minimo, linha, jogadores: porVitorias, timeDoAno, goleiroDoAno, artilheiro, maisPresente, goleiros: listaGoleiros }
+  return { ano, peladas: doAno.length, minimo, linha, jogadores: porVitorias, timeDoAno, goleiroDoAno, artilheiro, garcom, maisPresente, goleiros: listaGoleiros }
 }

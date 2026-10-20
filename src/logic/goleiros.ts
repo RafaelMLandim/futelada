@@ -48,38 +48,39 @@ export const jogadorGoleiro = (nome: string): Jogador => ({ id: ID_GOLEIRO + nor
 
 /**
  * Busca de quem estava no gol e fez o gol (PLANO.md, seção 3.8.6): o goleiro não é fixo, então o app não sabe
- * quem é. Quem vai para o gol é sempre alguém da lista: procura entre os goleiros fixos, os jogadores da pelada
- * e a turma. Campo vazio: os goleiros fixos e quem já fez gol no gol hoje, para um toque.
+ * quem é. Quem vai para o gol é sempre alguém da lista que não está jogando na linha: procura entre os goleiros
+ * fixos, a fila, os machucados, quem já jogou hoje e a turma. Quem está em campo nos dois times não aparece
+ * (os do time do gol já estão nos botões do "Quem fez?"). Campo vazio: os goleiros fixos e quem já fez gol no gol hoje.
  */
 export function buscarGoleiro(estado: Estado, turma: readonly { id: string; nome: string; arquivado?: boolean }[], texto: string, maximo = 6): Jogador[] {
-  const gols = [...estado.historico.flatMap((p) => p.gols), ...estado.gols]
+  const gols = [...estado.historico.flatMap((partida) => partida.gols), ...estado.gols]
   const goleiros = [
-    ...[estado.goleiros.A, estado.goleiros.B, ...estado.config.goleiros].filter((n): n is string => !!n?.trim()).map(jogadorGoleiro),
-    ...gols.filter((g) => g.autorId?.startsWith(ID_GOLEIRO) && g.autor).reverse().map((g) => ({ id: g.autorId!, nome: g.autor! })),
+    ...[estado.goleiros.A, estado.goleiros.B, ...estado.config.goleiros].filter((nome): nome is string => !!nome?.trim()).map(jogadorGoleiro),
+    ...gols.filter((gol) => gol.autorId?.startsWith(ID_GOLEIRO) && gol.autor).reverse().map((gol) => ({ id: gol.autorId!, nome: gol.autor! })),
   ]
-  const campo = estado.emCampo ? [...estado.emCampo.A.jogadores, ...estado.emCampo.B.jogadores] : []
-  const jogaram = estado.historico.flatMap((p) => [...p.timeA.jogadores, ...p.timeB.jogadores])
-  const pessoas = [...campo, ...estado.fila, ...estado.machucados.map((m) => m.jogador), ...jogaram, ...turma.filter((j) => !j.arquivado)]
+  const emCampo = estado.emCampo ? [...estado.emCampo.A.jogadores, ...estado.emCampo.B.jogadores] : []
+  const jogaram = estado.historico.flatMap((partida) => [...partida.timeA.jogadores, ...partida.timeB.jogadores])
+  const pessoas = [...estado.fila, ...estado.machucados.map((machucado) => machucado.jogador), ...jogaram, ...turma.filter((jogador) => !jogador.arquivado)]
 
-  // sem repetir (mesmo id ou mesmo nome)
-  const vistos = new Set<string>()
-  const unicos = (lista: Jogador[]) => lista.filter((j) => {
-    const n = normalizarNome(j.nome)
-    if (!n || vistos.has(j.id) || vistos.has(n)) return false
-    vistos.add(j.id).add(n)
+  // sem repetir (mesmo id ou mesmo nome); quem está em campo já começa como visto, para ficar de fora
+  const vistos = new Set<string>(emCampo.flatMap((jogador) => [jogador.id, normalizarNome(jogador.nome)]))
+  const unicos = (lista: Jogador[]) => lista.filter((jogador) => {
+    const nome = normalizarNome(jogador.nome)
+    if (!nome || vistos.has(jogador.id) || vistos.has(nome)) return false
+    vistos.add(jogador.id).add(nome)
     return true
-  }).map((j) => ({ id: j.id, nome: j.nome }))
+  }).map((jogador) => ({ id: jogador.id, nome: jogador.nome }))
 
-  const t = normalizarNome(texto)
-  if (!t) return unicos(goleiros).slice(0, maximo)
-  const nota = (j: Jogador) => {
-    const n = normalizarNome(j.nome)
-    return n.startsWith(t) ? 2 : n.split(' ').some((p) => p.startsWith(t)) ? 1 : 0
+  const busca = normalizarNome(texto)
+  if (!busca) return unicos(goleiros).slice(0, maximo)
+  const nota = (jogador: Jogador) => {
+    const nome = normalizarNome(jogador.nome)
+    return nome.startsWith(busca) ? 2 : nome.split(' ').some((palavra) => palavra.startsWith(busca)) ? 1 : 0
   }
   return unicos([...goleiros, ...pessoas])
-    .map((j) => ({ j, n: nota(j) }))
-    .filter((x) => x.n > 0)
-    .sort((a, b) => b.n - a.n)
+    .map((jogador) => ({ jogador, nota: nota(jogador) }))
+    .filter((candidato) => candidato.nota > 0)
+    .sort((primeiro, segundo) => segundo.nota - primeiro.nota)
     .slice(0, maximo)
-    .map((x) => x.j)
+    .map((candidato) => candidato.jogador)
 }

@@ -149,6 +149,13 @@ export function Config({ pelada, onPronto, onCancelar }: { pelada: Pelada; onPro
           </div>
           <div className="tr" style={{ padding: '8px 10px' }}>
             <div className="nome" style={{ whiteSpace: 'normal' }}>
+              Marcar assistências
+              <div className="mut">No gol, pergunta também quem deu o passe (Troféu Garçom)</div>
+            </div>
+            <Chave rotulo="Marcar assistências" ligada={cfg.assistencias} alternar={() => mudar({ assistencias: !cfg.assistencias })} />
+          </div>
+          <div className="tr" style={{ padding: '8px 10px' }}>
+            <div className="nome" style={{ whiteSpace: 'normal' }}>
               Limite de vitórias seguidas
               <div className="mut">Ao atingir, o vencedor sai</div>
             </div>

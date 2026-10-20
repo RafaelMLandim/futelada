@@ -1,5 +1,13 @@
 apply plugin: 'com.android.application'
 
+// Assinatura da versão de loja (Play Store): a chave de upload fica fora do projeto, em
+// ~/.config/dois-ou-dez/ (upload.jks + keystore.properties). Sem o arquivo, só a versão de teste é assinada.
+def propriedadesDaChave = new Properties()
+def arquivoDaChave = new File(System.getProperty('user.home'), '.config/dois-ou-dez/keystore.properties')
+if (arquivoDaChave.exists()) {
+    arquivoDaChave.withInputStream { propriedadesDaChave.load(it) }
+}
+
 android {
     namespace = "app.doisoudez"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,8 +24,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (arquivoDaChave.exists()) {
+            loja {
+                storeFile file(propriedadesDaChave['storeFile'])
+                storePassword propriedadesDaChave['storePassword']
+                keyAlias propriedadesDaChave['keyAlias']
+                keyPassword propriedadesDaChave['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (arquivoDaChave.exists()) {
+                signingConfig signingConfigs.loja
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

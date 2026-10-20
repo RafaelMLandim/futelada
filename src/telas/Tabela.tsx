@@ -4,23 +4,17 @@ import { Icone } from '../components/Icone'
 import { Cartao } from '../components/Cartao'
 import { useContext, useState } from 'react'
 import { VoltarAoInicio } from '../components/navegacao'
-import { artilharia, cartoesDoDia, goleirosMenosVazados, peladaParaGuardar, placarDosColetes, vitoriasPorJogador } from '../logic'
-import { guardarNoHistorico, useConta } from '../store/conta'
-import { registrarNaTurma } from '../store/turmas'
+import { artilharia, cartoesDoDia, garcons, goleirosMenosVazados, placarDosColetes, vitoriasPorJogador } from '../logic'
+import { useConta } from '../store/conta'
+import { guardarPeladaEncerrada } from '../store/encerramento'
 import type { Pelada } from '../store/usePelada'
 import type { Partida } from '../types/pelada'
 import { corDoTimeDaPelada, textoSobre } from '../utils/cores'
 import { useConfirmar } from '../utils/confirmacao'
 import { dataHoje } from '../utils/formatar'
 import { GolsCorrigiveis } from './jogo/GolsDaPartida'
+import { useAjudando, useSomenteLeitura } from '../utils/somenteLeitura'
 import { compartilharFicha, compartilharImagem, imagemDoResumo, nomeDoArquivo } from '../utils/resumoDaPelada'
-
-/** Encerra guardando no histórico (fora do componente: usa o relógio). */
-const guardar = (estado: Parameters<typeof peladaParaGuardar>[0]) => {
-  const agora = Date.now()
-  void guardarNoHistorico(peladaParaGuardar(estado, agora, dataHoje())).catch(() => null)
-  void registrarNaTurma(estado, agora).catch(() => null) // quem jogou: +1 de presença na turma
-}
 
 type Linha = { numero: number; j: number; v: number; e: number; d: number }
 
@@ -39,15 +33,19 @@ function classificacao(historico: Partida[]): Linha[] {
   return [...mapa.values()].sort((x, y) => y.v - x.v || y.e - x.e || x.d - y.d || x.numero - y.numero)
 }
 
-export function Tabela({ pelada }: { pelada: Pelada }) {
+/** Tabela do dia. `data`: o dia da pelada (pelada compartilhada vista depois; sem ela, hoje). */
+export function Tabela({ pelada, data }: { pelada: Pelada; data?: string }) {
   const { app } = pelada
   const confirmar = useConfirmar()
   const conta = useConta()
+  const somenteLeitura = useSomenteLeitura()
+  // quem assumiu o controle da pelada de outra pessoa encerra, mas ela vai para o histórico do dono
+  const ajudando = useAjudando()
   const { estado } = app
   // Ao encerrar, quem entrou com o Google guarda a pelada no histórico; depois volta para o início
   const voltarAoInicio = useContext(VoltarAoInicio)
   const encerrar = () => {
-    if (conta.logado && estado.historico.length > 0) guardar(estado)
+    if (!ajudando && conta.logado && estado.historico.length > 0) guardarPeladaEncerrada(estado)
     pelada.encerrar()
     voltarAoInicio?.()
   }
@@ -58,6 +56,7 @@ export function Tabela({ pelada }: { pelada: Pelada }) {
   const col = { width: 28, textAlign: 'center' as const }
   const artilheiros = artilharia(estado)
   const goleiros = goleirosMenosVazados(estado)
+  const lideresDePasse = garcons(estado)
   const cartoes = cartoesDoDia(estado)
   const placarColetes = placarDosColetes(estado)
   const vitorias = vitoriasPorJogador(estado)
@@ -94,7 +93,7 @@ export function Tabela({ pelada }: { pelada: Pelada }) {
 
   return (
     <div className="scr">
-      <Barra titulo="Tabela" sub={dataHoje()} />
+      <Barra titulo="Tabela" sub={data ?? dataHoje()} />
       <div className="conteudo">
         {historico.length > 0 && (
           <button className="btn" onClick={compartilhar} disabled={gerando}>
@@ -120,7 +119,7 @@ export function Tabela({ pelada }: { pelada: Pelada }) {
         <section className="panel">
           <div className="ph">Resultados<span className="sub">{historico.length} partidas</span></div>
           {historico.length === 0 && <div className="pb mut">Nenhuma partida terminou ainda.</div>}
-          {historico.length > 0 && <div className="mut" style={{ padding: '4px 12px', fontSize: 11 }}>Toque na partida para ver os gols e marcar quem fez.</div>}
+          {historico.length > 0 && <div className="mut" style={{ padding: '4px 12px', fontSize: 11 }}>{somenteLeitura ? 'Toque na partida para ver os gols.' : 'Toque na partida para ver os gols e marcar quem fez.'}</div>}
           {historico.map((p) => ( // da partida 1 (mais antiga) até a última
             <button key={p.numero} className="tr" aria-label={`Partida ${p.numero}`} onClick={() => setPartidaAberta(p.numero)}
               style={{ minHeight: 48, width: '100%', border: 0, font: 'inherit', color: 'var(--navy)', textAlign: 'left', cursor: 'pointer' }}>
@@ -167,6 +166,21 @@ export function Tabela({ pelada }: { pelada: Pelada }) {
             </div>
           ))}
         </section>
+
+        {(estado.config.assistencias || lideresDePasse.length > 0) && (
+          <section className="panel">
+            <div className="ph">Assistências<span className="sub">Troféu Garçom</span></div>
+            {lideresDePasse.length === 0 && <div className="pb mut">Nenhum passe para gol marcado ainda.</div>}
+            {lideresDePasse.length > 1 && <div className="mut" style={{ padding: '4px 12px', fontSize: 11 }}>Desempate: menos jogos.</div>}
+            {lideresDePasse.map((garcom, posicao) => (
+              <div key={garcom.id} className="tr">
+                <span className={'no' + (posicao === 0 ? ' g' : '')}>{posicao + 1}</span>
+                <span className="nome">{garcom.nome}</span>
+                <span className="num" style={{ fontSize: 22, minWidth: 28, textAlign: 'center' }}>{garcom.assistencias}</span>
+              </div>
+            ))}
+          </section>
+        )}
 
         {/* Vitórias de cada jogador, em qualquer time; os primeiros (tamanho da linha) são a seleção */}
         <section className="panel">
@@ -236,7 +250,7 @@ export function Tabela({ pelada }: { pelada: Pelada }) {
         </section>
 
         <div style={{ flex: 1 }} />
-        <button className="btn r sm" onClick={fimDaPelada}><Icone nome="lixo" tamanho={20} /> Encerrar pelada</button>
+        {!somenteLeitura && <button className="btn r sm" onClick={fimDaPelada}><Icone nome="lixo" tamanho={20} /> Encerrar pelada</button>}
       </div>
 
       {aberta && (
@@ -261,7 +275,9 @@ export function Tabela({ pelada }: { pelada: Pelada }) {
               <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>
                 Depois de encerrar, a lista, os times e a tabela de hoje somem. Quer compartilhar o resumo antes?
               </div>
-              {conta.logado
+              {ajudando
+                ? <div className="mut" style={{ color: 'var(--verde)', fontWeight: 700 }}>✓ Os resultados vão para o histórico de {ajudando.nomeDoDono ?? 'quem criou a pelada'}.</div>
+                : conta.logado
                 ? <div className="mut" style={{ color: 'var(--verde)', fontWeight: 700 }}>✓ Os resultados ficam guardados no seu histórico.</div>
                 : (
                   <button className="btn w sm" style={{ textTransform: 'none' }} onClick={conta.entrar}>

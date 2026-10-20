@@ -3,6 +3,7 @@ import { ResumoDeGols } from '../../components/ResumoDeGols'
 import { definirAutorDoGol, outro, removerGol } from '../../logic'
 import type { Pelada } from '../../store/usePelada'
 import type { Colete, Gol, Lado, Time } from '../../types/pelada'
+import { useSomenteLeitura } from '../../utils/somenteLeitura'
 import { EscolherAutor } from './QuemFezGol'
 
 /**
@@ -13,13 +14,14 @@ export function GolsCorrigiveis({ pelada, partida, gols, times, coletes, goleiro
   pelada: Pelada; partida: number | null; gols: Gol[]; times: Record<Lado, Time>; coletes: Record<Lado, Colete>; goleiros: Record<Lado, string | null>
 }) {
   const [autorDe, setAutorDe] = useState<number | null>(null)
+  const somenteLeitura = useSomenteLeitura()
   const g = autorDe !== null ? gols[autorDe] : null
   return (
     <>
       <ResumoDeGols gols={gols} tempoMin={pelada.app.estado.config.tempoMin}
         nomeDoLado={{ A: `Time ${times.A.numero}`, B: `Time ${times.B.numero}` }}
-        onAutor={setAutorDe}
-        onRemover={partida === null ? (i) => pelada.aplicar((e) => removerGol(e, i)) : undefined} />
+        onAutor={somenteLeitura ? undefined : setAutorDe}
+        onRemover={partida === null && !somenteLeitura ? (i) => pelada.aplicar((e) => removerGol(e, i)) : undefined} />
       {g && autorDe !== null && (
         <EscolherAutor pelada={pelada} titulo={`Gol do Time ${times[g.lado].numero}`} colete={coletes[g.lado]} time={times[g.lado]} adversario={times[outro(g.lado)]}
           goleiros={{ time: goleiros[g.lado], adversario: goleiros[outro(g.lado)] }}

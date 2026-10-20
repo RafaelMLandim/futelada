@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { cobrar, iniciarEscalacao, jogosDisponiveis, novaDisputa, placarDosPenaltis, quemBate, registrarResultado,
-  situacaoDisciplinar, substituir, timesDoJogo, vencedorDosPenaltis } from '..'
+  situacaoDisciplinar, substituir, timesDoJogo, vencedorDosPenaltis, goleiroDoTime, jogadoresDeLinha } from '..'
 import type { Torneio } from '../../../types/torneio'
 import { cartao, resultado, sorteado, torneioCom } from './utils'
 
-const jogador = (t: Torneio, time: number, n: number) => t.times[time].jogadores[n - 1].id
+/** O `n`º jogador de linha do time (o goleiro fica de fora da contagem). */
+const jogador = (t: Torneio, time: number, n: number) => jogadoresDeLinha(t.times[time])[n - 1].id
 
 /** Joga o próximo jogo do Time 1 (lado onde ele estiver) com os cartões dados. */
 function jogoDoTime1(t: Torneio, cartoes: (lado: 'A' | 'B') => ReturnType<typeof cartao>[] = () => []) {
@@ -72,7 +73,7 @@ describe('suspensões', () => {
     const lado = timesDoJogo(t, jogo).A === t.times[0].id ? 'A' : 'B'
     const esc = iniciarEscalacao(t, jogo)
     expect(esc.suspensos[lado]).toEqual([j1])
-    expect(esc.emCampo[lado]).toEqual([2, 3, 4, 5].map((n) => jogador(t, 0, n)))
+    expect(esc.emCampo[lado]).toEqual([goleiroDoTime(t.times[0])!.id, ...[2, 3, 4, 5].map((n) => jogador(t, 0, n))])
     expect(esc.banco[lado]).toEqual([jogador(t, 0, 6)])
   })
 })

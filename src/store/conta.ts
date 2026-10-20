@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { saldoDoCaixa, type MovimentoDoCaixa, type PeladaGuardada } from '../logic'
 import { nuvemDisponivel, obterNuvem } from '../nuvem'
 import type { Lancamento, PeladaNoHistorico, Perfil } from '../nuvem/tipos'
+import { trocarDeConta } from './donoDoCelular'
 
 /** Quem está usando o app. `perfil` undefined = carregando; anônimo = sem login. */
 export function useConta() {
@@ -14,7 +15,8 @@ export function useConta() {
     let ativo = true
     void obterNuvem().then((n) => {
       if (!n) { setPerfil(null); return }
-      if (ativo) parar = n.ouvirPerfil(setPerfil)
+      // separa a pelada e o torneio do celular por conta antes de as telas abrirem (outra pessoa não cai neles)
+      if (ativo) parar = n.ouvirPerfil((novo) => { trocarDeConta(novo); setPerfil(novo) })
     })
     return () => { ativo = false; parar() }
   }, [])

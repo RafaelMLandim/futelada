@@ -4,6 +4,7 @@ import { Barra } from '../../components/Barra'
 import { Camisa } from '../../components/Camisa'
 import { Icone } from '../../components/Icone'
 import { novoJogador } from '../../logic'
+import { goleiroDoTime, jogadoresDeLinha } from '../../logic/torneio'
 import type { TimeTorneio, Torneio } from '../../types/torneio'
 import { useConfirmar } from '../../utils/confirmacao'
 import { CORES_TORNEIO } from '../../utils/cores'
@@ -18,7 +19,9 @@ export function EditorDeTime({ torneio, inicial, onSalvar, onExcluir, onCancelar
   onExcluir?: () => void
   onCancelar: () => void
 }) {
-  const [time, setTime] = useState<TimeTorneio>(inicial)
+  // na edição, `time.jogadores` fica só com os de linha; o goleiro é editado à parte e volta para a lista ao salvar
+  const [time, setTime] = useState<TimeTorneio>({ ...inicial, jogadores: jogadoresDeLinha(inicial) })
+  const [nomeDoGoleiro, setNomeDoGoleiro] = useState(goleiroDoTime(inicial)?.nome ?? '')
   const [nomeJogador, setNomeJogador] = useState('')
   const [aviso, setAviso] = useState<string | null>(null)
   const campo = useRef<HTMLInputElement>(null)
@@ -27,17 +30,17 @@ export function EditorDeTime({ torneio, inicial, onSalvar, onExcluir, onCancelar
   const outros = torneio.times.filter((t) => t.id !== time.id)
   const coresUsadas = new Set(outros.map((t) => t.cor))
 
-  // Nomes de todo mundo do torneio (jogadores e goleiros), menos os deste time em edição
+  // Nomes de todo mundo do torneio (os goleiros também são jogadores), mais os de linha deste time
   const nomesNoTorneio = [
-    ...outros.flatMap((t) => [...t.jogadores.map((j) => j.nome), ...(t.goleiro ? [t.goleiro] : [])]),
-    ...time.jogadores.map((j) => j.nome),
+    ...outros.flatMap((outroTime) => outroTime.jogadores.map((jogador) => jogador.nome)),
+    ...time.jogadores.map((jogador) => jogador.nome),
   ].map(normalizarNome)
 
   const adicionar = (ev: FormEvent) => {
     ev.preventDefault()
     const nome = nomeJogador.trim()
     if (!nome) return
-    if (nomesNoTorneio.includes(normalizarNome(nome)) || normalizarNome(time.goleiro ?? '') === normalizarNome(nome)) {
+    if (nomesNoTorneio.includes(normalizarNome(nome)) || normalizarNome(nomeDoGoleiro) === normalizarNome(nome)) {
       return setAviso(`Já tem um ${nome} no torneio. Adicione o sobrenome ou um apelido.`)
     }
     setTime((t) => ({ ...t, jogadores: [...t.jogadores, novoJogador(nome)] }))
@@ -53,13 +56,16 @@ export function EditorDeTime({ torneio, inicial, onSalvar, onExcluir, onCancelar
 
   const faltam = Math.max(0, linha - time.jogadores.length)
   const nomeRepetido = outros.some((t) => normalizarNome(t.nome) === normalizarNome(time.nome))
-  const podeFechar = time.nome.trim() !== '' && faltam === 0 && !nomeRepetido
+  const semGoleiro = !nomeDoGoleiro.trim() // todo time começa o jogo com goleiro
+  const podeFechar = time.nome.trim() !== '' && faltam === 0 && !nomeRepetido && !semGoleiro
 
   const fechar = () => {
-    if (normalizarNome(time.goleiro ?? '') && nomesNoTorneio.includes(normalizarNome(time.goleiro!))) {
-      return setAviso(`Já tem um ${time.goleiro} no torneio. Use outro nome para o goleiro.`)
+    if (nomesNoTorneio.includes(normalizarNome(nomeDoGoleiro))) {
+      return setAviso(`Já tem um ${nomeDoGoleiro.trim()} no torneio. Use outro nome para o goleiro.`)
     }
-    onSalvar({ ...time, nome: time.nome.trim(), goleiro: time.goleiro?.trim() || null, fechado: true })
+    // o goleiro é um jogador do time marcado como goleiro (mantém o id ao editar)
+    const goleiro = { id: goleiroDoTime(inicial)?.id ?? novoJogador(nomeDoGoleiro).id, nome: nomeDoGoleiro.trim(), goleiro: true }
+    onSalvar({ ...time, nome: time.nome.trim(), jogadores: [goleiro, ...time.jogadores], fechado: true })
   }
 
   return (
@@ -92,12 +98,15 @@ export function EditorDeTime({ torneio, inicial, onSalvar, onExcluir, onCancelar
         </section>
 
         <section className="panel">
-          <div className="ph">Goleiro <span className="tag t-y">G</span></div>
+          <div className="ph">
+            <span className="row" style={{ gap: 8 }}>Goleiro <span className="tag t-y">G</span></span>
+            {semGoleiro && <span className="tag t-warn">falta o goleiro</span>}
+          </div>
           <div className="pb" style={{ display: 'flex' }}>
             <label style={{ display: 'flex', flex: 1 }}>
               <span className="vh">Nome do goleiro</span>
-              <input className="inp" placeholder="Nome do goleiro (opcional)" value={time.goleiro ?? ''} autoCapitalize="characters"
-                onChange={(ev) => setTime((t) => ({ ...t, goleiro: maiusculas(ev.target.value) }))} />
+              <input className="inp" placeholder="Nome do goleiro" value={nomeDoGoleiro} autoCapitalize="characters"
+                onChange={(evento) => setNomeDoGoleiro(maiusculas(evento.target.value))} />
             </label>
           </div>
         </section>

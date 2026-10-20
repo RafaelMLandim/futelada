@@ -47,5 +47,7 @@ export function completarApp(app: Partial<AppState>): AppState {
     crono: app.crono ?? cronoZerado,
     ...(app.configAntes && { configAntes: app.configAntes }),
     ...(app.desfazer && { desfazer: app.desfazer.map((d) => ({ ...d, estado: completarEstado(d.estado) })) }),
+    ...(app.compartilhada && { compartilhada: app.compartilhada }),
+    ...(app.chaveDeControle && { chaveDeControle: app.chaveDeControle }),
   }
 }

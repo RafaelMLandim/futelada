@@ -87,3 +87,23 @@ describe('desfazer a última ação', () => {
     expect(app.estado.config.coletes).toEqual(coletes)
   })
 })
+
+describe('pelada compartilhada', () => {
+  it('guarda o código do link; desfazer não tira e encerrar ou cancelar acabam com o compartilhamento', () => {
+    let app = reducer(estadoInicial(), { tipo: 'iniciar' })
+    app = reducer(app, { tipo: 'compartilhar', codigo: 'ABC123', chave: 'segredo' })
+    expect(app.compartilhada).toBe('ABC123')
+    expect(app.chaveDeControle).toBe('segredo')
+    app = reducer(app, { tipo: 'aplicar', fn: (estado) => adicionarJogador(estado, novoJogador('ZÉ')) })
+    app = reducer(app, { tipo: 'desfazer' })
+    expect(app.compartilhada).toBe('ABC123')
+    expect(reducer(app, { tipo: 'encerrar' }).compartilhada).toBeUndefined()
+    // retomar o controle: pega a pelada como está na nuvem, sem o que dava para desfazer
+    const daNuvem = reducer(app, { tipo: 'aplicar', fn: (estado) => adicionarJogador(estado, novoJogador('TIÃO')) })
+    const retomada = reducer(app, { tipo: 'substituir', app: { estado: daNuvem.estado, crono: daNuvem.crono } })
+    expect(retomada.estado.fila.map((jogador) => jogador.nome)).toContain('TIÃO')
+    expect(retomada.desfazer).toEqual([])
+    expect(retomada.compartilhada).toBe('ABC123')
+    expect(reducer(app, { tipo: 'cancelar' }).compartilhada).toBeUndefined()
+  })
+})

@@ -10,11 +10,14 @@
     "preview": "vite preview",
     "test": "vitest run",
     "android": "vite build && bash -c 'source ~/.local/opt/android-env.sh && npx cap sync android && cd android && ./gradlew assembleDebug -q'",
-    "test:regras": "bash -c 'source ~/.local/opt/android-env.sh && npx firebase-tools emulators:exec --only firestore --project demo-dois-ou-dez \"node --test testes-regras/plano.mjs\"'"
+    "android:loja": "vite build && bash -c 'source ~/.local/opt/android-env.sh && npx cap sync android && cd android && ./gradlew bundleRelease -q'",
+    "test:regras": "bash -c 'source ~/.local/opt/android-env.sh && npx firebase-tools emulators:exec --only firestore --project demo-dois-ou-dez \"node --test --test-concurrency=1 testes-regras/plano.mjs testes-regras/isolamento.mjs\"'",
+    "emuladores": "bash -c 'source ~/.local/opt/android-env.sh && npx firebase-tools emulators:start --only auth,firestore --project dois-ou-dez'"
   },
   "dependencies": {
     "@capacitor-firebase/authentication": "^8.5.2",
     "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.5.2",
     "@capacitor/device": "^8.0.3",
     "@capacitor/filesystem": "^8.1.4",

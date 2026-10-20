@@ -31,13 +31,18 @@ export type RegrasTorneio = {
   acrescimos: boolean // ao acabar o tempo, pode dar acréscimos
 }
 
-/** Time do torneio. Os primeiros `linha` jogadores são os titulares; os demais, reservas. */
+/** Jogador do time do torneio. `goleiro`: é o goleiro do time (um por time; nos outros fica vazio). */
+export type JogadorDoTime = Jogador & { goleiro?: boolean }
+
+/**
+ * Time do torneio: o goleiro (marcado com `goleiro`) e os jogadores de linha. Dos jogadores de linha,
+ * os primeiros `linha` são os titulares; os demais, reservas.
+ */
 export type TimeTorneio = {
   id: string
   nome: string
   cor: string
-  goleiro: string | null
-  jogadores: Jogador[]
+  jogadores: JogadorDoTime[]
   fechado: boolean // "Fechar time": acabaram os jogadores dele
 }
 
@@ -98,6 +103,8 @@ export type PartidaTorneio = {
   prorrogacao?: boolean // está na prorrogação
   inicioDoPeriodo?: number // ms do relógio quando o tempo atual começou
   intervaloAte?: number | null // no intervalo: hora em que acaba
+  // quem está no gol de cada lado: o id de um jogador em campo (null = gol vazio: goleiro suspenso ou expulso)
+  goleiros?: Record<Lado, string | null>
 }
 
 export type Torneio = {

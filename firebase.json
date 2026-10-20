@@ -3,7 +3,8 @@
     "public": "dist",
     "ignore": [
       "firebase.json",
-      "**/.*"
+      "**/.!(well-known)",
+      "**/.!(well-known)/**"
     ],
     "rewrites": [
       {
@@ -38,6 +39,15 @@
             "value": "public, max-age=31536000, immutable"
           }
         ]
+      },
+      {
+        "source": "/.well-known/assetlinks.json",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
       }
     ]
   },
@@ -57,5 +67,16 @@
         ".secret.local"
       ]
     }
-  ]
+  ],
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "ui": {
+      "enabled": true
+    }
+  }
 }

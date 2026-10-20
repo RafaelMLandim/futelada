@@ -9,6 +9,12 @@ const campos = new Map()
 const ouvintesCampos = new Map() // código -> Set<res>
 const avisarCampos = (c) => { for (const res of ouvintesCampos.get(c) ?? []) res.write(`data: ${JSON.stringify(campos.get(c) ?? {})}\n\n`) }
 const vazio = () => ({ base: null, partidas: [], resultados: {} })
+// peladas compartilhadas (mesmas regras do firestore.rules: só quem está no controle grava; assume o dono
+// ou quem tem a chave do link de controle): código -> dados; a chave fica à parte (ninguém lê)
+const peladas = new Map()
+const chavesDasPeladas = new Map()
+const ouvintesPeladas = new Map() // código -> Set<res>
+const avisarPelada = (codigo) => { for (const res of ouvintesPeladas.get(codigo) ?? []) res.write(`data: ${JSON.stringify(peladas.get(codigo) ?? null)}\n\n`) }
 
 function aplicar(dados, ops) {
   let { base, partidas, resultados } = dados
@@ -43,10 +49,41 @@ http.createServer((req, res) => {
     req.on('close', () => lista.delete(res))
     return
   }
+  if (url.pathname === '/pelada-ouvir') {
+    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' })
+    const lista = ouvintesPeladas.get(c) ?? new Set(); lista.add(res); ouvintesPeladas.set(c, lista)
+    res.write(`data: ${JSON.stringify(peladas.get(c) ?? null)}\n\n`)
+    req.on('close', () => lista.delete(res))
+    return
+  }
   if (url.pathname === '/dados') return res.end(JSON.stringify(torneios.get(c) ?? vazio()))
   let corpo = ''
   req.on('data', (d) => (corpo += d))
   req.on('end', () => {
+    if (url.pathname === '/pelada-criar') {
+      const { dados, chave, uid } = JSON.parse(corpo)
+      if (peladas.get(c) && peladas.get(c).dono !== uid) { res.statusCode = 403; return res.end('já existe') }
+      peladas.set(c, { ...dados, dono: uid, controlador: uid, nomeDoControlador: dados.nomeDoDono, encerrada: false, atualizadaEm: Date.now() })
+      chavesDasPeladas.set(c, chave)
+      avisarPelada(c)
+      return res.end('ok')
+    }
+    if (url.pathname === '/pelada-publicar') {
+      const { dados, uid } = JSON.parse(corpo)
+      const atual = peladas.get(c)
+      if (!atual || atual.controlador !== uid) { res.statusCode = 403; return res.end('só quem está no controle grava') }
+      peladas.set(c, { ...atual, ...dados })
+      avisarPelada(c)
+      return res.end('ok')
+    }
+    if (url.pathname === '/pelada-assumir') {
+      const { chave, nome, uid } = JSON.parse(corpo)
+      const atual = peladas.get(c)
+      if (!atual || (atual.dono !== uid && chave !== chavesDasPeladas.get(c))) { res.statusCode = 403; return res.end('chave errada') }
+      peladas.set(c, { ...atual, controlador: uid, nomeDoControlador: nome })
+      avisarPelada(c)
+      return res.end('ok')
+    }
     if (url.pathname === '/gravar') torneios.set(c, aplicar(torneios.get(c) ?? vazio(), JSON.parse(corpo)))
     if (url.pathname === '/apagar') { torneios.delete(c); campos.delete(c); avisarCampos(c) }
     if (url.pathname === '/pegar' || url.pathname === '/soltar') {

@@ -1,4 +1,4 @@
-// Estatísticas do dia: artilharia, goleiro menos vazado e vitórias por jogador (seleção da pelada).
+// Estatísticas do dia: artilharia, goleiro menos vazado, assistências (Troféu Garçom) e vitórias por jogador (seleção da pelada).
 
 import type { Colete, Estado, Gol } from '../types/pelada'
 import { LADOS } from './lado'
@@ -78,6 +78,25 @@ export function goleirosMenosVazados(estado: Estado): GoleiroStats[] {
   return [...mapa.values()]
     .map((g) => ({ ...g, media: g.jogos ? g.sofridos / g.jogos : 0 }))
     .sort((x, y) => x.media - y.media || y.jogos - x.jogos || x.nome.localeCompare(y.nome))
+}
+
+export type Garcom = { id: string; nome: string; assistencias: number; jogos: number }
+
+/** Líderes de assistências do dia (Troféu Garçom). Desempate: menos jogos → nome. */
+export function garcons(estado: Estado): Garcom[] {
+  const mapa = new Map<string, Garcom>()
+  for (const g of todosOsGols(estado)) {
+    if (!g.assistenciaId || !g.assistencia) continue
+    const linha = mapa.get(g.assistenciaId) ?? mapa.set(g.assistenciaId, { id: g.assistenciaId, nome: g.assistencia, assistencias: 0, jogos: 0 }).get(g.assistenciaId)!
+    linha.assistencias++
+  }
+  for (const partida of estado.historico) {
+    for (const jogador of [...partida.timeA.jogadores, ...partida.timeB.jogadores]) {
+      const linha = mapa.get(jogador.id)
+      if (linha) linha.jogos++
+    }
+  }
+  return [...mapa.values()].sort((x, y) => y.assistencias - x.assistencias || x.jogos - y.jogos || x.nome.localeCompare(y.nome))
 }
 
 export type PlacarDosColetes = { coletes: (Colete & { vitorias: number })[]; empates: number }

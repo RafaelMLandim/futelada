@@ -9,6 +9,7 @@ import { TelaPremium } from '../components/TelaPremium'
 import { Aviso } from '../components/Aviso'
 import { Barra } from '../components/Barra'
 import { BotaoDesfazer } from '../components/BotaoDesfazer'
+import { BotaoCompartilhar } from '../components/CompartilharPelada'
 import { Camisa } from '../components/Camisa'
 import { Icone } from '../components/Icone'
 import { Subiu } from '../components/Subiu'
@@ -17,12 +18,14 @@ import type { Pelada } from '../store/usePelada'
 import { SEM_COLETE } from '../utils/cores'
 import { useConfirmar } from '../utils/confirmacao'
 import { maiusculas, normalizarNome, reais } from '../utils/formatar'
+import { useAjudando, useSomenteLeitura } from '../utils/somenteLeitura'
 import type { useCobranca } from '../store/cobranca'
 import { Pagamentos } from './Pagamentos'
 
 export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca: ReturnType<typeof useCobranca>; onApitar: () => void }) {
   const { app, aplicar } = pelada
   const { estado } = app
+  const somenteLeitura = useSomenteLeitura()
   const [nome, setNome] = useState('')
   const confirmar = useConfirmar()
   const [repetido, setRepetido] = useState<string | null>(null)
@@ -34,7 +37,7 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
   const emJogo = estado.emCampo !== null
 
   // Turma: os jogadores de sempre (sugestões ao digitar, "quem costuma vir", "é ele?")
-  const turma = useJogadoresDaTurma(estado.config.turma)
+  const turma = useJogadoresDaTurma(somenteLeitura ? null : estado.config.turma)
   const naLista = todosOsJogadores(estado)
   const sugeridos = sugestoes(turma, nome, naLista)
   const costumamVir = quemCostumaVir(turma, naLista)
@@ -69,8 +72,10 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
   // Plano pago (PLANO.md, seção 14): a pelada conta no 1º "Apitar" do dia
   const plano = usePlano()
   const [premium, setPremium] = useState(false)
+  // quem assumiu o controle da pelada de outra pessoa não gasta o próprio plano (a pelada é do dono)
+  const ajudando = useAjudando()
   const apitar = () => {
-    const primeiro = estado.historico.length === 0
+    const primeiro = estado.historico.length === 0 && !ajudando
     if (primeiro && !plano.podeComecarPelada) return setPremium(true)
     if (primeiro && plano.cobrancaAtiva && !plano.premium) void contarUso('peladas').catch(() => null)
     // primeiro jogo: mistura os jogadores dos 2 primeiros times (se ligado nos Ajustes)
@@ -84,9 +89,9 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
       <Barra
         titulo={emJogo ? 'Fila' : 'Lista'}
         sub={`${estado.fila.length} ${estado.fila.length === 1 ? 'jogador' : 'jogadores'}`}
-        direita={<BotaoDesfazer pelada={pelada} />}
+        direita={somenteLeitura ? undefined : <div className="row" style={{ gap: 6 }}><BotaoCompartilhar /><BotaoDesfazer pelada={pelada} /></div>}
       />
-      <form onSubmit={adicionar} style={{ padding: '12px 12px 0', display: 'flex', gap: 8 }}>
+      {!somenteLeitura && <form onSubmit={adicionar} style={{ padding: '12px 12px 0', display: 'flex', gap: 8 }}>
         <label style={{ display: 'flex', flex: 1 }}>
           <span className="vh">Nome do jogador</span>
           <input ref={campo} className="inp" placeholder={emJogo ? 'Chegou atrasado?' : 'Quem chegou?'} value={nome}
@@ -95,9 +100,9 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
         <button className="ib" type="submit" style={{ width: 52, height: 52, background: 'var(--amarelo)', boxShadow: '0 3px 0 var(--borda)' }} aria-label="Adicionar jogador">
           <Icone nome="mais" />
         </button>
-      </form>
+      </form>}
       {/* sugestões da turma enquanto digita; com o campo vazio, "quem costuma vir" */}
-      {sugeridos.length > 0 && (
+      {!somenteLeitura && sugeridos.length > 0 && (
         <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '8px 12px 0', scrollbarWidth: 'none' }} aria-label="Sugestões da turma">
           {sugeridos.map((j) => (
             <button key={j.id} className="chip" style={{ flex: 'none', textTransform: 'none', background: '#fff' }} onClick={() => { entrar(j); campo.current?.focus() }}>
@@ -106,14 +111,14 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
           ))}
         </div>
       )}
-      {!nome && costumamVir.length > 0 && (
+      {!somenteLeitura && !nome && costumamVir.length > 0 && (
         <button className="btn w sm" style={{ margin: '8px 12px 0', width: 'auto', textTransform: 'none' }} onClick={() => setChamando(true)}>
           <Icone nome="times" tamanho={20} /> Quem costuma vir ({costumamVir.length})
         </button>
       )}
 
       {/* campo pago: quantos já pagaram; abre QR Pix, link para o grupo e a lista de pagamentos */}
-      {estado.config.pagamento.ativo && (() => {
+      {!somenteLeitura && estado.config.pagamento.ativo && (() => {
         const r = resumoPagamentos(estado)
         return (
           <button className="panel row" style={{ margin: '10px 12px 0', padding: '8px 10px', cursor: 'pointer', font: 'inherit', color: 'var(--navy)', textAlign: 'left' }}
@@ -161,9 +166,11 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
                       <span className="nome" style={{ flex: '0 1 auto' }}>{j.nome}</span>
                       <Subiu de={subiuDe(estado, j.id)} />
                       <span style={{ flex: 1 }} />
-                      <button className="ib g" aria-label={`${j.nome} foi embora`} onClick={() => remover(j.id, j.nome)}>
-                        <Icone nome="saiu" tamanho={20} />
-                      </button>
+                      {!somenteLeitura && (
+                        <button className="ib g" aria-label={`${j.nome} foi embora`} onClick={() => remover(j.id, j.nome)}>
+                          <Icone nome="saiu" tamanho={20} />
+                        </button>
+                      )}
                     </div>
                   )
                 })}
@@ -220,7 +227,7 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
         </Aviso>
       )}
 
-      {!emJogo && (
+      {!emJogo && !somenteLeitura && (
         <div className="rodape">
           <button className="btn" disabled={!podeComecar(estado)} onClick={apitar}>
             {estado.config.sortearInicio && estado.historico.length === 0 ? 'Sortear e apitar' : 'Apitar'} · Time {estado.filaTimes[0]} x Time {estado.filaTimes[1]}

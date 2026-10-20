@@ -18,9 +18,7 @@ function jogar(t: Torneio, acoes: (t: Torneio, A: T, B: T, jogoId: string) => To
 
 describe('estatísticas do torneio', () => {
   const base = () => {
-    const t = sorteado(torneioCom(4, 'pontos'))
-    t.times.forEach((x) => { x.goleiro = `G${x.nome}` })
-    return t
+    return sorteado(torneioCom(4, 'pontos'))
   }
 
   it('artilharia soma os gols de todos os jogos, com o time de cada um', () => {

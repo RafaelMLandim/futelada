@@ -3,8 +3,11 @@ export const formatarTempo = (ms: number) => {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 }
 
-export const dataHoje = () =>
-  new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' }).replace(/\./g, '')
+/** Dia no formato do app ("qua, 14 de out"), de um momento (ms). */
+export const dataDo = (momento: number) =>
+  new Date(momento).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' }).replace(/\./g, '')
+
+export const dataHoje = () => dataDo(Date.now())
 
 /** Compara nomes ignorando maiúsculas, acentos e espaços extras. */
 export const normalizarNome = (nome: string) =>

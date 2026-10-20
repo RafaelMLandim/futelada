@@ -14,6 +14,8 @@ export type Acao =
   | { tipo: 'encerrar' }
   | { tipo: 'desfazer' }
   | { tipo: 'cancelar' } // descarta a pelada (sem histórico nem caixa) e volta os ajustes de antes dela
+  | { tipo: 'compartilhar'; codigo: string; chave: string } // a pelada passa a ficar na nuvem (links de acompanhar e de controle)
+  | { tipo: 'substituir'; app: Pick<AppState, 'estado' | 'crono'> } // pega a pelada como está na nuvem (retomar o controle)
 
 
 export const estadoInicial = (config = configPadrao): AppState => ({
@@ -47,6 +49,11 @@ export function reducer(app: AppState, acao: Acao): AppState {
     }
     case 'iniciar':
       return { ...app, iniciada: true }
+    case 'compartilhar':
+      return { ...app, compartilhada: acao.codigo, chaveDeControle: acao.chave }
+    case 'substituir':
+      // o que foi feito em outro celular não dá para desfazer aqui
+      return { ...app, estado: acao.app.estado, crono: acao.app.crono, desfazer: [] }
     case 'crono':
       return { ...app, crono: alternarCrono(app.crono, acao.rodando) }
     case 'acrescimos':

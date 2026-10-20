@@ -2,6 +2,7 @@ import { podeVoltarAoJogo, removerJogador, voltouDoMachucado } from '../logic'
 import { Icone } from './Icone'
 import type { Pelada } from '../store/usePelada'
 import { useConfirmar } from '../utils/confirmacao'
+import { useSomenteLeitura } from '../utils/somenteLeitura'
 
 // Ícones do jogador machucado (a cruz, como no Winning Eleven) e do substituto (as setas de troca),
 // e a lista de machucados com "Voltar" e "Foi embora" (PLANO.md, seção 3.8.4).
@@ -32,6 +33,7 @@ export function Troca({ tamanho = 18, de }: { tamanho?: number; de?: string }) {
 export function ListaDeMachucados({ pelada }: { pelada: Pelada }) {
   const { estado } = pelada.app
   const confirmar = useConfirmar()
+  const somenteLeitura = useSomenteLeitura()
   if (estado.machucados.length === 0) return null
 
   return (
@@ -64,13 +66,17 @@ export function ListaDeMachucados({ pelada }: { pelada: Pelada }) {
                   Time {m.time}{m.substituto ? ` · ${m.substituto.nome} entrou no lugar` : ''}
                 </span>
               </span>
-              <button className="btn sm" style={{ width: 'auto', height: 32, minHeight: 32, padding: '0 10px', fontSize: 13, flex: 'none', boxShadow: '0 2px 0 var(--borda)' }}
-                aria-label={noJogo ? `${m.jogador.nome} volta para o jogo` : `${m.jogador.nome} volta para a fila`} onClick={voltar}>
-                Voltar
-              </button>
-              <button className="ib g" aria-label={`${m.jogador.nome} foi embora`} onClick={embora}>
-                <Icone nome="saiu" tamanho={20} />
-              </button>
+              {!somenteLeitura && (
+                <>
+                  <button className="btn sm" style={{ width: 'auto', height: 32, minHeight: 32, padding: '0 10px', fontSize: 13, flex: 'none', boxShadow: '0 2px 0 var(--borda)' }}
+                    aria-label={noJogo ? `${m.jogador.nome} volta para o jogo` : `${m.jogador.nome} volta para a fila`} onClick={voltar}>
+                    Voltar
+                  </button>
+                  <button className="ib g" aria-label={`${m.jogador.nome} foi embora`} onClick={embora}>
+                    <Icone nome="saiu" tamanho={20} />
+                  </button>
+                </>
+              )}
             </div>
           )
         })}

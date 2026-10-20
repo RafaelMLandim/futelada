@@ -34,7 +34,8 @@ export function artilhariaDoTorneio(t: Torneio): ArtilheiroTorneio[] {
 }
 
 export function goleirosDoTorneio(t: Torneio): GoleiroTorneio[] {
-  const timeDoGoleiro = new Map(t.times.filter((x) => x.goleiro).map((x) => [x.goleiro!, x.id]))
+  // quem jogou no gol pode ser qualquer jogador do time (o time vem pelo nome, que é único no torneio)
+  const timeDoGoleiro = new Map(t.times.flatMap((time) => time.jogadores.map((jogador) => [jogador.nome, time.id] as const)))
   const mapa = new Map<string, GoleiroTorneio>()
   const linha = (nome: string) =>
     mapa.get(nome) ?? mapa.set(nome, { nome, time: timeDoGoleiro.get(nome) ?? '', jogos: 0, sofridos: 0, media: 0 }).get(nome)!

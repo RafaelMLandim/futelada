@@ -3,12 +3,12 @@
 
 import { initializeApp } from 'firebase/app'
 import {
-  EmailAuthProvider, GoogleAuthProvider, createUserWithEmailAndPassword, deleteUser, getAuth, getRedirectResult, linkWithCredential, linkWithRedirect, onIdTokenChanged,
+  EmailAuthProvider, GoogleAuthProvider, connectAuthEmulator, createUserWithEmailAndPassword, deleteUser, getAuth, getRedirectResult, linkWithCredential, linkWithRedirect, onIdTokenChanged,
   reauthenticateWithCredential, reauthenticateWithPopup, signInAnonymously, updateProfile, signInWithCredential, signInWithEmailAndPassword, signInWithRedirect, signOut, type User,
 } from 'firebase/auth'
 import {
-  addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, initializeFirestore, onSnapshot, orderBy, persistentLocalCache, query,
-  persistentMultipleTabManager, setDoc, where, writeBatch, type DocumentReference,
+  addDoc, collection, connectFirestoreEmulator, deleteDoc, doc, getDoc, getDocs, increment, initializeFirestore, onSnapshot, orderBy, persistentLocalCache, query,
+  persistentMultipleTabManager, setDoc, updateDoc, where, writeBatch, type DocumentReference,
 } from 'firebase/firestore'
 import type { DadosNuvem, Operacao } from '../logic/torneio'
 import type { PartidaTorneio, ResultadoJogo } from '../types/torneio'
@@ -17,7 +17,7 @@ import { baseDaNuvem, baseParaNuvem } from './formato'
 import { entrarComUmToque, prepararUmToque } from './umToque'
 import { CONTADORES_ZERADOS, PLANO_VAZIO, type Contadores, type DadosDoPlano, type Plano } from '../logic/plano'
 import type { JogadorDaTurma } from '../logic/turma'
-import type { AvisoPagamento, CobrancaNuvem, Lancamento, MesarioNoCampo, Nuvem, PeladaNoHistorico, Perfil, Turma } from './tipos'
+import type { AvisoPagamento, CobrancaNuvem, Lancamento, MesarioNoCampo, Nuvem, PeladaCompartilhada, PeladaNoHistorico, Perfil, Turma } from './tipos'
 
 export const configFirebase = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -41,6 +41,22 @@ async function tokenDoCelular(): Promise<{ token: string } | 'fechou'> {
   }
 }
 
+/**
+ * Só no desenvolvimento: abrir o app com ?emulador liga os emuladores do Firebase neste navegador
+ * (login e banco de mentira, com as regras de verdade; ?emulador=0 desliga). Rodar: npm run emuladores
+ */
+function usarEmulador(): boolean {
+  if (!import.meta.env.DEV) return false
+  try {
+    const pedido = new URLSearchParams(location.search).get('emulador')
+    if (pedido === '0') localStorage.removeItem('nuvem:emulador')
+    else if (pedido !== null) localStorage.setItem('nuvem:emulador', '1')
+    return localStorage.getItem('nuvem:emulador') === '1'
+  } catch {
+    return false
+  }
+}
+
 /** O Firestore não aceita `undefined`: converte para JSON puro. */
 const puro = <T,>(v: T): T => JSON.parse(JSON.stringify(v))
 
@@ -48,6 +64,10 @@ export function criarNuvemFirebase(): Nuvem {
   const app = initializeApp(configFirebase)
   const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) })
   const auth = getAuth(app)
+  if (usarEmulador()) {
+    connectAuthEmulator(auth, `http://${location.hostname}:9099`, { disableWarnings: true })
+    connectFirestoreEmulator(db, location.hostname, 8080)
+  }
   // Quem já entrou com o Google continua logado; senão, entra anônimo (como sempre foi)
   const logado = (async () => {
     await auth.authStateReady()
@@ -107,6 +127,7 @@ export function criarNuvemFirebase(): Nuvem {
   const campos = (codigo: string) => collection(db, 'torneios', codigo, 'campos')
   const cobranca = (codigo: string) => doc(db, 'cobrancas', codigo)
   const avisos = (codigo: string) => collection(db, 'cobrancas', codigo, 'avisos')
+  const peladaCompartilhada = (codigo: string) => doc(db, 'peladas', codigo)
 
   return {
     nome: 'firebase',
@@ -215,6 +236,39 @@ export function criarNuvemFirebase(): Nuvem {
       await logado
       for (const d of (await getDocs(avisos(codigo))).docs) await deleteDoc(d.ref)
       await deleteDoc(cobranca(codigo))
+    },
+    // ---- pelada compartilhada (as regras do Firebase conferem quem está no controle e a chave) ----
+    async criarPeladaCompartilhada(codigo, dados, chave) {
+      const dono = await uid()
+      const inicio = { ...dados, dono, controlador: dono, nomeDoControlador: dados.nomeDoDono, encerrada: false, atualizadaEm: Date.now() }
+      // primeiro a pelada, depois a chave (a regra da chave confere o dono na pelada); sem internet, os dois sobem em ordem
+      await Promise.race([setDoc(peladaCompartilhada(codigo), puro(inicio)), new Promise((resolver) => setTimeout(resolver, 4000))])
+      setDoc(doc(db, 'peladas', codigo, 'privado', 'chave'), { valor: chave }).catch((erro) => console.error('Não deu para guardar a chave da pelada', erro))
+    },
+    async publicarPeladaCompartilhada(codigo, dados) {
+      await logado
+      // updateDoc troca o campo `app` inteiro (setDoc com merge misturaria o estado antigo com o novo)
+      updateDoc(peladaCompartilhada(codigo), puro(dados)).catch((erro) => console.error('Não deu para publicar a pelada', erro))
+    },
+    async assumirControleDaPelada(codigo, chave, nome) {
+      const eu = await uid()
+      try {
+        if (chave) await setDoc(doc(db, 'peladas', codigo, 'pedidos', eu), { chave })
+        await updateDoc(peladaCompartilhada(codigo), { controlador: eu, nomeDoControlador: nome })
+        return true
+      } catch (erro) {
+        if ((erro as { code?: string }).code === 'permission-denied') return false
+        throw erro
+      }
+    },
+    ouvirPeladaCompartilhada(codigo, aoMudar, aoErro) {
+      let parar = () => {}
+      let vivo = true
+      logado.then(() => {
+        if (!vivo) return
+        parar = onSnapshot(peladaCompartilhada(codigo), (s) => aoMudar(s.exists() ? (s.data() as PeladaCompartilhada) : null), (erro) => aoErro?.(erro))
+      }, (erro) => aoErro?.(erro))
+      return () => { vivo = false; parar() }
     },
     async avisarPagamento(codigo, jogadorId, aviso) {
       await logado

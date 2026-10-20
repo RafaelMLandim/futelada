@@ -18,6 +18,7 @@ export const configPadrao: Config = {
   som: true,
   acrescimos: true,
   sortearInicio: true,
+  assistencias: false,
   turma: null,
   pagamento: { ativo: false, valorCampo: 0, modo: 'proporcional', valorFixo: 0, chavePix: '', recebedor: '', confirmarAuto: false },
 }

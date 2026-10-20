@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.doisoudez",
+      "sha256_cert_fingerprints": [
+        "4F:1C:DA:6F:0C:8C:30:EB:A1:B2:01:01:E7:70:20:6D:2D:B5:39:ED:56:EB:84:10:D6:5F:A8:09:69:A9:43:98",
+        "4A:D0:CA:41:00:BF:44:BD:4E:3A:81:5B:32:75:F9:2A:C6:32:BC:6A:4B:1D:BD:73:6B:89:AE:6D:35:1C:FB:8C"
+      ]
+    }
+  }
+]

@@ -2,7 +2,7 @@ rules_version = '2';
 // Regras do torneio compartilhado (PLANO.md, seção 10):
 // - quem entrou com o Google e tem o código lê o torneio;
 // - só o organizador cria/muda/apaga a base do torneio (regras, times, sorteio);
-// - mesários gravam os jogos em andamento e os resultados; cada um trava o seu campo.
+// - mesários gravam os jogos em andamento e os resultados só do campo que travaram.
 service cloud.firestore {
   match /databases/{database}/documents {
     // Dados de quem entrou com o Google (caixa da pelada): só o dono lê e escreve
@@ -46,7 +46,9 @@ service cloud.firestore {
     // link lê e avisa "já paguei" no próprio registro; só o organizador marca "pago" (a não ser
     // que ele tenha ligado a confirmação automática). Ninguém de fora desfaz um "pago".
     match /cobrancas/{codigo} {
-      allow read: if request.auth != null;
+      // get = quem tem o código; list só as próprias (excluir a conta), ninguém lista as dos outros
+      allow get: if request.auth != null;
+      allow list: if request.auth != null && resource.data.organizador == request.auth.uid;
       allow create: if request.auth != null && request.resource.data.organizador == request.auth.uid;
       allow update, delete: if request.auth != null && resource.data.organizador == request.auth.uid;
 
@@ -61,11 +63,52 @@ service cloud.firestore {
       }
     }
 
+    // Pelada compartilhada (PLANO.md, seção 16): quem tem o link acompanha (até sem login, com a conta
+    // anônima). Só quem está no controle grava (um celular por vez). Assume o controle o dono (retomando)
+    // ou quem tem o link de controle: ele grava a chave em pedidos/{uid} e ela tem que bater com a do dono,
+    // que fica em privado/chave (ninguém mais lê). O dono nunca muda.
+    match /peladas/{codigo} {
+      function caminho() { return /databases/$(database)/documents/peladas/$(codigo); }
+      function comConta() { return request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
+      function chaveConfere() {
+        return get(/databases/$(database)/documents/peladas/$(codigo)/pedidos/$(request.auth.uid)).data.chave
+          == get(/databases/$(database)/documents/peladas/$(codigo)/privado/chave).data.valor;
+      }
+      // get = quem tem o código; ninguém lista as peladas
+      allow get: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.dono == request.auth.uid
+        && request.resource.data.controlador == request.auth.uid;
+      allow update: if request.auth != null && request.resource.data.dono == resource.data.dono && (
+        // quem está no controle grava o jogo (sem mexer no controle nem no nome da dona)
+        (resource.data.controlador == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['app', 'encerrada', 'atualizadaEm']))
+        // assumir o controle: só muda quem controla (a pelada fica igual); o dono ou quem tem a chave
+        || (request.resource.data.controlador == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['controlador', 'nomeDoControlador'])
+            && (resource.data.dono == request.auth.uid || (comConta() && chaveConfere()))));
+      allow delete: if request.auth != null && resource.data.dono == request.auth.uid;
+
+      match /privado/{documento} {
+        allow read, write: if request.auth != null && get(caminho()).data.dono == request.auth.uid;
+      }
+      match /pedidos/{uid} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
     // Torneio: só quem entrou com o Google (conta anônima não lê nem marca jogos)
     match /torneios/{codigo} {
       function comConta() { return request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
       function organizador() { return get(/databases/$(database)/documents/torneios/$(codigo)).data.nuvem.organizador; }
-      allow read: if comConta();
+      function souOrganizador() { return organizador() == request.auth.uid; }
+      // mesário: quem travou aquele campo
+      function mesarioDo(campo) {
+        return exists(/databases/$(database)/documents/torneios/$(codigo)/campos/$(string(campo)))
+          && get(/databases/$(database)/documents/torneios/$(codigo)/campos/$(string(campo))).data.uid == request.auth.uid;
+      }
+      // get = quem tem o código; list só os próprios (excluir a conta), ninguém lista os dos outros
+      allow get: if comConta();
+      allow list: if comConta() && resource.data.nuvem.organizador == request.auth.uid;
       allow create: if comConta() && request.resource.data.nuvem.organizador == request.auth.uid;
       allow update, delete: if comConta() && resource.data.nuvem.organizador == request.auth.uid;
 
@@ -77,9 +120,22 @@ service cloud.firestore {
         allow delete: if comConta() && (resource.data.uid == request.auth.uid || organizador() == request.auth.uid);
       }
 
-      match /{parte}/{jogo} {
+      // Jogos em andamento: o organizador marca todos; o mesário só os do campo dele
+      match /partidas/{jogo} {
         allow read: if comConta();
-        allow write: if comConta() && parte in ['partidas', 'resultados'];
+        allow create: if comConta() && (souOrganizador() || mesarioDo(request.resource.data.campo));
+        allow update: if comConta() && (souOrganizador() || (mesarioDo(resource.data.campo) && mesarioDo(request.resource.data.campo)));
+        allow delete: if comConta() && (souOrganizador() || mesarioDo(resource.data.campo));
+      }
+      // Resultados: o organizador ou o mesário do campo onde o jogo estava (encerrar) ou volta (reabrir)
+      match /resultados/{jogo} {
+        function partida() { return /databases/$(database)/documents/torneios/$(codigo)/partidas/$(jogo); }
+        function jogoNoMeuCampo() {
+          return (exists(partida()) && mesarioDo(get(partida()).data.campo))
+            || (existsAfter(partida()) && mesarioDo(getAfter(partida()).data.campo));
+        }
+        allow read: if comConta();
+        allow write: if comConta() && (souOrganizador() || jogoNoMeuCampo());
       }
     }
   }

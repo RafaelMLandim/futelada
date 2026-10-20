@@ -20,5 +20,9 @@ describe('gol do goleiro', () => {
     const turma = [{ id: 't1', nome: 'PEDRO' }, { id: 't2', nome: 'ZÉ' }, { id: 't3', nome: 'ZILDA', arquivado: true }]
     expect(buscarGoleiro(e, turma, 'ze').map((x) => x.nome)).toEqual(['ZECA', 'ZÉ'])
     expect(buscarGoleiro(e, turma, 'ped').map((x) => x.nome)).toEqual(['PEDRO', 'JOÃO PEDRO'])
+    // quem está em campo (nos dois times) não aparece: o goleiro é alguém de fora da linha
+    const emCampo = [...e.emCampo!.A.jogadores, ...e.emCampo!.B.jogadores].map((jogador) => jogador.nome)
+    expect(buscarGoleiro(e, [], 'a').map((jogador) => jogador.nome)).not.toContain('A')
+    expect(buscarGoleiro(e, [{ id: 'turma-a', nome: 'A' }], 'a').map((jogador) => jogador.nome).filter((nome) => emCampo.includes(nome))).toEqual([])
   })
 })

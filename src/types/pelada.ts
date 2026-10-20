@@ -22,6 +22,7 @@ export type Config = {
   som: boolean // apitos de início e fim de jogo
   acrescimos: boolean // ao acabar o tempo, pode dar acréscimos
   sortearInicio: boolean // no primeiro jogo, mistura os jogadores dos 2 primeiros times (contra panelinha)
+  assistencias: boolean // depois de quem fez o gol, pergunta quem deu o passe (líder de assistências: Troféu Garçom)
   pagamento: ConfigPagamento
   turma: string | null // turma desta pelada (jogadores de sempre, histórico, relatório); null = sem turma
 }
@@ -56,6 +57,8 @@ export type Gol = {
   contra?: boolean // gol contra: conta para `lado`, o autor é do outro time e não entra na artilharia
   periodo?: string // torneio com mais de um tempo: em qual saiu ("2ºT", "Pror."); `tempoMs` é dentro dele
   duracaoMin?: number // duração daquele tempo (para o minuto: 5+1')
+  assistenciaId?: string // quem deu o passe (só com as assistências ligadas)
+  assistencia?: string
 }
 
 export type CorCartao = 'amarelo' | 'vermelho' | 'azul'

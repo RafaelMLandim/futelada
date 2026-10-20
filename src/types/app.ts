@@ -14,4 +14,6 @@ export type AppState = {
   crono: Cronometro
   configAntes?: Config // ajustes de quando esta pelada nasceu (cancelar volta para eles)
   desfazer?: Desfazer[] // últimas ações do jogo, da mais antiga para a mais recente
+  compartilhada?: string // código da pelada compartilhada na nuvem (PLANO.md, seção 16)
+  chaveDeControle?: string // chave do link para outra pessoa assumir o controle
 }

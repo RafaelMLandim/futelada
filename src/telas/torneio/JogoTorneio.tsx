@@ -11,7 +11,7 @@ import { tempoDecorrido, tempoTotalMs } from '../../logic/cronometro'
 import { EscolherAcrescimos } from '../../components/EscolherAcrescimos'
 import {
   acrescimosNaPartida, cancelarPartida, cartaoNaPartida, comecarIntervalo, cronoDaPartida, decorridoNoPeriodo, duracaoDoPeriodo, nomeDoPeriodo,
-  periodoDaPartida, placarDecisivo, proximoTempo, expulsosNaPartida, golNaPartida, jogoPorId, partidaDoJogo, removerGolDaPartida,
+  periodoDaPartida, placarDecisivo, proximoTempo, expulsosNaPartida, goleiroNaPartida, golNaPartida, golVazioPorExpulsao, irParaOGol, jogoPorId, partidaDoJogo, removerGolDaPartida,
   substituirNaPartida, timesDoJogo, ultimoPeriodo,
 } from '../../logic/torneio'
 import type { TorneioHook } from '../../store/torneio'
@@ -32,6 +32,7 @@ type Escolha =
   | { tipo: 'jogador'; lado: Lado; jogador: Jogador }
   | { tipo: 'entrar'; lado: Lado; jogador: Jogador }
   | { tipo: 'sair'; lado: Lado; jogador: Jogador }
+  | { tipo: 'goleiro'; lado: Lado }
 
 // O jogo do torneio em andamento: placar, gols, cartões, substituições e encerramento.
 export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
@@ -114,6 +115,13 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
   }
 
   const jogador = (time: TimeTorneio, id: string) => time.jogadores.find((j) => j.id === id)!
+  // quem está no gol de cada lado (um jogador em campo; null = gol vazio)
+  const goleiros = { A: goleiroNaPartida(t, p, 'A'), B: goleiroNaPartida(t, p, 'B') }
+  const nomeComLuva = (lado: Lado, id: string) => `${id === goleiros[lado]?.id ? '🧤 ' : ''}${jogador(times[lado], id).nome}`
+  const irAoGol = (lado: Lado, jogadorId: string) => {
+    setEscolha(null)
+    hook.aplicar((torneio) => irParaOGol(torneio, jogoId, lado, jogadorId))
+  }
   const play = () => {
     if (!p.crono.rodando && regras.som) apitoInicio()
     hook.aplicar((x) => cronoDaPartida(x, jogoId, !p.crono.rodando))
@@ -126,6 +134,9 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
   const darCartao = (lado: Lado, j: Jogador, cor: CorCartao) => {
     setEscolha(null)
     hook.aplicar((x) => cartaoNaPartida(x, jogoId, lado, j, cor, decorridoNoJogo))
+    // goleiro expulso (vermelho ou 2º amarelo): já pergunta quem vai para o gol
+    const segundoAmarelo = cor === 'amarelo' && p.cartoes.some((cartao) => cartao.jogadorId === j.id && cartao.cor === 'amarelo')
+    if (goleiros[lado]?.id === j.id && (cor === 'vermelho' || segundoAmarelo)) setEscolha({ tipo: 'goleiro', lado })
   }
   const trocar = (lado: Lado, saiId: string, entraId: string) => {
     setEscolha(null)
@@ -157,15 +168,22 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
             Subst. {p.escalacao.substituicoes[lado]}{limite !== null ? `/${limite}` : ''}
           </div>
         </div>
-        {time.goleiro && <div className="tr" style={{ minHeight: 36, fontSize: 14 }}><span className="no g">G</span><span className="nome">{time.goleiro}</span></div>}
-        {p.escalacao.emCampo[lado].map((id, i) => {
+        {/* o goleiro é um jogador em campo como os outros; gol vazio (suspenso ou expulso): escolher quem vai */}
+        {!goleiros[lado] && (
+          <button className="tr linha-jogador" style={{ minHeight: 40, fontSize: 14 }} disabled={!editavel}
+            aria-label={`Escolher o goleiro do ${time.nome}`} onClick={() => setEscolha({ tipo: 'goleiro', lado })}>
+            <span className="no g">G</span><span className="nome" style={{ color: 'var(--vermelho)' }}>Escolher goleiro</span>
+          </button>
+        )}
+        {[...(goleiros[lado] ? [goleiros[lado]!.id] : []), ...p.escalacao.emCampo[lado].filter((id) => id !== goleiros[lado]?.id)].map((id, indice) => {
           const j = jogador(time, id)
           const fora = expulsos.has(id)
+          const noGol = id === goleiros[lado]?.id
           const azul = restanteAzulNaLista(p.cartoes, id, regras.minutosAzul, decorridoNoJogo)
           return (
             <button key={id} className="tr linha-jogador" style={{ minHeight: 40, fontSize: 14, opacity: fora ? 0.55 : 1 }} disabled={!editavel}
               aria-label={`Ações de ${j.nome}`} onClick={() => setEscolha({ tipo: 'jogador', lado, jogador: j })}>
-              <span className="no">{i + 1}</span>
+              {noGol ? <span className="no g">G</span> : <span className="no">{goleiros[lado] ? indice : indice + 1}</span>}
               <span className="nome" style={{ flex: '0 1 auto', textDecoration: fora ? 'line-through' : undefined }}>{j.nome}</span>
               <CartoesDoJogador cores={p.cartoes.filter((c) => c.jogadorId === id).map((c) => c.cor)} expulso={fora} />
               {azul > 0 && !fora && <span className="tag" style={{ background: 'var(--azul)', color: '#fff', height: 20, fontSize: 13 }}>{formatarTempo(azul)}</span>}
@@ -276,7 +294,7 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
             cor={times[lado].cor} onFechar={() => setEscolha(null)}>
             {p.escalacao.emCampo[deQuem].filter((id) => !expulsos.has(id)).map((id) => {
               const j = jogador(times[deQuem], id)
-              return <button key={id} className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }} onClick={() => marcarGol(lado, j, contra)}>{j.nome}</button>
+              return <button key={id} className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }} onClick={() => marcarGol(lado, j, contra)}>{nomeComLuva(deQuem, id)}</button>
             })}
             <button className="btn sm" style={{ gridColumn: '1 / -1' }} onClick={() => marcarGol(lado, null, contra)}>Não sei · só marcar o gol</button>
             {!contra && <button className="btn w sm" style={{ gridColumn: '1 / -1' }} onClick={() => setEscolha({ tipo: 'gol', lado, contra: true })}>Foi gol contra</button>}
@@ -297,6 +315,7 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
             {opcao('Cartão amarelo', <Cartao cor="amarelo" tamanho={20} />, () => darCartao(lado, j, 'amarelo'))}
             {opcao('Cartão vermelho · expulso', <Cartao cor="vermelho" tamanho={20} />, () => darCartao(lado, j, 'vermelho'))}
             {opcao(`Cartão azul · ${regras.minutosAzul} min fora`, <Cartao cor="azul" tamanho={20} />, () => darCartao(lado, j, 'azul'))}
+            {!fora && goleiros[lado]?.id !== j.id && opcao('Ir para o gol · vira o goleiro', <span style={{ fontSize: 20 }}>🧤</span>, () => irAoGol(lado, j.id))}
             {fora
               ? <div className="mut" style={{ gridColumn: '1 / -1' }}>Expulso não pode ser substituído.</div>
               : p.escalacao.banco[lado].length === 0
@@ -317,16 +336,41 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
         </Escolher>
       )}
 
-      {escolha?.tipo === 'entrar' && (
-        <Escolher titulo={`Entra ${escolha.jogador.nome}`} pergunta="No lugar de quem?" cor={times[escolha.lado].cor} onFechar={() => setEscolha(null)}>
-          {!podeSubstituir(escolha.lado)
-            ? <div className="mut" style={{ gridColumn: '1 / -1' }}>Limite de substituições atingido.</div>
-            : p.escalacao.emCampo[escolha.lado].filter((id) => !expulsos.has(id)).map((id) => {
-              const j = jogador(times[escolha.lado], id)
-              return <button key={id} className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }} onClick={() => trocar(escolha.lado, id, escolha.jogador.id)}>{j.nome}</button>
-            })}
-        </Escolher>
-      )}
+      {escolha?.tipo === 'entrar' && (() => {
+        const { lado, jogador: reserva } = escolha
+        const botao = (chave: string, texto: string, onClick: () => void) => (
+          <button key={chave} className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }} onClick={onClick}>{texto}</button>
+        )
+        // gol vazio (goleiro suspenso): entrar no gol não é substituição
+        const golVazio = !goleiros[lado] && !golVazioPorExpulsao(p, lado)
+        return (
+          <Escolher titulo={`Entra ${reserva.nome}`} pergunta="No lugar de quem?" cor={times[lado].cor} onFechar={() => setEscolha(null)}>
+            {golVazio && botao('gol', '🧤 No gol (está vazio)', () => irAoGol(lado, reserva.id))}
+            {!podeSubstituir(lado)
+              ? <div className="mut" style={{ gridColumn: '1 / -1' }}>Limite de substituições atingido.</div>
+              : p.escalacao.emCampo[lado].filter((id) => !expulsos.has(id))
+                .map((id) => botao(id, nomeComLuva(lado, id), () => trocar(lado, id, reserva.id)))}
+          </Escolher>
+        )
+      })()}
+
+      {escolha?.tipo === 'goleiro' && (() => {
+        const { lado } = escolha
+        const porExpulsao = golVazioPorExpulsao(p, lado)
+        const botao = (id: string) => (
+          <button key={id} className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }} onClick={() => irAoGol(lado, id)}>{jogador(times[lado], id).nome}</button>
+        )
+        const rotulo = (texto: string) => <div className="mut" style={{ gridColumn: '1 / -1', color: 'var(--navy)', fontWeight: 700 }}>{texto}</div>
+        return (
+          <Escolher titulo={`Gol do ${times[lado].nome}`} pergunta="Quem vai para o gol?" cor={times[lado].cor} onFechar={() => setEscolha(null)}>
+            {rotulo(porExpulsao ? 'Da linha · o goleiro foi expulso, o time fica com um a menos' : 'Da linha')}
+            {p.escalacao.emCampo[lado].filter((id) => !expulsos.has(id)).map(botao)}
+            {/* goleiro suspenso: o reserva entra no gol sem contar substituição; expulso, ninguém entra no lugar */}
+            {!porExpulsao && p.escalacao.banco[lado].length > 0 && rotulo('Do banco')}
+            {!porExpulsao && p.escalacao.banco[lado].map(botao)}
+          </Escolher>
+        )
+      })()}
 
       {fimDoTempoAberto && (
         <div className="modal" role="dialog" aria-modal="true" aria-label={`Fim do ${periodo}`} onClick={fecharFim}>

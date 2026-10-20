@@ -33,6 +33,9 @@ export function descreverMudanca(antes: Estado, depois: Estado): string {
     return `o gol do Time ${timeDoLado(depois, g.lado)}${g.autor ? ` (${g.autor})` : ''}`
   }
   if (depois.gols.length < antes.gols.length) return 'a remoção do gol'
+  // mesmo autor, outro passe: foi o "quem deu o passe?" (assistências)
+  const passe = depois.gols.find((g, indice) => g.autorId === antes.gols[indice]?.autorId && g.assistenciaId !== antes.gols[indice]?.assistenciaId)
+  if (passe) return passe.assistencia ? `o passe para o gol (${passe.assistencia})` : 'o passe para o gol'
   if (antes.gols !== depois.gols || antes.historico !== depois.historico) return 'quem fez o gol'
   if (depois.machucados.length > antes.machucados.length) return `o machucado (${depois.machucados[depois.machucados.length - 1].jogador.nome})`
   if (antes.machucados !== depois.machucados) return 'a volta do machucado'

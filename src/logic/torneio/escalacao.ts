@@ -4,10 +4,14 @@
 import type { Lado } from '../../types/pelada'
 import type { Escalacao, JogoTorneio, Torneio } from '../../types/torneio'
 import { LADOS } from '../lado'
+import { goleiroDoTime, jogadoresDeLinha } from './criar'
 import { timesDoJogo } from './jogos'
 import { situacaoDisciplinar } from './suspensoes'
 
-/** Começa o jogo: titulares (os primeiros da linha que não estão suspensos) e banco. */
+/**
+ * Começa o jogo: o goleiro (se não estiver suspenso) e os titulares de linha (os primeiros que não estão
+ * suspensos) em campo; os demais no banco. O goleiro é o primeiro de `emCampo`.
+ */
 export function iniciarEscalacao(torneio: Torneio, jogo: JogoTorneio): Escalacao {
   const { suspensos } = situacaoDisciplinar(torneio)
   const ids = timesDoJogo(torneio, jogo)
@@ -16,9 +20,11 @@ export function iniciarEscalacao(torneio: Torneio, jogo: JogoTorneio): Escalacao
   for (const lado of LADOS) {
     const time = torneio.times.find((t) => t.id === ids[lado])
     if (!time) continue
-    const aptos = time.jogadores.filter((j) => !suspensos.has(j.id)).map((j) => j.id)
-    esc.suspensos[lado] = time.jogadores.filter((j) => suspensos.has(j.id)).map((j) => j.id)
-    esc.emCampo[lado] = aptos.slice(0, torneio.regras.linha)
+    const goleiro = goleiroDoTime(time)
+    const aptos = jogadoresDeLinha(time).filter((jogador) => !suspensos.has(jogador.id)).map((jogador) => jogador.id)
+    esc.suspensos[lado] = time.jogadores.filter((jogador) => suspensos.has(jogador.id)).map((jogador) => jogador.id)
+    const goleiroEmCampo = goleiro && !suspensos.has(goleiro.id) ? [goleiro.id] : []
+    esc.emCampo[lado] = [...goleiroEmCampo, ...aptos.slice(0, torneio.regras.linha)]
     esc.banco[lado] = aptos.slice(torneio.regras.linha)
     esc.jogaram[lado] = [...esc.emCampo[lado]]
   }

@@ -5,7 +5,7 @@ import { minutoDoGol } from '../utils/formatar'
 import { Bola } from './Bola'
 
 type GolNaLista = { indice: number; minuto: string | null }
-type Autor = { nome: string; gols: GolNaLista[] }
+type Autor = { nome: string; gols: GolNaLista[]; passes: string[] } // passes: quem deu o passe (assistências ligadas)
 
 /** Minuto do gol; com vários tempos (torneio), com o tempo em que saiu: "2ºT 7'", "Pror. 5+1'". */
 function minutoNoTempo(g: Gol, tempoMin: number): string | null {
@@ -22,8 +22,9 @@ function autoresDoLado(gols: Gol[], lado: Lado, tempoMin: number): Autor[] {
     const nome = `${g.autor ?? 'Sem autor'}${g.contra ? ' (contra)' : ''}`
     const autor = autores.find((a) => a.nome === nome)
     const gol = { indice, minuto: minutoNoTempo(g, tempoMin) }
-    if (autor) autor.gols.push(gol)
-    else autores.push({ nome, gols: [gol] })
+    const atual = autor ?? autores[autores.push({ nome, gols: [], passes: [] }) - 1]
+    atual.gols.push(gol)
+    if (g.assistencia && !atual.passes.includes(g.assistencia)) atual.passes.push(g.assistencia)
   })
   return autores
 }
@@ -64,6 +65,7 @@ export function ResumoDeGols({ gols, tempoMin, nomeDoLado, onRemover, onAutor }:
           <>
             <span className="nome-autor">{a.nome}</span>{' '}
             <span className="minuto-gol">{a.gols.map((g) => g.minuto ?? '•').join(', ')}</span>
+            {a.passes.length > 0 && <span className="mut" style={{ display: 'block', fontSize: 11 }}>passe: {a.passes.join(', ')}</span>}
           </>
         )
         return tocavel
