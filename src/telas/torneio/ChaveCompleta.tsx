@@ -166,7 +166,7 @@ export function ChaveCompleta({ torneio, onFechar }: { torneio: Torneio; onFecha
       style={{
         padding: 0, alignItems: 'stretch', justifyContent: 'stretch', background: 'var(--navy)', flexDirection: 'column',
         // celular em pé e travado: a chave aparece deitada (girada 90°), ocupando a tela toda
-        ...(emPe && { inset: 'auto', top: 0, left: '100vw', width: '100dvh', height: '100vw', transform: 'rotate(90deg)', transformOrigin: 'top left' }),
+        ...(emPe && { inset: 'auto', top: 0, left: 'var(--largura-tela)', width: 'var(--altura-tela)', height: 'var(--largura-tela)', transform: 'rotate(90deg)', transformOrigin: 'top left' }),
       }}>
       <header className="bar" style={{ flex: 'none' }}>
         <div style={{ flex: 1, minWidth: 0 }}>

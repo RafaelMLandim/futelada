@@ -29,6 +29,7 @@ export type RegrasTorneio = {
   minutosAzul: number
   som: boolean
   acrescimos: boolean // ao acabar o tempo, pode dar acréscimos
+  assistencias: boolean // depois de quem fez o gol, pergunta quem deu o passe (líder de assistências: Troféu Garçom)
 }
 
 /** Jogador do time do torneio. `goleiro`: é o goleiro do time (um por time; nos outros fica vazio). */

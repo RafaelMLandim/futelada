@@ -45,7 +45,7 @@ export function Pagamentos({ pelada, cobranca, onFechar }: { pelada: Pelada; cob
 
   return (
     <div className="modal" role="dialog" aria-modal="true" aria-label="Pagamentos" onClick={onFechar}>
-      <section className="panel" onClick={(ev) => ev.stopPropagation()} style={{ maxHeight: '90dvh', display: 'flex', flexDirection: 'column' }}>
+      <section className="panel" onClick={(ev) => ev.stopPropagation()} style={{ maxHeight: 'calc(var(--altura-tela) * .90)', display: 'flex', flexDirection: 'column' }}>
         <div className="ph">
           <span>Campo pago</span>
           <button className="ib s" style={{ width: 32, height: 32 }} aria-label="Fechar" onClick={onFechar}><span style={{ fontSize: 20, lineHeight: 1 }}>×</span></button>

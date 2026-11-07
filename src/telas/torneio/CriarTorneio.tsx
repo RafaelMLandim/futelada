@@ -23,7 +23,7 @@ export function CriarTorneio({ onCriar, onEntrar }: {
   const [regras, setRegras] = useState<RegrasTorneio>(regrasPadrao)
 
   return (
-    <div className="scr" style={{ height: '100dvh' }}>
+    <div className="scr" style={{ height: 'var(--altura-tela)' }}>
       <Barra titulo="Novo torneio" sub={dataHoje()} />
       <div className="conteudo">
         {onEntrar && (

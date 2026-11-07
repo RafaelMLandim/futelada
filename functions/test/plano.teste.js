@@ -49,3 +49,24 @@ test('torneio avulso: cada compra é 1 crédito; reembolso tira 1 (sem ficar neg
   assert.equal(p.creditosTorneio, 0)
   assert.equal(p.premiumAte, null)
 })
+
+test('Ultimate: libera o Premium até a data dele, renova sozinho e guarda até quando vale', () => {
+  const ate = agora + 30 * DIA
+  let p = aplicarEvento(undefined, ev('INITIAL_PURCHASE', 'ultimate:mensal', { expiration_at_ms: ate }), agora)
+  assert.equal(p.ultimateAte, ate)
+  assert.equal(p.premiumAte, ate)
+  assert.equal(p.assinatura, true)
+  p = aplicarEvento(p, ev('CANCELLATION', 'ultimate:mensal', { expiration_at_ms: ate, cancel_reason: 'UNSUBSCRIBE' }), agora)
+  assert.equal(p.ultimateAte, ate)
+  assert.equal(p.assinatura, false)
+})
+
+test('do Pro para o Ultimate: o Pro deixa de renovar e o Ultimate passa a valer', () => {
+  let p = aplicarEvento(undefined, ev('INITIAL_PURCHASE', 'pelada_premium:mensal', { expiration_at_ms: agora + 30 * DIA }), agora)
+  p = aplicarEvento(p, ev('PRODUCT_CHANGE', 'pelada_premium:mensal', { new_product_id: 'ultimate:mensal', expiration_at_ms: agora + 10 * DIA }), agora + 20 * DIA)
+  assert.equal(p.renova, false)
+  p = aplicarEvento(p, ev('INITIAL_PURCHASE', 'ultimate:mensal', { expiration_at_ms: agora + 50 * DIA }), agora + 20 * DIA)
+  assert.equal(p.ultimateAte, agora + 50 * DIA)
+  assert.equal(p.premiumAte, agora + 50 * DIA)
+  assert.equal(p.assinatura, true)
+})

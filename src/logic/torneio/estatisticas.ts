@@ -1,10 +1,11 @@
-// Estatísticas do torneio: artilharia, goleiro menos vazado e cartões (com suspensos).
+// Estatísticas do torneio: artilharia, assistências (Troféu Garçom), goleiro menos vazado e cartões (com suspensos).
 // Só contam os jogos encerrados (pênaltis não entram).
 
 import type { Torneio } from '../../types/torneio'
 import { situacaoDisciplinar } from './suspensoes'
 
 export type ArtilheiroTorneio = { id: string; nome: string; time: string; gols: number }
+export type GarcomTorneio = { id: string; nome: string; time: string; assistencias: number }
 export type GoleiroTorneio = { nome: string; time: string; jogos: number; sofridos: number; media: number }
 export type CartoesTorneio = {
   id: string; nome: string; time: string
@@ -31,6 +32,19 @@ export function artilhariaDoTorneio(t: Torneio): ArtilheiroTorneio[] {
     mapa.set(g.autorId, a)
   }
   return [...mapa.values()].sort((x, y) => y.gols - x.gols || x.nome.localeCompare(y.nome))
+}
+
+/** Líderes de assistências do torneio (Troféu Garçom). Desempate: nome. */
+export function assistenciasDoTorneio(t: Torneio): GarcomTorneio[] {
+  const times = timeDoJogador(t)
+  const mapa = new Map<string, GarcomTorneio>()
+  for (const gol of resultados(t).flatMap((r) => r.gols)) {
+    if (!gol.assistenciaId || !gol.assistencia || gol.contra) continue
+    const garcom = mapa.get(gol.assistenciaId) ?? { id: gol.assistenciaId, nome: gol.assistencia, time: times.get(gol.assistenciaId) ?? '', assistencias: 0 }
+    garcom.assistencias++
+    mapa.set(gol.assistenciaId, garcom)
+  }
+  return [...mapa.values()].sort((x, y) => y.assistencias - x.assistencias || x.nome.localeCompare(y.nome))
 }
 
 export function goleirosDoTorneio(t: Torneio): GoleiroTorneio[] {

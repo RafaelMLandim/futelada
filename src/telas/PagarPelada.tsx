@@ -50,7 +50,7 @@ export function PagarPelada({ codigo }: { codigo: string }) {
   }
 
   return (
-    <div className="scr" style={{ height: '100dvh' }}>
+    <div className="scr" style={{ height: 'var(--altura-tela)' }}>
       <Barra titulo="Pagar a pelada" sub={cobranca?.data ?? ''} />
       <div className="conteudo">
         {cobranca === undefined && <div className="vazio">Carregando…</div>}

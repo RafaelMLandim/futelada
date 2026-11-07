@@ -21,6 +21,9 @@ PLANO.md, seção 14.4).
   no Firebase, para o login com Google funcionar na versão de loja).
 - O app assinado com ela sai com `npm run android:loja` (`android/app/build/outputs/bundle/release/app-release.aab`).
 - A cada atualização, aumentar `versionCode` (e `versionName`) em `android/app/build.gradle`.
+- O ícone adaptativo do Android **não** sai mais do `npx @capacitor/assets generate` (ele punha uma margem de 16,7% e a
+  logo ficava minúscula). O primeiro plano (`mipmap-*/ic_launcher_foreground.png`) é o ícone da loja (`loja/imagens/icone-512.png`)
+  ocupando os 72dp visíveis do meio (fica igual ao da Play Store), e o fundo é a cor `#FFD23F`. Se rodar o gerador de novo, refazer isso (versão 1.0.2).
 
 ## Quando a conta for aprovada (lista de verificação)
 1. Verificar o telefone de contato (código por SMS).
@@ -35,6 +38,21 @@ PLANO.md, seção 14.4).
    funciona no app baixado da Play Store** (o Google assina de novo o app com a chave dele).
    O mesmo **SHA-256** da chave do Google entra também em `public/.well-known/assetlinks.json` (App Links:
    os links do site abrindo no app). Depois, publicar o site de novo.
+
+## Situação (22/10/2026)
+- Conta verificada. App criado (`app.doisoudez`), conteúdo do app, ficha da loja e categoria preenchidos.
+- Teste fechado "Teste fechado - Alpha": Brasil, lista de testadores "Galera da pelada", versão 1 (1.0).
+  **Enviado para revisão em 22/10** (o Google diz até 7 dias).
+- Conta para a revisão do Google (Detalhes do login): e-mail e senha em `~/.config/dois-ou-dez/conta-revisao.txt`
+  (fora do projeto). Não apagar essa conta no Firebase.
+- Classificação: 12 anos (nomes digitados pelos usuários). Público-alvo: 18+.
+- Quando ligar as assinaturas: refazer a classificação ("compra de itens digitais" = Sim) e a segurança dos dados
+  (histórico de compras).
+- 22/10: teste fechado aprovado. 23/10: lista "Galera da pelada" com 16 e-mails (15 testadores + o dono) e chave de
+  assinatura do Google cadastrada no Firebase e no `assetlinks.json` (SHA-1 `2A:8D:72:6B:F8:CD:C0:2E:80:71:66:5C:6E:AE:0B:34:61:5A:DA:AC`).
+- Link para os testadores: https://play.google.com/apps/testing/app.doisoudez
+- 24/10: **12 testadores atingidos** (lista com 19 e-mails) e versão 1.0.2 (ícone igual ao da loja) aprovada. Os 14 dias
+  contam a partir de 24/10: por volta de **07/11/2026** liberar "Solicitar a produção" no Painel.
 
 ## Teste fechado (obrigatório para conta pessoal nova)
 - **12 testadores, 14 dias seguidos**, com o app instalado pela Play Store. Só depois disso o Play Console

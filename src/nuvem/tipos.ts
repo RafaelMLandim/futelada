@@ -120,6 +120,8 @@ export interface Nuvem {
   contarUso(tipo: 'peladas' | 'torneios', aparelho: string): Promise<void>
   /** Torneio novo com crédito: o servidor desconta 1. false = não tinha crédito. */
   usarCreditoDeTorneio(): Promise<boolean>
+  /** Código da conta (uid): é ele que vai para a loja, para o servidor saber de quem é a compra. */
+  idDaConta(): Promise<string>
 
   /** Remove a turma, os jogadores dela e as peladas dela no histórico. */
   removerTurma(turma: string, peladas: string[]): Promise<void>

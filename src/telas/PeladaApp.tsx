@@ -100,7 +100,7 @@ export function PeladaApp() {
 
   return (
     <Compartilhamento.Provider value={nuvemDisponivel() ? compartilhamento : null}>
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', maxWidth: 520, margin: '0 auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'var(--altura-tela)' }}>
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {aba === 'lista' && <Lista pelada={pelada} cobranca={cobranca} onApitar={() => setAba('jogo')} />}
         {aba === 'jogo' && <Jogo pelada={pelada} onLista={() => setAba('lista')} />}

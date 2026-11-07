@@ -192,6 +192,17 @@ export function golNaPartida(t: Torneio, jogoId: string, lado: Lado, autor: Joga
   })
 }
 
+/** Quem deu o passe para o gol de número `indice` do jogo (null = ninguém ou não sabe). */
+export function passeNaPartida(t: Torneio, jogoId: string, indice: number, jogador: Jogador | null): Torneio {
+  return comPartida(t, jogoId, (p) => {
+    const atual = p.gols[indice]
+    if (!atual) return p
+    const { assistenciaId: _id, assistencia: _nome, ...semPasse } = atual
+    const novo: Gol = jogador ? { ...semPasse, assistenciaId: jogador.id, assistencia: jogador.nome } : semPasse
+    return { ...p, gols: p.gols.map((gol, posicao) => (posicao === indice ? novo : gol)) }
+  })
+}
+
 export function removerGolDaPartida(t: Torneio, jogoId: string, indice: number): Torneio {
   return comPartida(t, jogoId, (p) => {
     const gol = p.gols[indice]

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  artilhariaDoTorneio, cartaoNaPartida, cartoesDoTorneio, encerrarPartida, golNaPartida, goleirosDoTorneio,
-  iniciarPartida, jogosDisponiveis, timesDoJogo,
+  artilhariaDoTorneio, assistenciasDoTorneio, cartaoNaPartida, cartoesDoTorneio, encerrarPartida, golNaPartida, goleirosDoTorneio,
+  iniciarPartida, jogosDisponiveis, passeNaPartida, regrasPadrao, timesDoJogo,
 } from '..'
 import type { Torneio } from '../../../types/torneio'
 import { sorteado, torneioCom } from './utils'
@@ -29,6 +29,30 @@ describe('estatísticas do torneio', () => {
     expect(art[0]).toMatchObject({ gols: 2 })
     expect(art).toHaveLength(2)
     expect(t.times.some((x) => x.id === art[0].time)).toBe(true)
+  })
+
+  it('assistências: passe guardado no gol e líderes do torneio (gol contra e sem passe não contam)', () => {
+    expect(regrasPadrao.assistencias).toBe(false)
+    let t = base()
+    let passador = ''
+    t = jogar(t, (x, A, B, id) => {
+      passador = A.jogadores[1].id
+      x = passeNaPartida(golNaPartida(x, id, 'A', A.jogadores[0]), id, 0, A.jogadores[1])
+      x = passeNaPartida(golNaPartida(x, id, 'A', A.jogadores[2]), id, 1, A.jogadores[1])
+      x = golNaPartida(x, id, 'B', B.jogadores[0]) // sem passe
+      return passeNaPartida(golNaPartida(x, id, 'B', A.jogadores[0], undefined, true), id, 3, B.jogadores[1]) // gol contra
+    })
+    const lideres = assistenciasDoTorneio(t)
+    expect(lideres).toHaveLength(1)
+    expect(lideres[0]).toMatchObject({ id: passador, assistencias: 2 })
+    expect(t.times.some((time) => time.id === lideres[0].time)).toBe(true)
+  })
+
+  it('assistências: passe trocado para ninguém some do gol', () => {
+    let t = base()
+    t = jogar(t, (x, A, _B, id) => passeNaPartida(passeNaPartida(golNaPartida(x, id, 'A', A.jogadores[0]), id, 0, A.jogadores[1]), id, 0, null))
+    expect(assistenciasDoTorneio(t)).toEqual([])
+    expect(t.jogos.find((jogo) => jogo.resultado)!.resultado!.gols[0].assistencia).toBeUndefined()
   })
 
   it('goleiro menos vazado pela média de gols sofridos', () => {

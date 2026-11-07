@@ -29,7 +29,7 @@ export function Historico() {
   const ano = anoEscolhido !== null && anos.includes(anoEscolhido) ? anoEscolhido : anos[0]
 
   return (
-    <div className="scr" style={{ height: '100dvh' }}>
+    <div className="scr" style={{ height: 'var(--altura-tela)' }}>
       <Barra titulo="Histórico" sub={turma ? `${turma.nome} · ${daTurma.length} ${daTurma.length === 1 ? 'pelada' : 'peladas'}` : ''} />
       <div className="conteudo">
         {!conta.logado && conta.perfil !== undefined && (
@@ -216,7 +216,7 @@ function PeladaAberta({ pelada, onFechar, onApagar }: { pelada: PeladaNoHistoric
   }
   return (
     <div className="modal" role="dialog" aria-modal="true" aria-label={`Pelada ${pelada.dia}`} onClick={onFechar}>
-      <section className="panel" onClick={(ev) => ev.stopPropagation()} style={{ width: '100%', maxWidth: 420, maxHeight: '90dvh', display: 'flex', flexDirection: 'column' }}>
+      <section className="panel" onClick={(ev) => ev.stopPropagation()} style={{ width: '100%', maxWidth: 420, maxHeight: 'calc(var(--altura-tela) * .90)', display: 'flex', flexDirection: 'column' }}>
         <div className="ph">{pelada.dia}</div>
         <div style={{ overflowY: 'auto' }}>
           <div className="pb" style={{ display: 'grid', gap: 4, color: 'var(--navy)', fontWeight: 600 }}>

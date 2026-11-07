@@ -23,7 +23,7 @@ function Silhueta({ arquivo, cor, style }: { arquivo: string; cor: string; style
 export function Login({ conta }: { conta?: ReturnType<typeof useConta> }) {
   const [comEmail, setComEmail] = useState(false)
   return (
-    <div className="scr" style={{ height: '100dvh', position: 'relative', overflow: 'hidden' }}>
+    <div className="scr" style={{ height: 'var(--altura-tela)', position: 'relative', overflow: 'hidden' }}>
       <Silhueta arquivo="arte/goleiro.png" cor="rgba(255,255,255,.15)" style={{ width: '120%', aspectRatio: '1659 / 699', right: '-22%', top: '7%', transform: 'scaleX(-1) rotate(-10deg)' }} />
       <Silhueta arquivo="arte/chute.png" cor="rgba(255,255,255,.15)" style={{ width: '92%', aspectRatio: '736 / 723', left: '-3%', bottom: '-1%' }} />
       <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 26, padding: '24px 24px 14dvh', textAlign: 'center' }}>

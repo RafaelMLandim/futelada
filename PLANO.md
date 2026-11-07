@@ -471,6 +471,9 @@ src/
 - **Amarelos acumulam no torneio:** ao chegar no **3º amarelo**, fica **suspenso no próximo
   jogo** e a contagem **zera**.
 - O app avisa quem está suspenso e não deixa ele entrar em campo naquele jogo.
+- **Assistências (opcional, desligadas por padrão):** nas regras, "Marcar assistências". Ligado, depois de um gol
+  com autor (não vale gol contra) o app pergunta quem deu o passe, entre os companheiros em campo, ou "Ninguém · não sei".
+  As Estatísticas do torneio ganham o quadro **Assistências (Troféu Garçom)**, com o time de cada um.
 
 ### 9.5.2 Jogos simultâneos
 - Regra **Campos** (1 a 4): quantos jogos podem acontecer ao mesmo tempo (padrão 1).
@@ -799,6 +802,29 @@ primeiro, App Store depois). Só o **organizador** paga; mesários e jogadores u
      — evento de teste chegou e passou na senha. Falta: credencial (conta de serviço) do Play, produtos,
      entitlement e o SDK no app (passo 4).
 4. **RevenueCat + Play Billing** no app Android (produtos de teste no Play Console) e as telas de compra.
+   - **02/11/2026:** planos renomeados: **Dois ou Dez Pro** (o antigo Pelada Premium) e **Dois ou Dez Ultimate**
+     (R$ 49,90/mês: tudo do Pro + torneios ilimitados, sem limite de times; "vários organizadores" fica para depois).
+   - Produtos criados e **ativos** no Play Console: `pelada_premium` (planos `mensal` R$ 14,90 e `anual` R$ 119),
+     `ultimate` (`mensal` R$ 49,90), produtos únicos `premium_12_meses` (R$ 119) e `torneio_avulso` (R$ 34,90).
+   - App: `src/store/compras.ts` (RevenueCat 13.7.4, chave pública em `VITE_REVENUECAT_ANDROID` no `.env.local`);
+     `TelaPremium` e `MeuPlano` compram e restauram de verdade; com a cobrança desligada, só avisam.
+   - Servidor (`functions/plano.js`): entende o `ultimate` (grava `ultimateAte`; vale como Premium). Publicado em 02/11/2026
+     junto com o site (termos e privacidade com os nomes novos).
+   - Versão 4 (1.0.3) **enviada para revisão** no teste fechado (02/11/2026).
+   - Recebimento: o perfil para pagamentos da conta agora é da **LANDIM DIGITAL CONSULTING LTDA** (CNPJ), o mesmo do Zulp;
+     nome na fatura "KAIROS APPS".
+   - **RevenueCat ligado à Play (02/11/2026):** conta de serviço `revenuecat@dois-ou-dez.iam.gserviceaccount.com`
+     no Google Cloud do projeto `dois-ou-dez` (APIs Android Publisher e Play Developer Reporting ativas; papéis
+     Administrador pub/sub e Visualizador de monitoramento). Chave JSON **fora do projeto**, em
+     `~/.config/dois-ou-dez/revenuecat-play.json`, e enviada ao app Android no RevenueCat. No Play Console ela entra
+     em Usuários e permissões, com permissões da conta (ver app, ver dados financeiros, gerenciar pedidos e
+     assinaturas); por serem da conta, serve também para o Zulp. Notificações em tempo real: tópico
+     `projects/dois-ou-dez/topics/Play-Store-Notifications` (Play → Configuração de monetização, com produtos únicos);
+     a notificação de teste chegou.
+   - Produtos no RevenueCat: `pelada_premium:mensal`, `pelada_premium:anual`, `ultimate:mensal`, `premium_12_meses`
+     (não consumível) e `torneio_avulso` (consumível). Entitlements `pro` (os do Pro + Ultimate) e `ultimate`. Oferta
+     `default` (a atual) com os 5 pacotes: `$rc_monthly`, `$rc_annual`, `ultimate_mensal`, `pro_12_meses`,
+     `torneio_avulso`. O app acha cada um pelo código do produto, não pelo pacote.
 5. **Contador das 10 peladas** (conta + celular), cortesia de quem já usava, excluir conta, termos e política.
 6. Teste fechado na Play Store → lançamento. Depois: iPhone e a Liga / Arena.
 
@@ -902,3 +928,68 @@ Peladas por turma e ano. Testes: `turma.test.ts`, `relatorio.test.ts` + e2e no n
    - encerramento indo para o histórico do dono;
    - QR code para passar de um celular para o outro.
 3. Testar no Firebase de verdade, depois de publicar as regras (`firestore.rules`).
+
+## 17. Conta do jogador: carta, foto e link da pelada (planejado)
+
+Decidido em conversa em 06/11/2026, ainda não feito. **Só começa depois do pedido de produção na Play Store.**
+
+**Objetivo:** hoje só o organizador tem motivo para instalar o app. A conta do jogador dá a quem só joga um motivo
+próprio (a carta dele), sem obrigar ninguém a baixar nada. Ideia de presença veio de olhar o OrganizaFUT (concorrente).
+
+### 17.1 Regras
+- **Jogador nunca paga.** Só o organizador paga para montar pelada e torneio (seção 14). Nada muda nos planos.
+- **Ninguém é obrigado a ter conta nem o app.** Quem não quiser continua só com o nome, como hoje.
+- **Uma conta para todas as peladas:** o mesmo jogador pode estar em várias turmas, de organizadores diferentes.
+- **Dados de hoje:** estamos em teste, então os jogadores e estatísticas atuais não são migrados. A carta começa do zero.
+
+### 17.2 Link da pelada
+- O organizador manda **um link** no grupo. Sem o app, abre no navegador (também no iPhone, como o link do Pix);
+  com o app instalado no Android, abre direto no app.
+- Quem abre tem duas opções: **entrar com a conta** ou **só digitar o nome**.
+- **Só o nome:** ao digitar, aparecem os nomes da turma para tocar (como na Lista do organizador, seção 15.1); só vira
+  nome novo se a pessoa não achar o dela. Não tem carta nem histórico pessoal (17.3).
+- Quem não abriu o link o organizador adiciona pelo nome, como hoje. A lista continua na mão dele (pode tirar alguém).
+- Entrou com a conta: não precisa de aprovação, o nome aparece na lista e a conta **fica salva na turma**. Na próxima
+  pelada, ele aparece nas sugestões já com foto e ligado à conta.
+- **Abriu no navegador:** aparece a chamada **"Baixe o app e tenha todo o seu histórico de jogos!"** com o botão da
+  Play Store, sem bloquear nada (dá para fechar e seguir). No iPhone, só quando o app estiver na App Store.
+- **Presença (depois):** o mesmo link vira "Quem vem?": confirmar antes do jogo, limite de vagas e lista de espera.
+  Ao chegar, um toque põe na ordem de chegada.
+
+### 17.3 Com conta x só o nome
+- **Decidido: não existe "este sou eu".** Quem entra com a conta não escolhe nome na lista: a conta entra direto. Ligar
+  conta a nome antigo geraria duplicados e erros nas estatísticas.
+- **Só com a conta há histórico pessoal.** Quem usa só o nome não tem registro: a estatística fica naquela pelada.
+  Esse é o motivo para criar a conta e ter o app.
+- Quem cria a conta depois começa do zero: a carta conta a partir do primeiro jogo com a conta.
+- **O ranking do ano da turma continua como está** (seção 15, parte do Premium): soma todo mundo da turma, com conta ou só
+  com o nome. Ele é do organizador; o histórico pessoal é que fica só para quem tem conta.
+- **Carta e histórico pessoal ficam no app** (Android agora, iPhone quando sair na App Store). No navegador, o link serve
+  para entrar na lista e mostra a chamada para baixar.
+
+### 17.4 Perfil e carta
+- Tela de perfil com **foto** (trocar a foto) e a **carta do jogador**: as estatísticas de todas as peladas, com
+  **filtro por pelada/turma**. Só contam os jogos com a conta ligada.
+- Parte da carta que já existe na Tabela (seção 3), mas com **identidade própria do Dois ou Dez**: sem o nome FIFA e sem
+  copiar a carta deles, nem no app nem na Play Store.
+- A carta mostra números (jogos, vitórias, gols, assistências…). Uma "nota" não pode depender só de quem marca.
+- **Compartilhar a carta** como imagem, sempre com a marca do app (propaganda no WhatsApp e no Instagram).
+
+### 17.5 Foto nas imagens de compartilhamento
+- Quem tem conta aparece com a **foto no lugar da camisa**. Quem é só nome continua com a camisa.
+
+### 17.6 Cuidados antes de publicar
+- **Foto é dado pessoal:** atualizar a política de privacidade e a segurança dos dados na Play Store; excluir a conta
+  apaga a foto.
+- **Foto imprópria:** botão de denunciar e como remover.
+- **Regras do Firebase:** jogador só mexe na própria conta; estatísticas só vêm das peladas (ele não edita a carta).
+- **Custo:** guardar fotos pequenas (Firebase Storage) e olhar o gasto; a cobrança do Firebase já está pendente.
+
+### 17.7 Etapas
+1. Perfil: conta do jogador, foto e carta.
+2. Link da pelada: entrar com a conta ou digitar o nome (com as sugestões da turma); a conta fica salva na turma.
+3. Foto nas imagens de compartilhamento.
+4. "Quem vem?": confirmação de presença com vagas e lista de espera.
+
+**Testar quando estiver pronto:** turma nova com a lista vazia (sem sugestões; cada um entra com a
+conta ou digita o nome), a mesma pessoa aparecendo duas vezes (entrou com a conta e o organizador digitou o nome) e a ordem da lista quando as pessoas entram pelo link antes de chegar ao campo.

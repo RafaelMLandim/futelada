@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AVISO_DE_VENCIMENTO, PELADAS_GRATIS, TIMES_DO_TORNEIO_GRATIS } from '../logic/plano'
+import { podeComprarAqui, restaurarCompras } from '../store/compras'
 import { usePlano } from '../store/plano'
 import { abrirLink } from '../utils/nativo'
 import { TelaPremium } from './TelaPremium'
@@ -11,6 +12,19 @@ export function MeuPlano({ onFechar }: { onFechar: () => void }) {
   const [aviso, setAviso] = useState<string | null>(null)
   const data = (t: number) => new Date(t).toLocaleDateString('pt-BR')
   const usadas = Math.min(s.peladasUsadas, PELADAS_GRATIS)
+  const [restaurando, setRestaurando] = useState(false)
+
+  async function restaurar() {
+    if (!podeComprarAqui()) return setAviso('As compras ficam na Google Play: abra o app do Dois ou Dez no celular para restaurar.')
+    setRestaurando(true)
+    try {
+      await restaurarCompras()
+      setAviso('Pronto! Pedimos à loja as suas compras. Se tiver alguma, o plano aparece aqui em instantes.')
+    } catch {
+      setAviso('Não deu para falar com a loja agora. Confira a internet e tente de novo.')
+    }
+    setRestaurando(false)
+  }
 
   if (premium) return <TelaPremium motivo="ver" onFechar={() => setPremium(false)} />
   return (
@@ -19,7 +33,7 @@ export function MeuPlano({ onFechar }: { onFechar: () => void }) {
         <div className="ph">Meu plano</div>
         <div className="pb" style={{ display: 'grid', gap: 12 }}>
           <div className="led" style={{ padding: '12px', textAlign: 'center', display: 'grid', gap: 4 }}>
-            <span className="num" style={{ fontSize: 30 }}>{s.premium ? 'Pelada Premium' : 'Grátis'}</span>
+            <span className="num" style={{ fontSize: 30 }}>{s.ultimate ? 'Ultimate' : s.premium ? 'Dois ou Dez Pro' : 'Grátis'}</span>
             <span style={{ color: '#fff', fontWeight: 600 }}>
               {!s.premium ? `${usadas} de ${PELADAS_GRATIS} peladas grátis usadas` : s.renovaSozinho ? `Renova sozinho em ${data(s.premiumAte!)}` : `Vale até ${data(s.premiumAte!)} · não renova sozinho`}
             </span>
@@ -30,11 +44,11 @@ export function MeuPlano({ onFechar }: { onFechar: () => void }) {
             </div>
           )}
           <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>
-            Torneios: {s.torneioGratis ? `o 1º é grátis (até ${TIMES_DO_TORNEIO_GRATIS} times)` : s.creditosTorneio > 0 ? `${s.creditosTorneio} ${s.creditosTorneio === 1 ? 'crédito' : 'créditos'} de torneio` : 'Torneio avulso, R$ 34,90 cada'}
+            Torneios: {s.ultimate ? 'ilimitados, com o Ultimate' : s.torneioGratis ? `o 1º é grátis (até ${TIMES_DO_TORNEIO_GRATIS} times)` : s.creditosTorneio > 0 ? `${s.creditosTorneio} ${s.creditosTorneio === 1 ? 'crédito' : 'créditos'} de torneio` : 'Torneio avulso, R$ 34,90 cada'}
           </div>
           {s.diasParaVencer !== null && s.diasParaVencer <= AVISO_DE_VENCIMENTO && (
             <div className="mut" style={{ background: '#fff6cf', border: '1px solid var(--amarelo)', borderRadius: 5, padding: '8px 10px', color: 'var(--navy)', fontWeight: 600 }}>
-              {s.diasParaVencer === 1 ? 'Falta 1 dia' : `Faltam ${s.diasParaVencer} dias`} para o seu Premium vencer. Renove por mais 12 meses (Pix ou cartão).
+              {s.diasParaVencer === 1 ? 'Falta 1 dia' : `Faltam ${s.diasParaVencer} dias`} para o seu Pro vencer. Renove por mais 12 meses (Pix ou cartão).
             </div>
           )}
           {!s.cobrancaAtiva && (
@@ -44,12 +58,12 @@ export function MeuPlano({ onFechar }: { onFechar: () => void }) {
           )}
           {aviso && <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>{aviso}</div>}
           {(!s.premium || (s.diasParaVencer !== null && s.diasParaVencer <= AVISO_DE_VENCIMENTO)) && (
-            <button className="btn" onClick={() => setPremium(true)}>{s.premium ? 'Renovar o Premium' : 'Conhecer o Premium'}</button>
+            <button className="btn" onClick={() => setPremium(true)}>{s.premium ? 'Renovar o Pro' : 'Conhecer os planos'}</button>
           )}
           {s.renovaSozinho && (
             <button className="btn w sm" onClick={() => void abrirLink('https://play.google.com/store/account/subscriptions')}>Gerenciar assinatura</button>
           )}
-          <button className="btn w sm" onClick={() => setAviso('Restaurar compras chega junto com o app na Play Store.')}>Restaurar compras</button>
+          <button className="btn w sm" disabled={restaurando} onClick={() => void restaurar()}>{restaurando ? 'Buscando…' : 'Restaurar compras'}</button>
           <button className="btn w sm" onClick={onFechar}>Fechar</button>
         </div>
       </section>

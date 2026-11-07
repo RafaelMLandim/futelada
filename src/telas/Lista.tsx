@@ -132,7 +132,7 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
       })()}
       {pagamentos && <Pagamentos pelada={pelada} cobranca={cobranca} onFechar={() => setPagamentos(false)} />}
 
-      <div className="conteudo">
+      <div className="conteudo lado-a-lado">
         {blocos.length === 0 && (
           <div className="vazio">{emJogo ? 'Ninguém esperando. Quem perder vem para cá.' : 'Adicione os nomes na ordem de chegada.'}</div>
         )}
@@ -187,7 +187,7 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
       {/* "quem costuma vir": tocar na ordem em que chegam põe na fila nessa ordem */}
       {chamando && (
         <div className="modal" role="dialog" aria-modal="true" aria-label="Quem costuma vir" onClick={() => setChamando(false)}>
-          <section className="panel" onClick={(ev) => ev.stopPropagation()} style={{ width: '100%', maxWidth: 440, maxHeight: '85dvh', display: 'flex', flexDirection: 'column' }}>
+          <section className="panel" onClick={(ev) => ev.stopPropagation()} style={{ width: '100%', maxWidth: 440, maxHeight: 'calc(var(--altura-tela) * .85)', display: 'flex', flexDirection: 'column' }}>
             <div className="ph">Quem costuma vir<span className="sub">toque na ordem de chegada</span></div>
             <div className="pb" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, overflowY: 'auto' }}>
               {costumamVir.length === 0 && <div className="mut">Todo mundo da turma já está na lista.</div>}

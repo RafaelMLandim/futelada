@@ -1,5 +1,5 @@
-// Plano pago (PLANO.md, seção 14): 10 peladas grátis (por conta e por celular), Pelada Premium e
-// Torneio avulso (o 1º torneio é grátis, até 8 times). Quem diz se a pessoa pagou é o servidor
+// Plano pago (PLANO.md, seção 14): 10 peladas grátis (por conta e por celular), Dois ou Dez Pro,
+// Dois ou Dez Ultimate (Pro + torneios ilimitados) e Torneio avulso (o 1º torneio é grátis, até 8 times). Quem diz se a pessoa pagou é o servidor
 // (`planos/{uid}`); o app só lê. A cobrança só vale depois de ligada (`config/cobranca.ativa`).
 
 export const PELADAS_GRATIS = 10
@@ -12,7 +12,7 @@ export const TIMES_DO_TORNEIO_GRATIS = 8
  * O que a pessoa comprou (gravado só pelo servidor). `assinatura`: o Premium renova sozinho (assinatura
  * da loja); false = Premium avulso de 12 meses (pago no Pix, por exemplo), que vence e não renova.
  */
-export type Plano = { premiumAte: number | null; creditosTorneio: number; assinatura?: boolean }
+export type Plano = { premiumAte: number | null; creditosTorneio: number; assinatura?: boolean; ultimateAte?: number | null }
 /** Quanto a conta já usou (o app só consegue somar 1). */
 export type Contadores = { peladas: number; torneios: number }
 /** Liga/desliga a cobrança sem lançar versão nova do app. */
@@ -43,6 +43,8 @@ export type Situacao = {
   creditosTorneio: number
   /** O 1º torneio (até 8 times) ainda não foi usado. */
   torneioGratis: boolean
+  /** Dois ou Dez Ultimate valendo: torneios ilimitados, sem limite de times (e tudo do Pro). */
+  ultimate: boolean
 }
 
 export function situacaoDoPlano(dados: DadosDoPlano, agora: number): Situacao {
@@ -65,13 +67,14 @@ export function situacaoDoPlano(dados: DadosDoPlano, agora: number): Situacao {
     podeComecarPelada: !cobrancaAtiva || premium || peladasGratisRestantes > 0,
     creditosTorneio: plano.creditosTorneio,
     torneioGratis: contadores.torneios === 0,
+    ultimate: !!plano.ultimateAte && plano.ultimateAte > agora,
   }
 }
 
-/** Como um torneio novo pode ser criado: liberado (cobrança desligada), o grátis, com crédito ou bloqueado. */
+/** Como um torneio novo pode ser criado: liberado (cobrança desligada ou Ultimate), o grátis, com crédito ou bloqueado. */
 export type CriarTorneio = 'liberado' | 'gratis' | 'credito' | 'bloqueado'
 export function comoCriarTorneio(s: Situacao): CriarTorneio {
-  if (!s.cobrancaAtiva) return 'liberado'
+  if (!s.cobrancaAtiva || s.ultimate) return 'liberado'
   if (s.torneioGratis) return 'gratis'
   if (s.creditosTorneio > 0) return 'credito'
   return 'bloqueado'

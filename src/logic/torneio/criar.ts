@@ -32,6 +32,7 @@ export const regrasPadrao: RegrasTorneio = {
   minutosAzul: 2,
   som: true,
   acrescimos: true,
+  assistencias: false,
 }
 
 let seq = 0

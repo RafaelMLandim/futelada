@@ -18,14 +18,14 @@ export function Inicio({ onPelada, onTorneio, onCaixa, onHistorico }: { onPelada
   // primeira vez: as peladas antigas viram a turma "Minha pelada"
   const { turmas } = useTurmas()
   useImportarTurmaAntiga(conta.logado ? turmas : null, conta.logado ? peladas : null)
-  // "Pelada 3 de 10 grátis" (só com a cobrança ligada e sem Premium)
+  // "Pelada 3 de 10 grátis" (só com a cobrança ligada e sem Pro)
   const gratis = textoDasPeladasGratis(usePlano())
   const pelada = peladaSalva()
   const torneio = torneioSalvo()
   const partidas = pelada?.estado.historico.length ?? 0
 
   return (
-    <div className="scr" style={{ height: '100dvh' }}>
+    <div className="scr" style={{ height: 'var(--altura-tela)' }}>
       <header className="bar">
         {/* só a data: a logo já diz o nome do app ("2 OU 10") */}
         <Logo fundo={false} />

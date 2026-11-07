@@ -31,7 +31,7 @@ export function AbasDaPelada({ pelada, faixa, extra }: { pelada: Pelada; faixa: 
     ['tabela', 'tabela', 'Tabela'],
   ]
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', maxWidth: 520, margin: '0 auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'var(--altura-tela)' }}>
       {faixa}
       {extra}
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>

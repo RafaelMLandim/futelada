@@ -31,9 +31,10 @@ Chega de papel e de discussão para saber quem joga a próxima. O Dois ou Dez or
 
 📊 TABELA E ESTATÍSTICAS
 • Classificação do dia, artilharia, goleiro menos vazado e cartões.
-• Seleção da pelada com os jogadores que mais venceram.
-• Imagem do resumo do dia pronta para mandar no grupo.
-• Histórico das peladas e ranking da temporada da sua turma.
+• Assistências (opcional): marque quem deu o passe e veja o líder do dia, o Troféu Garçom.
+• Seleção da pelada com os jogadores que mais venceram e os gols de cada um.
+• Imagem do resumo do dia pronta para mandar no grupo, com Chuteira de Ouro, Luva de Ouro e Troféu Garçom.
+• Histórico das peladas e ranking da temporada da sua turma, com o Time do ano.
 
 👥 COMPARTILHE A PELADA
 • Mande o link para a galera acompanhar o jogo ao vivo, sem precisar instalar nada.

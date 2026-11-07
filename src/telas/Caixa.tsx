@@ -16,7 +16,7 @@ export function Caixa({ onVoltar }: { onVoltar: () => void }) {
   const [novo, setNovo] = useState<MovimentoDoCaixa['tipo'] | null>(null)
 
   return (
-    <div className="scr" style={{ height: '100dvh' }}>
+    <div className="scr" style={{ height: 'var(--altura-tela)' }}>
       <Barra titulo="Caixa da pelada" sub={conta.perfil && !conta.perfil.anonimo ? (conta.perfil.nome ?? conta.perfil.email ?? '') : ''} />
       <div className="conteudo">
         {!conta.logado && conta.perfil !== undefined && (

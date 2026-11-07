@@ -43,6 +43,17 @@ describe('plano', () => {
     expect(comoCriarTorneio(situacaoDoPlano(dados({ contadores: { peladas: 0, torneios: 1 } }), AGORA))).toBe('bloqueado')
   })
 
+  it('Ultimate: torneios sem gastar crédito nem o grátis, e as peladas liberadas; vencido, volta ao normal', () => {
+    const comUltimate = dados({ contadores: { peladas: 30, torneios: 4 }, plano: { premiumAte: AGORA + 10 * DIA, ultimateAte: AGORA + 10 * DIA, creditosTorneio: 0 } })
+    const s = situacaoDoPlano(comUltimate, AGORA)
+    expect(s.ultimate).toBe(true)
+    expect(s.podeComecarPelada).toBe(true)
+    expect(comoCriarTorneio(s)).toBe('liberado')
+    const vencido = situacaoDoPlano(comUltimate, AGORA + 11 * DIA)
+    expect(vencido.ultimate).toBe(false)
+    expect(comoCriarTorneio(vencido)).toBe('bloqueado')
+  })
+
   it('Premium avulso (12 meses no Pix): vence e não renova; conta os dias para avisar', () => {
     const avulso = situacaoDoPlano(dados({ plano: { premiumAte: AGORA + 20 * DIA, creditosTorneio: 0, assinatura: false } }), AGORA)
     expect(avulso.premium).toBe(true)

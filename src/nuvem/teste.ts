@@ -128,6 +128,7 @@ export function criarNuvemDeTeste(servidor: string): Nuvem {
       const aparelhos = tipo === 'peladas' ? { ...d.aparelhos, [aparelho]: (d.aparelhos[aparelho] ?? 0) + 1 } : d.aparelhos
       planoLocal.salvar({ ...d, contadores, aparelhos })
     },
+    idDaConta: async () => 'teste',
     async usarCreditoDeTorneio() {
       const d = planoLocal.ler()
       if ((d.plano?.creditosTorneio ?? 0) <= 0) return false

@@ -13,11 +13,11 @@ export { novaDisputa, quemBate, placarDosPenaltis, vencedorDosPenaltis, cobrar, 
   type Penaltis, type Cobranca } from './penaltis'
 export { situacaoDisciplinar, type SituacaoDisciplinar } from './suspensoes'
 export { iniciarEscalacao, substituir, impedimentoDaSubstituicao } from './escalacao'
-export { iniciarPartida, cancelarPartida, cronoDaPartida, acrescimosNaPartida, golNaPartida, removerGolDaPartida, cartaoNaPartida,
+export { iniciarPartida, cancelarPartida, cronoDaPartida, acrescimosNaPartida, golNaPartida, passeNaPartida, removerGolDaPartida, cartaoNaPartida,
   expulsosNaPartida, goleiroNaPartida, golVazioPorExpulsao, irParaOGol, substituirNaPartida, encerrarPartida, partidaDoJogo, timesJogando, camposLivres,
   jogosParaComecar, campoDoJogo, campoLiberadoDosGrupos, campoParaJogo, proximosPorCampo, podeComecarNoCampo } from './partida'
-export { artilhariaDoTorneio, goleirosDoTorneio, cartoesDoTorneio, type ArtilheiroTorneio, type GoleiroTorneio,
-  type CartoesTorneio } from './estatisticas'
+export { artilhariaDoTorneio, assistenciasDoTorneio, goleirosDoTorneio, cartoesDoTorneio, type ArtilheiroTorneio, type GarcomTorneio,
+  type GoleiroTorneio, type CartoesTorneio } from './estatisticas'
 export { separar, juntar, diferencas, aplicarOperacoes, novoCodigo, type BaseTorneio, type DadosNuvem, type Operacao } from './sincronia'
 export { periodoDaPartida, temposDaFase, duracaoDoPeriodo, decorridoNoPeriodo, ultimoPeriodo, nomeDoPeriodo, rotuloDoPeriodo, vaiParaProrrogacao,
   comecarIntervalo, proximoTempo, comecarProrrogacao } from './periodos'

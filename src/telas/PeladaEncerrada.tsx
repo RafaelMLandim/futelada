@@ -14,7 +14,7 @@ export function PeladaEncerrada({ dados, aviso, aoFechar }: { dados: PeladaCompa
   const pelada = useMemo(() => peladaSoParaVer(dados), [dados])
   return (
     <SomenteLeitura.Provider value={true}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', maxWidth: 520, margin: '0 auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'var(--altura-tela)' }}>
         <Faixa cor="var(--navy)">🏁 Pelada encerrada{dados.nomeDoDono ? ` · pelada de ${dados.nomeDoDono}` : ''}{aviso ? ` · ${aviso}` : ''}</Faixa>
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <Tabela pelada={pelada} data={dataDo(dados.atualizadaEm)} />

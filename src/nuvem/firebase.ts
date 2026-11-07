@@ -421,6 +421,8 @@ export function criarNuvemFirebase(): Nuvem {
       if (tipo === 'peladas') void setDoc(doc(db, 'aparelhos', aparelho), { peladas: increment(1) }, { merge: true }).catch(() => {})
     },
 
+    idDaConta: () => uid(),
+
     async usarCreditoDeTorneio() {
       await logado
       const { getFunctions, httpsCallable } = await import('firebase/functions')

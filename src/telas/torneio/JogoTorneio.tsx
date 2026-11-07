@@ -11,7 +11,7 @@ import { tempoDecorrido, tempoTotalMs } from '../../logic/cronometro'
 import { EscolherAcrescimos } from '../../components/EscolherAcrescimos'
 import {
   acrescimosNaPartida, cancelarPartida, cartaoNaPartida, comecarIntervalo, cronoDaPartida, decorridoNoPeriodo, duracaoDoPeriodo, nomeDoPeriodo,
-  periodoDaPartida, placarDecisivo, proximoTempo, expulsosNaPartida, goleiroNaPartida, golNaPartida, golVazioPorExpulsao, irParaOGol, jogoPorId, partidaDoJogo, removerGolDaPartida,
+  passeNaPartida, periodoDaPartida, placarDecisivo, proximoTempo, expulsosNaPartida, goleiroNaPartida, golNaPartida, golVazioPorExpulsao, irParaOGol, jogoPorId, partidaDoJogo, removerGolDaPartida,
   substituirNaPartida, timesDoJogo, ultimoPeriodo,
 } from '../../logic/torneio'
 import type { TorneioHook } from '../../store/torneio'
@@ -33,6 +33,7 @@ type Escolha =
   | { tipo: 'entrar'; lado: Lado; jogador: Jogador }
   | { tipo: 'sair'; lado: Lado; jogador: Jogador }
   | { tipo: 'goleiro'; lado: Lado }
+  | { tipo: 'passe'; lado: Lado; indice: number; autorId: string } // assistências ligadas: quem deu o passe
 
 // O jogo do torneio em andamento: placar, gols, cartões, substituições e encerramento.
 export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
@@ -127,9 +128,14 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
     hook.aplicar((x) => cronoDaPartida(x, jogoId, !p.crono.rodando))
   }
   const marcarGol = (lado: Lado, autor: Jogador | null, contra = false) => {
-    setEscolha(null)
+    // assistências ligadas: gol com autor (e não contra) já pergunta quem deu o passe
+    setEscolha(regras.assistencias && autor && !contra ? { tipo: 'passe', lado, indice: p.gols.length, autorId: autor.id } : null)
     if (regras.som) somDeGol()
     hook.aplicar((x) => golNaPartida(x, jogoId, lado, autor, decorrido, contra))
+  }
+  const darPasse = (indice: number, passador: Jogador | null) => {
+    setEscolha(null)
+    if (passador) hook.aplicar((x) => passeNaPartida(x, jogoId, indice, passador))
   }
   const darCartao = (lado: Lado, j: Jogador, cor: CorCartao) => {
     setEscolha(null)
@@ -298,6 +304,18 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
             })}
             <button className="btn sm" style={{ gridColumn: '1 / -1' }} onClick={() => marcarGol(lado, null, contra)}>Não sei · só marcar o gol</button>
             {!contra && <button className="btn w sm" style={{ gridColumn: '1 / -1' }} onClick={() => setEscolha({ tipo: 'gol', lado, contra: true })}>Foi gol contra</button>}
+          </Escolher>
+        )
+      })()}
+
+      {escolha?.tipo === 'passe' && (() => {
+        const { lado, indice, autorId } = escolha
+        return (
+          <Escolher titulo={`Gol do ${times[lado].nome}`} pergunta="Quem deu o passe?" cor={times[lado].cor} onFechar={() => darPasse(indice, null)}>
+            {p.escalacao.emCampo[lado].filter((id) => id !== autorId && !expulsos.has(id)).map((id) => (
+              <button key={id} className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }} onClick={() => darPasse(indice, jogador(times[lado], id))}>{nomeComLuva(lado, id)}</button>
+            ))}
+            <button className="btn sm" style={{ gridColumn: '1 / -1' }} onClick={() => darPasse(indice, null)}>Ninguém · não sei</button>
           </Escolher>
         )
       })()}

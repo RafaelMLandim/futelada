@@ -82,6 +82,9 @@ export function RegrasForm({ regras, mudar, travado = false, minCampos = 1 }: {
         <Linha titulo="Acréscimos" detalhe={r.acrescimos ? 'Ao acabar o tempo, define os minutos na hora' : 'Desligado: acabou o tempo, acabou o jogo'}>
           <Chave rotulo="Acréscimos" ligada={r.acrescimos} alternar={() => mudar({ acrescimos: !r.acrescimos })} />
         </Linha>
+        <Linha titulo="Marcar assistências" detalhe="No gol, pergunta também quem deu o passe (Troféu Garçom)">
+          <Chave rotulo="Marcar assistências" ligada={r.assistencias} alternar={() => mudar({ assistencias: !r.assistencias })} />
+        </Linha>
       </section>
 
       <section className="panel">

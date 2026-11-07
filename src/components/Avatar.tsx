@@ -35,7 +35,7 @@ export function Avatar({ tamanho = 36 }: { tamanho?: number }) {
   const pedirExclusao = () => confirmar({
     titulo: 'Excluir conta',
     mensagem: 'Excluir a conta apaga para sempre o histórico, as turmas, o caixa, os torneios e as cobranças que você criou. '
-      + 'Se você assina o Premium, cancele a assinatura na Play Store: excluir a conta não cancela a cobrança. Deseja excluir?',
+      + 'Se você assina o Pro ou o Ultimate, cancele a assinatura na Play Store: excluir a conta não cancela a cobrança. Deseja excluir?',
     botao: 'Excluir',
     perigo: true,
     aoConfirmar: () => (perfil.comSenha ? setSenha('') : void excluir()),

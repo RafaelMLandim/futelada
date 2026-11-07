@@ -6,9 +6,13 @@ import { ProvedorDeConfirmacao } from './components/ProvedorDeConfirmacao'
 import { voltarFechaJanelas } from './utils/voltar'
 import { nativo } from './utils/nativo'
 import { abrirPeloLink } from './utils/linksDoApp'
+import { ajustarAoTamanhoDaTela } from './utils/telaGrande'
 
 // site: funciona sem internet e se atualiza sozinho (no app de loja não precisa)
 if (!nativo()) void import('virtual:pwa-register').then(({ registerSW }) => registerSW({ immediate: true }))
+
+// tablet e computador: o app fica maior em vez de uma faixa estreita no meio
+ajustarAoTamanhoDaTela()
 
 // o "voltar" do celular fecha a janela aberta (em vez de fechar o app)
 voltarFechaJanelas()

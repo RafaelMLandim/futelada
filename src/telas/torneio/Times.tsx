@@ -8,12 +8,14 @@ import type { TimeTorneio } from '../../types/torneio'
 import { CORES_TORNEIO, textoSobre } from '../../utils/cores'
 import { EditorDeTime } from './EditorDeTime'
 import { TelaPremium } from '../../components/TelaPremium'
+import { usePlano } from '../../store/plano'
 
 // Lista dos times do torneio, com titulares, reservas e goleiro. Abre o editor.
 export function Times({ hook, onSorteio }: { hook: TorneioHook; onSorteio: () => void }) {
   const torneio = hook.torneio!
   const [editando, setEditando] = useState<TimeTorneio | null>(null)
   const [premium, setPremium] = useState(false)
+  const plano = usePlano()
   const { linha } = torneio.regras
   // Time em campo não pode ser editado (a escalação do jogo depende dele)
   const emCampo = [...timesJogando(torneio)]
@@ -34,8 +36,8 @@ export function Times({ hook, onSorteio }: { hook: TorneioHook; onSorteio: () =>
 
   // cor do time novo: a menos usada (com mais de 21 times, as cores se repetem)
   const criarTime = () => {
-    // torneio grátis: até 8 times (PLANO.md, seção 14.1)
-    if (torneio.limiteDeTimes && torneio.times.length >= torneio.limiteDeTimes) return setPremium(true)
+    // torneio grátis: até 8 times (PLANO.md, seção 14.1); com o Ultimate, sem limite
+    if (torneio.limiteDeTimes && !plano.ultimate && torneio.times.length >= torneio.limiteDeTimes) return setPremium(true)
     const vezes = (cor: string) => torneio.times.filter((t) => t.cor === cor).length
     const cor = [...CORES_TORNEIO].sort((a, b) => vezes(a.cor) - vezes(b.cor))[0].cor
     setEditando(novoTime(`TIME ${torneio.times.length + 1}`, cor))

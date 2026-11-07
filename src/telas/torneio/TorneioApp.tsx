@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Barra } from '../../components/Barra'
 import { Icone, type NomeIcone } from '../../components/Icone'
+import { StatusDaBarra } from '../../components/navegacao'
 import { campeao, timesDoJogo } from '../../logic/torneio'
 import { useTorneio } from '../../store/torneio'
 import { codigoDoLink, limparLink } from '../../utils/convite'
@@ -56,7 +57,7 @@ export function TorneioApp({ onInicio }: { onInicio: () => void }) {
       erro: 'Não deu para abrir o torneio compartilhado. Confira a internet.',
     } as const
     return (
-      <div className="scr" style={{ height: '100dvh' }}>
+      <div className="scr" style={{ height: 'var(--altura-tela)' }}>
         <Barra titulo="Torneio" sub={`Código ${compartilhado.codigo}`} />
         <div className="conteudo" style={{ justifyContent: 'center' }}>
           <div className="panel pb" style={{ fontWeight: 600, fontSize: 16 }}>{textos[compartilhado.status]}</div>
@@ -113,14 +114,17 @@ export function TorneioApp({ onInicio }: { onInicio: () => void }) {
     ['ajustes', 'ajustes', 'Ajustes'],
   ]
 
+  // torneio compartilhado: o código e se está ao vivo ficam no canto do cabeçalho de todas as abas
+  const status = compartilhado && (
+    <>
+      <b>{compartilhado.codigo}</b>
+      <span className={compartilhado.online ? 'on' : 'off'}>{compartilhado.online ? '● ao vivo' : '● sem internet'}</span>
+    </>
+  )
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', maxWidth: 520, margin: '0 auto' }}>
-      {compartilhado && (
-        <div className="faixa-nuvem" role="status">
-          <span>Código <b>{compartilhado.codigo}</b> · {hook.souOrganizador ? 'organizador' : hook.meuCampo ? `mesário do Campo ${hook.meuCampo}` : 'acompanhando'}</span>
-          <span className={compartilhado.online ? 'on' : 'off'}>{compartilhado.online ? '● ao vivo' : '● sem internet · vai sincronizar'}</span>
-        </div>
-      )}
+    <StatusDaBarra.Provider value={status}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'var(--altura-tela)' }}>
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {aba === 'times' && <Times hook={hook} onSorteio={() => setAba('jogos')} />}
         {aba === 'jogos' && <Jogos hook={hook} onJogar={abrirJogo} />}
@@ -157,5 +161,6 @@ export function TorneioApp({ onInicio }: { onInicio: () => void }) {
         ))}
       </nav>
     </div>
+    </StatusDaBarra.Provider>
   )
 }

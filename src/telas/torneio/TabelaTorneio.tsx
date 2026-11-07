@@ -4,7 +4,7 @@ import { Camisa } from '../../components/Camisa'
 import { Cartao } from '../../components/Cartao'
 import { Icone } from '../../components/Icone'
 import {
-  artilhariaDoTorneio, campeao, cartoesDoTorneio, classificacao, goleirosDoTorneio, nomeDoGrupo, placarDecisivo, vencedor,
+  artilhariaDoTorneio, assistenciasDoTorneio, campeao, cartoesDoTorneio, classificacao, goleirosDoTorneio, nomeDoGrupo, placarDecisivo, vencedor,
   type LinhaDaTabela,
 } from '../../logic/torneio'
 import type { JogoTorneio, Torneio } from '../../types/torneio'
@@ -152,6 +152,7 @@ export function Confronto({ torneio, jogo }: { torneio: Torneio; jogo: JogoTorne
 
 function Estatisticas({ torneio }: { torneio: Torneio }) {
   const artilheiros = artilhariaDoTorneio(torneio).slice(0, 10)
+  const garcons = assistenciasDoTorneio(torneio).slice(0, 10)
   const goleiros = goleirosDoTorneio(torneio)
   const cartoes = cartoesDoTorneio(torneio)
   const time = (id: string) => timePorId(torneio, id)
@@ -169,6 +170,21 @@ function Estatisticas({ torneio }: { torneio: Torneio }) {
           </div>
         ))}
       </section>
+
+      {(torneio.regras.assistencias || garcons.length > 0) && (
+        <section className="panel">
+          <div className="ph">Assistências<span className="sub">Troféu Garçom</span></div>
+          {garcons.length === 0 && <div className="pb mut">Nenhum passe para gol marcado ainda.</div>}
+          {garcons.map((garcom, posicao) => (
+            <div key={garcom.id} className="tr">
+              <span className={'no' + (posicao === 0 ? ' g' : '')}>{posicao + 1}</span>
+              <Camisa cor={time(garcom.time)?.cor ?? SEM_COLETE} tamanho={18} />
+              <span className="nome">{garcom.nome} <span className="mut">· {time(garcom.time)?.nome}</span></span>
+              <span className="num" style={{ fontSize: 22 }}>{garcom.assistencias}</span>
+            </div>
+          ))}
+        </section>
+      )}
 
       {goleiros.length > 0 && (
         <section className="panel">
