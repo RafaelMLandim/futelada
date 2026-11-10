@@ -16,6 +16,16 @@ export function alternarCrono(c: Cronometro, rodando: boolean, agora = Date.now(
     : { ...c, rodando: false, inicio: 0, acumulado: tempoDecorrido(c, agora) }
 }
 
+/**
+ * Para o relógio no fim do tempo. Se o celular estava bloqueado ou com o app em segundo plano, o aviso só
+ * chega quando a pessoa volta: o tempo passado do fim não conta (não vira acréscimo que ninguém deu, e os
+ * acréscimos dados depois começam do zero).
+ */
+export function pararNoFim(c: Cronometro, limiteMs: number, agora = Date.now()): Cronometro {
+  const parado = alternarCrono(c, false, agora)
+  return parado.acumulado > limiteMs ? { ...parado, acumulado: Math.max(c.acumulado, limiteMs) } : parado
+}
+
 /** Dá os acréscimos e solta o relógio. */
 export const darAcrescimos = (c: Cronometro, min: number, agora = Date.now()): Cronometro =>
   alternarCrono({ ...c, acrescimoMin: min }, true, agora)

@@ -1,2 +1,2 @@
 // O cronômetro é regra pura e fica em logic/; reexportado aqui para o estado do app.
-export { cronoZerado, tempoDecorrido, alternarCrono, darAcrescimos, tempoTotalMs } from '../logic/cronometro'
+export { cronoZerado, tempoDecorrido, alternarCrono, darAcrescimos, pararNoFim, tempoTotalMs } from '../logic/cronometro'

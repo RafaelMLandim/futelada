@@ -4,6 +4,10 @@ import { nuvemDisponivel, obterNuvem } from '../nuvem'
 import type { PeladaCompartilhada } from '../nuvem/tipos'
 import { Compartilhamento, useCompartilhamento } from '../store/compartilhamento'
 import { useConta } from '../store/conta'
+import { useTurmas } from '../store/turmas'
+import { Barra } from '../components/Barra'
+import { QualPeladaHoje } from '../components/QualPeladaHoje'
+import { dataHoje } from '../utils/formatar'
 import { guardarPeladaEncerrada } from '../store/encerramento'
 import { completarEstado } from '../store/migracao'
 import { Faixa, PeladaAoVivo } from './PeladaAoVivo'
@@ -12,6 +16,7 @@ import { useConfirmar } from '../utils/confirmacao'
 import { Icone, type NomeIcone } from '../components/Icone'
 import { useCobranca } from '../store/cobranca'
 import { useVoltar } from '../utils/voltar'
+import { useMusicaDeFundo } from '../utils/musica'
 import { usePelada } from '../store/usePelada'
 import { Config } from './Config'
 import { Jogo } from './jogo/Jogo'
@@ -29,7 +34,14 @@ export function PeladaApp() {
   const compartilhamento = useCompartilhamento(pelada)
   const conta = useConta()
   const { app } = pelada
+  // música de fundo enquanto prepara a pelada; o primeiro apito para a música
+  useMusicaDeFundo(app.estado.historico.length === 0 && !app.estado.emCampo)
   const emJogo = app.estado.emCampo !== null
+  const { turmas } = useTurmas()
+  // a turma desta pelada nova já foi escolhida nesta tela (a de antes não vale: pode ser de outra pelada)
+  const [turmaEscolhida, setTurmaEscolhida] = useState(false)
+  const [turmaCriadaAgora, setTurmaCriadaAgora] = useState<string | null>(null) // a nuvem demora um instante para listar
+  if (app.iniciada && turmaEscolhida) setTurmaEscolhida(false) // a próxima pelada escolhe de novo
   const [aba, setAba] = useState<Aba>(emJogo ? 'jogo' : 'lista')
 
   // Quem ajudou encerrou a pelada: o celular do dono guarda sozinho no histórico dele (só ele grava na
@@ -59,6 +71,8 @@ export function PeladaApp() {
     aoConfirmar: () => {
       const codigo = app.estado.cobranca
       if (codigo) void obterNuvem().then((n) => n?.apagarCobranca(codigo)).catch(() => null)
+      const lista = pelada.app.estado.listaDaPelada
+      if (lista) void obterNuvem().then((n) => n?.apagarLista(lista)).catch(() => null)
       pelada.cancelar()
       setAba('lista')
       voltarAoInicio?.()
@@ -71,8 +85,27 @@ export function PeladaApp() {
     return <PeladaEncerrada dados={encerradaPorOutro} aviso={`${quem} encerrou${conta.logado ? ' · guardada no seu histórico' : ''}`} aoFechar={fechar} />
   }
 
-  // Criando a pelada: primeiro os ajustes, depois a lista
+  // Criando a pelada: primeiro a turma (obrigatória, escolhida de propósito), depois os ajustes, depois a lista
   if (!app.iniciada) {
+    const turmaValida = !!app.estado.config.turma && (app.estado.config.turma === turmaCriadaAgora || !!turmas?.some((turma) => turma.id === app.estado.config.turma))
+    if (conta.logado && nuvemDisponivel() && (!turmaEscolhida || !turmaValida)) {
+      return (
+        <div className="scr">
+          <Barra titulo="Nova pelada" sub={dataHoje()} />
+          <div className="conteudo">
+            <section className="panel">
+              <div className="ph">Qual pelada é hoje?{(turmas?.length ?? 0) > 1 && <span className="sub">escolha uma</span>}</div>
+              <QualPeladaHoje podeRemover aoEscolher={(turma, criadaAgora) => {
+                pelada.aplicar((estado) => ({ ...estado, config: { ...estado.config, turma } }))
+                if (criadaAgora) setTurmaCriadaAgora(turma)
+                setTurmaEscolhida(true)
+              }} />
+            </section>
+            <button className="lnk" style={{ justifySelf: 'center', color: '#fff' }} onClick={() => voltarAoInicio?.()}>Voltar ao início</button>
+          </div>
+        </div>
+      )
+    }
     return <Config pelada={pelada} onCancelar={cancelar} onPronto={() => { pelada.iniciar(); setAba('lista') }} />
   }
 

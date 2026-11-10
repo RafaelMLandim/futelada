@@ -7,6 +7,42 @@ import type { Colete, Jogador, Lado, Time } from '../../types/pelada'
 import { maiusculas, normalizarNome } from '../../utils/formatar'
 
 /**
+ * Goleiro não fixo: quem estava no gol é sempre alguém da lista (do dia, da turma ou um goleiro fixo). Busca pelo nome,
+ * sem criar nome novo. Usado no "Quem fez?" e no "Quem deu o passe?". `excluir`: quem não pode ser escolhido (o autor do gol).
+ */
+function BuscaDoGoleiro({ pelada, pergunta, excluir, onEscolher, onVoltar }: {
+  pelada: Pelada; pergunta: string; excluir?: string; onEscolher: (jogador: Jogador) => void; onVoltar: () => void
+}) {
+  const [busca, setBusca] = useState('')
+  const turma = useJogadoresDaTurma(pelada.app.estado.config.turma)
+  const achados = buscarGoleiro(pelada.app.estado, turma, busca).filter((jogador) => jogador.id !== excluir)
+  return (
+    <div className="pb" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>{pergunta}</div>
+      <form style={{ display: 'flex' }} onSubmit={(evento) => {
+        evento.preventDefault()
+        if (busca.trim() && achados.length > 0) onEscolher(achados.find((jogador) => normalizarNome(jogador.nome) === normalizarNome(busca)) ?? achados[0])
+      }}>
+        <label style={{ display: 'flex', flex: 1 }}>
+          <span className="vh">Nome do goleiro</span>
+          <input className="inp" autoFocus placeholder="Nome do goleiro" value={busca} autoCapitalize="characters" enterKeyHint="done"
+            onChange={(evento) => setBusca(maiusculas(evento.target.value))} />
+        </label>
+      </form>
+      {achados.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+          {achados.map((jogador) => (
+            <button key={jogador.id} className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }} onClick={() => onEscolher(jogador)}>{jogador.nome}</button>
+          ))}
+        </div>
+      )}
+      {busca.trim() && achados.length === 0 && <div className="mut">Ninguém na lista com esse nome.</div>}
+      <button className="btn w sm" onClick={onVoltar}>Voltar</button>
+    </div>
+  )
+}
+
+/**
  * Modal "Quem fez?": os jogadores do time do gol (ou do outro, no gol contra), o goleiro e "Não sei".
  * `goleiros` = goleiro fixo de cada time (null = não fixo: tocar em "Goleiro" abre a busca de quem estava no gol).
  */
@@ -16,15 +52,13 @@ export function EscolherAutor({ pelada, titulo, colete, time, adversario, goleir
 }) {
   // Gol contra: a lista mostra os jogadores do outro time
   const [contra, setContra] = useState(contraInicial)
-  const [busca, setBusca] = useState<string | null>(null) // null = lista do time; texto = buscando o goleiro
-  const turma = useJogadoresDaTurma(pelada.app.estado.config.turma)
+  const [busca, setBusca] = useState(false) // true = buscando quem estava no gol (goleiro não fixo)
   const escolher = (autor: Jogador | null) => {
     onFechar()
     onEscolher(autor, contra)
   }
   const goleiroFixo = contra ? goleiros.adversario : goleiros.time
   const doGol = contra ? adversario : time
-  const achados = busca !== null ? buscarGoleiro(pelada.app.estado, turma, busca) : []
 
   return (
     <div className="modal" role="dialog" aria-modal="true" aria-label={titulo} onClick={onFechar}>
@@ -37,32 +71,10 @@ export function EscolherAutor({ pelada, titulo, colete, time, adversario, goleir
             <span style={{ fontSize: 20, lineHeight: 1 }}>×</span>
           </button>
         </div>
-        {busca !== null ? (
+        {busca ? (
           // O goleiro não é fixo: busca quem estava no gol do Time N
-          <div className="pb" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>
-              {contra ? `Gol contra · quem estava no gol do Time ${doGol.numero}?` : `Quem estava no gol do Time ${doGol.numero}?`}
-            </div>
-            <form style={{ display: 'flex' }} onSubmit={(ev) => {
-              ev.preventDefault()
-              if (busca.trim() && achados.length > 0) escolher(achados.find((j) => normalizarNome(j.nome) === normalizarNome(busca)) ?? achados[0])
-            }}>
-              <label style={{ display: 'flex', flex: 1 }}>
-                <span className="vh">Nome do goleiro</span>
-                <input className="inp" autoFocus placeholder="Nome do goleiro" value={busca} autoCapitalize="characters" enterKeyHint="done"
-                  onChange={(ev) => setBusca(maiusculas(ev.target.value))} />
-              </label>
-            </form>
-            {achados.length > 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-                {achados.map((j) => (
-                  <button key={j.id} className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }} onClick={() => escolher(j)}>{j.nome}</button>
-                ))}
-              </div>
-            )}
-            {busca.trim() && achados.length === 0 && <div className="mut">Ninguém na lista com esse nome.</div>}
-            <button className="btn w sm" onClick={() => setBusca(null)}>Voltar</button>
-          </div>
+          <BuscaDoGoleiro pelada={pelada} pergunta={contra ? `Gol contra · quem estava no gol do Time ${doGol.numero}?` : `Quem estava no gol do Time ${doGol.numero}?`}
+            onEscolher={escolher} onVoltar={() => setBusca(false)} />
         ) : (
           <div className="pb" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>
@@ -75,7 +87,7 @@ export function EscolherAutor({ pelada, titulo, colete, time, adversario, goleir
                 </button>
               ))}
               <button className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }}
-                onClick={() => goleiroFixo ? escolher(jogadorGoleiro(goleiroFixo)) : setBusca('')}>
+                onClick={() => goleiroFixo ? escolher(jogadorGoleiro(goleiroFixo)) : setBusca(true)}>
                 🧤 {goleiroFixo ?? 'Goleiro'}
               </button>
             </div>
@@ -109,6 +121,7 @@ export function QuemDeuOPasse({ pelada, lado, autorId, onPasse, onFechar }: {
   pelada: Pelada; lado: Lado; autorId: string; onPasse: (jogador: Jogador | null) => void; onFechar: () => void
 }) {
   const { estado } = pelada.app
+  const [busca, setBusca] = useState(false)
   if (!estado.emCampo) return null
   const time = estado.emCampo[lado]
   const goleiroFixo = estado.goleiros[lado]
@@ -117,6 +130,8 @@ export function QuemDeuOPasse({ pelada, lado, autorId, onPasse, onFechar }: {
     onFechar()
     onPasse(jogador)
   }
+  // goleiro não fixo: o passe também pode ter sido de quem estava no gol (mesma busca do gol do goleiro)
+  const goleiroNaoFixo = !goleiroFixo
   return (
     <div className="modal" role="dialog" aria-modal="true" aria-label="Quem deu o passe?" onClick={() => escolher(null)}>
       <section className="panel" onClick={(ev) => ev.stopPropagation()}>
@@ -125,6 +140,9 @@ export function QuemDeuOPasse({ pelada, lado, autorId, onPasse, onFechar }: {
             <Camisa cor={estado.config.coletes[lado].cor} contorno="#fff" />Gol do Time {time.numero}
           </span>
         </div>
+        {busca ? (
+          <BuscaDoGoleiro pelada={pelada} pergunta={`Quem estava no gol do Time ${time.numero}?`} excluir={autorId} onEscolher={escolher} onVoltar={() => setBusca(false)} />
+        ) : (
         <div className="pb" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>Quem deu o passe?</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
@@ -133,9 +151,13 @@ export function QuemDeuOPasse({ pelada, lado, autorId, onPasse, onFechar }: {
                 {j.id.startsWith('goleiro:') ? `🧤 ${j.nome}` : j.nome}
               </button>
             ))}
+            {goleiroNaoFixo && (
+              <button className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }} onClick={() => setBusca(true)}>🧤 Goleiro</button>
+            )}
           </div>
           <button className="btn sm" onClick={() => escolher(null)}>Ninguém · não sei</button>
         </div>
+        )}
       </section>
     </div>
   )

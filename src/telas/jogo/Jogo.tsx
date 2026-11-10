@@ -22,9 +22,10 @@ import { EscolherAcrescimos } from '../../components/EscolherAcrescimos'
 import { GolsDaPartida } from './GolsDaPartida'
 import { Placar } from './Placar'
 import { QuemDeuOPasse, QuemFezGol } from './QuemFezGol'
+import { useCronometroNoCelular } from '../../utils/cronometroNoCelular'
 
 export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void }) {
-  const { app, aplicar, crono, acrescimos } = pelada
+  const { app, aplicar, crono, fimDoTempo, acrescimos } = pelada
   const { estado } = app
   const confirmar = useConfirmar()
   // quem só acompanha (link ?ver=) vê o jogo ao vivo, sem nenhum botão de ação e sem apito
@@ -84,10 +85,11 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
       if (somenteLeitura) return
       if (cfg.som) apitoFim()
       navigator.vibrate?.([300, 150, 300, 150, 600])
-      if (app.crono.rodando) crono(false)
+      // fim pelo tempo: para no limite (o celular pode ter ficado bloqueado e passado do fim)
+      if (app.crono.rodando) { if (acabouTempo) fimDoTempo(tempoTotalMs(cfg.tempoMin, app.crono)); else crono(false) }
     }
     if (!fim) avisou.current = false
-  }, [fim, app.crono.rodando, crono, cfg.som, somenteLeitura])
+  }, [fim, acabouTempo, app.crono, crono, fimDoTempo, cfg.som, cfg.tempoMin, somenteLeitura])
 
   // A moeda abre pelo botão ou sozinha quando o tempo acaba empatado (até ser fechada)
   const empateAberto = empateManual
@@ -110,6 +112,17 @@ export function Jogo({ pelada, onLista }: { pelada: Pelada; onLista: () => void 
     if (azuisAtivos < azuisAntes.current && !somenteLeitura) navigator.vibrate?.([200, 100, 200])
     azuisAntes.current = azuisAtivos
   }, [azuisAtivos, somenteLeitura])
+
+  // App minimizado ou tela bloqueada: o tempo desce na notificação e o apito fica agendado (só no app de loja)
+  const emCampoAgora = estado.emCampo
+  useCronometroNoCelular(!emCampoAgora || somenteLeitura || fim ? null : {
+    titulo: `Partida ${estado.historico.length + 1} · ${app.crono.rodando ? 'faltam' : 'pausada'}`,
+    texto: `Time ${emCampoAgora.A.numero} ${golsA} x ${golsB} Time ${emCampoAgora.B.numero}`,
+    // o tempo acaba quando o acumulado + (agora - início) chega no total
+    fimEm: app.crono.rodando ? app.crono.inicio + tempoTotalMs(cfg.tempoMin, app.crono) - app.crono.acumulado : null,
+    apitar: cfg.som,
+    tituloDoFim: 'Acabou o tempo!',
+  })
 
   if (!estado.emCampo) {
     return (

@@ -27,7 +27,7 @@ export function Pagamentos({ pelada, cobranca, onFechar }: { pelada: Pelada; cob
   const caixa = useCaixa()
   // fecha a conta do dia no caixa: entra o que pagaram, sai o campo (uma vez por pelada)
   const lancarNoCaixa = async () => {
-    await caixa.lancar(lancamentosDaPelada(resumo, ...agoraEDia()))
+    await caixa.lancar(lancamentosDaPelada(resumo, ...agoraEDia(), pelada.app.estado.config.turma))
     pelada.aplicar((e) => ({ ...e, caixaLancado: true }))
     setAviso(`Lançado no caixa: ${resumo.sobra >= 0 ? '+' : ''}${reais(resumo.sobra)}`)
   }

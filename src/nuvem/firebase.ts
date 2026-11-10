@@ -4,10 +4,10 @@
 import { initializeApp } from 'firebase/app'
 import {
   EmailAuthProvider, GoogleAuthProvider, connectAuthEmulator, createUserWithEmailAndPassword, deleteUser, getAuth, getRedirectResult, linkWithCredential, linkWithRedirect, onIdTokenChanged,
-  reauthenticateWithCredential, reauthenticateWithPopup, signInAnonymously, updateProfile, signInWithCredential, signInWithEmailAndPassword, signInWithRedirect, signOut, type User,
+  reauthenticateWithCredential, reauthenticateWithPopup, sendPasswordResetEmail, signInAnonymously, updateProfile, signInWithCredential, signInWithEmailAndPassword, signInWithRedirect, signOut, type User,
 } from 'firebase/auth'
 import {
-  addDoc, collection, connectFirestoreEmulator, deleteDoc, doc, getDoc, getDocs, increment, initializeFirestore, onSnapshot, orderBy, persistentLocalCache, query,
+  addDoc, collection, connectFirestoreEmulator, deleteDoc, deleteField, doc, getDoc, getDocs, increment, initializeFirestore, onSnapshot, orderBy, persistentLocalCache, query,
   persistentMultipleTabManager, setDoc, updateDoc, where, writeBatch, type DocumentReference,
 } from 'firebase/firestore'
 import type { DadosNuvem, Operacao } from '../logic/torneio'
@@ -16,8 +16,9 @@ import { nativo } from '../utils/nativo'
 import { baseDaNuvem, baseParaNuvem } from './formato'
 import { entrarComUmToque, prepararUmToque } from './umToque'
 import { CONTADORES_ZERADOS, PLANO_VAZIO, type Contadores, type DadosDoPlano, type Plano } from '../logic/plano'
+import type { PeladaDaCarta } from '../logic/carta'
 import type { JogadorDaTurma } from '../logic/turma'
-import type { AvisoPagamento, CobrancaNuvem, Lancamento, MesarioNoCampo, Nuvem, PeladaCompartilhada, PeladaNoHistorico, Perfil, Turma } from './tipos'
+import type { AvisoPagamento, CobrancaNuvem, ConfirmadoNaLista, Lancamento, ListaDaPelada, MesarioNoCampo, Nuvem, PeladaCompartilhada, PeladaNoHistorico, Perfil, Turma } from './tipos'
 
 export const configFirebase = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -68,6 +69,13 @@ export function criarNuvemFirebase(): Nuvem {
     connectAuthEmulator(auth, `http://${location.hostname}:9099`, { disableWarnings: true })
     connectFirestoreEmulator(db, location.hostname, 8080)
   }
+  /** Função do servidor (carregada só quando precisa). */
+  async function funcaoDoServidor<Pedido = unknown, Resposta = unknown>(nome: string) {
+    const { connectFunctionsEmulator, getFunctions, httpsCallable } = await import('firebase/functions')
+    const funcoes = getFunctions(app, 'southamerica-east1')
+    if (usarEmulador()) connectFunctionsEmulator(funcoes, location.hostname, 5001)
+    return httpsCallable<Pedido, Resposta>(funcoes, nome)
+  }
   // Quem já entrou com o Google continua logado; senão, entra anônimo (como sempre foi)
   const logado = (async () => {
     await auth.authStateReady()
@@ -93,6 +101,9 @@ export function criarNuvemFirebase(): Nuvem {
   const caixa = (dono: string) => collection(db, 'usuarios', dono, 'caixa')
   const historico = (dono: string) => collection(db, 'usuarios', dono, 'peladas')
   const turmas = (dono: string) => collection(db, 'usuarios', dono, 'turmas')
+  const peladasDaCarta = (dono: string) => collection(db, 'cartas', dono, 'peladas')
+  const listaDaPelada = (codigo: string) => doc(db, 'listas', codigo)
+  const confirmados = (codigo: string) => collection(db, 'listas', codigo, 'confirmados')
   const jogadoresDaTurma = (dono: string, turma: string) => collection(db, 'usuarios', dono, 'turmas', turma, 'jogadores')
   /** Acompanha uma coleção do perfil de quem está logado (refaz ao entrar/sair; vazio sem login). */
   function ouvirDoPerfil<T>(colecao: (dono: string) => ReturnType<typeof collection>, aoMudar: (itens: T[]) => void, aoErro?: (e: Error) => void) {
@@ -276,6 +287,49 @@ export function criarNuvemFirebase(): Nuvem {
       await (aviso ? setDoc(ref, puro(aviso)) : deleteDoc(ref))
     },
 
+    // ---- link da pelada ----
+    async abrirLista(codigo, data) {
+      const organizador = await uid()
+      await setDoc(listaDaPelada(codigo), { organizador, data })
+    },
+    ouvirLista(codigo, aoMudar, aoErro) {
+      let dados: ListaDaPelada | null = null
+      let lista: ConfirmadoNaLista[] = []
+      const prontos = new Set<string>()
+      const emitir = (parte: string) => {
+        prontos.add(parte)
+        if (prontos.size === 2) aoMudar(dados, lista)
+      }
+      const paradas: (() => void)[] = []
+      let parou = false
+      void logado.then(() => {
+        if (parou) return
+        paradas.push(onSnapshot(listaDaPelada(codigo), (documento) => { dados = (documento.data() as ListaDaPelada | undefined) ?? null; emitir('lista') }, (erro) => aoErro?.(erro)))
+        paradas.push(onSnapshot(query(confirmados(codigo), orderBy('em')), (consulta) => {
+          lista = consulta.docs.map((documento) => ({ ...(documento.data() as Omit<ConfirmadoNaLista, 'id'>), id: documento.id }))
+          emitir('confirmados')
+        }, (erro) => aoErro?.(erro)))
+      })
+      return () => { parou = true; paradas.forEach((parar) => parar()) }
+    },
+    async confirmarNaLista(codigo, nome, comConta, goleiro) {
+      const id = await uid()
+      await setDoc(doc(confirmados(codigo), id), { nome, comConta, em: Date.now(), ...(goleiro && { goleiro: true }) })
+    },
+    async tirarDaLista(codigo, id) {
+      await logado
+      await deleteDoc(doc(confirmados(codigo), id))
+    },
+    async marcarNaFila(codigo, id) {
+      await logado
+      await updateDoc(doc(confirmados(codigo), id), { naFila: true })
+    },
+    async apagarLista(codigo) {
+      await logado
+      for (const documento of (await getDocs(confirmados(codigo))).docs) await deleteDoc(documento.ref)
+      await deleteDoc(listaDaPelada(codigo))
+    },
+
     // ---- conta e caixa ----
     ouvirPerfil(aoMudar) {
       if (!nativo()) prepararUmToque()
@@ -307,6 +361,10 @@ export function criarNuvemFirebase(): Nuvem {
       await logado
       await signInWithEmailAndPassword(auth, email, senha)
     },
+    async redefinirSenha(email) {
+      auth.languageCode = 'pt-BR' // o e-mail do Firebase sai em português
+      await sendPasswordResetEmail(auth, email)
+    },
     async criarContaComEmail(email, senha, nome) {
       await logado
       const atual = auth.currentUser
@@ -327,6 +385,36 @@ export function criarNuvemFirebase(): Nuvem {
     ouvirCaixa(aoMudar, aoErro) {
       return ouvirDoPerfil<Lancamento>(caixa, aoMudar, aoErro)
     },
+    ouvirCarta(aoMudar) {
+      return ouvirDoPerfil<PeladaDaCarta>(peladasDaCarta, aoMudar)
+    },
+    ouvirDadosDoJogador(aoMudar) {
+      const vazio = { foto: null, apelido: null }
+      let parar = () => {}
+      const pararDeOuvirLogin = auth.onAuthStateChanged((usuario) => {
+        parar()
+        parar = () => {}
+        if (!usuario || usuario.isAnonymous) { aoMudar(vazio); return }
+        parar = onSnapshot(doc(db, 'perfis', usuario.uid), (documento) => {
+          const dados = documento.data()
+          aoMudar({ foto: (dados?.foto as string | undefined) ?? null, apelido: (dados?.apelido as string | undefined) ?? null, fotoRemovida: dados?.fotoRemovida === true })
+        }, () => aoMudar(vazio))
+      })
+      return () => { parar(); pararDeOuvirLogin() }
+    },
+    async fotosDasContas(contas) {
+      await logado
+      const lidas = await Promise.all(contas.map(async (conta) => [conta, (await getDoc(doc(db, 'perfis', conta)).catch(() => null))?.data()?.foto as string | undefined] as const))
+      return Object.fromEntries(lidas.flatMap(([conta, foto]) => (foto ? [[conta, foto] as const] : [])))
+    },
+    async salvarDadosDoJogador(dados) {
+      const dono = auth.currentUser?.uid
+      if (!dono) return
+      const { fotoRemovida: _ignorado, ...escolhidos } = dados
+      const campos = Object.fromEntries(Object.entries(escolhidos).map(([campo, valor]) => [campo, valor ?? deleteField()]))
+      if ('foto' in escolhidos) campos.fotoRemovida = deleteField() // foto nova: some o aviso da removida
+      await setDoc(doc(db, 'perfis', dono), { ...campos, atualizadaEm: Date.now() }, { merge: true })
+    },
     async lancarNoCaixa(lancamentos) {
       const dono = await uid()
       for (const l of lancamentos) void addDoc(caixa(dono), puro(l))
@@ -341,10 +429,6 @@ export function criarNuvemFirebase(): Nuvem {
     async guardarPelada(pelada) {
       const dono = await uid()
       void addDoc(historico(dono), puro(pelada)) // sem internet, sobe quando a conexão voltar
-    },
-    async apagarPelada(id) {
-      const dono = await uid()
-      await deleteDoc(doc(historico(dono), id))
     },
 
     // ---- turmas ----
@@ -425,9 +509,22 @@ export function criarNuvemFirebase(): Nuvem {
 
     async usarCreditoDeTorneio() {
       await logado
-      const { getFunctions, httpsCallable } = await import('firebase/functions')
-      const usar = httpsCallable<void, { ok: boolean }>(getFunctions(app, 'southamerica-east1'), 'usarCreditoDeTorneio')
+      const usar = await funcaoDoServidor<void, { ok: boolean }>('usarCreditoDeTorneio')
       return (await usar()).data.ok
+    },
+    async registrarNaCarta(data, turma, jogadores) {
+      await logado
+      if (!jogadores.length) return
+      await (await funcaoDoServidor('registrarPeladaNaCarta'))({ data, turma, jogadores })
+    },
+    async denunciarFoto(conta, motivo) {
+      await logado
+      await (await funcaoDoServidor('denunciarFoto'))({ conta, motivo })
+    },
+    async retirarDaCarta(data, contas) {
+      await logado
+      if (!contas.length) return
+      await (await funcaoDoServidor('retirarPeladaDaCarta'))({ data, contas })
     },
 
     async removerTurma(turma, peladas) {
@@ -453,13 +550,14 @@ export function criarNuvemFirebase(): Nuvem {
       }
       const dono = u.uid
       const docs = async (q: Parameters<typeof getDocs>[0]) => (await getDocs(q)).docs.map((d) => d.ref as DocumentReference)
-      const refs: DocumentReference[] = [...await docs(caixa(dono)), ...await docs(historico(dono))]
+      const refs: DocumentReference[] = [...await docs(caixa(dono)), ...await docs(historico(dono)), doc(db, 'perfis', dono)]
       for (const t of await docs(turmas(dono))) refs.push(...await docs(jogadoresDaTurma(dono, t.id)), t)
       for (const t of await docs(query(collection(db, 'torneios'), where('nuvem.organizador', '==', dono)))) {
         for (const sub of [partidas(t.id), resultados(t.id), campos(t.id)]) refs.push(...await docs(sub))
         refs.push(t)
       }
       for (const c of await docs(query(collection(db, 'cobrancas'), where('organizador', '==', dono)))) refs.push(...await docs(avisos(c.id)), c)
+      for (const lista of await docs(query(collection(db, 'listas'), where('organizador', '==', dono)))) refs.push(...await docs(confirmados(lista.id)), lista)
       await apagarTudo(refs)
       // os contadores de uso (sem nome nem e-mail) e o plano comprado ficam (PLANO.md, seção 14)
       await deleteUser(u)

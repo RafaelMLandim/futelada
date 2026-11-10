@@ -29,6 +29,17 @@ export function definirGoleiros(estado: Estado, goleiros: string[]): Estado {
   return sincronizarGoleiros({ ...estado, config: { ...estado.config, goleiros } })
 }
 
+/**
+ * Goleiro fixo que chegou pelo link: entra na lista de goleiros ligado à conta (é para ela que vão os números
+ * do gol). Se já tem um goleiro com esse nome, é ele mesmo: só liga a conta.
+ */
+export function chegouGoleiro(estado: Estado, nome: string, conta: string | null): Estado {
+  const existente = estado.config.goleiros.find((goleiro) => normalizarNome(goleiro) === normalizarNome(nome))
+  const comNome = existente ?? nome.trim()
+  const comGoleiro = existente ? estado : definirGoleiros(estado, [...estado.config.goleiros, comNome])
+  return conta ? { ...comGoleiro, contasDosGoleiros: { ...comGoleiro.contasDosGoleiros, [comNome]: conta } } : comGoleiro
+}
+
 /** Escolhe o goleiro de um gol. Se ele estava no outro gol, os dois trocam. */
 export function escolherGoleiro(estado: Estado, lado: Lado, nome: string | null): Estado {
   const g = { ...estado.goleiros }

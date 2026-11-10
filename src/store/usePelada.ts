@@ -22,6 +22,7 @@ export function usePelada(naMemoria?: AppState) {
     aplicar: (fn: (e: Estado) => Estado, novaPartida = false) => dispatch({ tipo: 'aplicar', fn, novaPartida }),
     iniciar: () => dispatch({ tipo: 'iniciar' }),
     crono: (rodando: boolean) => dispatch({ tipo: 'crono', rodando }),
+    fimDoTempo: (limiteMs: number) => dispatch({ tipo: 'fimDoTempo', limiteMs }),
     acrescimos: (min: number) => dispatch({ tipo: 'acrescimos', min }),
     desfazer: () => dispatch({ tipo: 'desfazer' }),
     compartilhar: (codigo: string, chave: string) => dispatch({ tipo: 'compartilhar', codigo, chave }),

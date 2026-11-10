@@ -4,7 +4,7 @@ import { Icone } from '../components/Icone'
 import { Cartao } from '../components/Cartao'
 import { useContext, useState } from 'react'
 import { VoltarAoInicio } from '../components/navegacao'
-import { artilharia, cartoesDoDia, garcons, goleirosMenosVazados, placarDosColetes, vitoriasPorJogador } from '../logic'
+import { artilharia, cartoesDoDia, garcons, goleiroDaSelecao, goleirosMenosVazados, placarDosColetes, vitoriasPorJogador } from '../logic'
 import { useConta } from '../store/conta'
 import { guardarPeladaEncerrada } from '../store/encerramento'
 import type { Pelada } from '../store/usePelada'
@@ -14,7 +14,11 @@ import { useConfirmar } from '../utils/confirmacao'
 import { dataHoje } from '../utils/formatar'
 import { GolsCorrigiveis } from './jogo/GolsDaPartida'
 import { useAjudando, useSomenteLeitura } from '../utils/somenteLeitura'
-import { compartilharFicha, compartilharImagem, imagemDoResumo, nomeDoArquivo } from '../utils/resumoDaPelada'
+import { fotosDaPelada } from '../store/carta'
+import { useFotosDasContas } from '../store/denuncias'
+import { FotoDoJogador } from '../components/FotoDoJogador'
+import { contasDaPelada, jogadorGoleiro } from '../logic'
+import { compartilharImagem, imagemDoResumo, nomeDoArquivo } from '../utils/resumoDaPelada'
 
 type Linha = { numero: number; j: number; v: number; e: number; d: number }
 
@@ -56,6 +60,10 @@ export function Tabela({ pelada, data }: { pelada: Pelada; data?: string }) {
   const col = { width: 28, textAlign: 'center' as const }
   const artilheiros = artilharia(estado)
   const goleiros = goleirosMenosVazados(estado)
+  const goleiroNaSelecao = goleiroDaSelecao(estado) // o goleiro fixo que mais venceu
+  const contas = contasDaPelada(estado) // id do jogador → conta (quem entrou com a conta tem foto)
+  const fotos = useFotosDasContas(Object.values(contas))
+  const comFotos = Object.keys(fotos).length > 0
   const lideresDePasse = garcons(estado)
   const cartoes = cartoesDoDia(estado)
   const placarColetes = placarDosColetes(estado)
@@ -64,7 +72,7 @@ export function Tabela({ pelada, data }: { pelada: Pelada; data?: string }) {
   const [gerando, setGerando] = useState(false)
   const compartilhar = async (): Promise<boolean> => {
     setGerando(true)
-    const ok = await imagemDoResumo(estado).then((img) => compartilharImagem(img, nomeDoArquivo('selecao'))).catch(() => false)
+    const ok = await fotosDaPelada(estado).then((fotos) => imagemDoResumo(estado, fotos)).then((img) => compartilharImagem(img, nomeDoArquivo('selecao'))).catch(() => false)
     setGerando(false)
     return ok
   }
@@ -72,12 +80,6 @@ export function Tabela({ pelada, data }: { pelada: Pelada; data?: string }) {
   // partida aberta nos resultados (gols dela, para marcar quem fez depois)
   const [partidaAberta, setPartidaAberta] = useState<number | null>(null)
   const aberta = historico.find((p) => p.numero === partidaAberta)
-  const [fichaGerando, setFichaGerando] = useState<string | null>(null)
-  const ficha = async (id: string, nome: string) => {
-    setFichaGerando(id)
-    await compartilharFicha(estado, id, nome).catch(() => null)
-    setFichaGerando(null)
-  }
   // Na tabela, cada time tem cor própria (diferente dos coletes, que são do jogo)
   const coletes = [estado.config.coletes.A, estado.config.coletes.B]
   const corDoTime = (numero: number) => corDoTimeDaPelada(numero, coletes)
@@ -184,31 +186,39 @@ export function Tabela({ pelada, data }: { pelada: Pelada; data?: string }) {
 
         {/* Vitórias de cada jogador, em qualquer time; os primeiros (tamanho da linha) são a seleção */}
         <section className="panel">
-          <div className="ph">Seleção da pelada<span className="sub">toque para a ficha</span></div>
+          <div className="ph">Seleção da pelada</div>
           {vitorias.length === 0
             ? <div className="pb mut">Os números aparecem quando a primeira partida terminar.</div>
             : <div className="tr" style={{ minHeight: 30, fontSize: 12, color: 'var(--mut)', letterSpacing: .8, background: '#e3e8d6' }}>
-                <span style={{ width: 24 }} /><span className="nome">JOGADOR</span>
+                <span style={{ width: 24 }} />{comFotos && <span className="foto-do-jogador vazia" />}<span className="nome">JOGADOR</span>
                 <span style={col}>J</span><span style={col}>V</span>
               </div>}
+          {goleiroNaSelecao && (
+            <div className="tr" style={{ background: '#fff6d0' }}>
+              <span className="no g">G</span>
+              <FotoDoJogador foto={fotos[contas[jogadorGoleiro(goleiroNaSelecao.nome).id]]} conta={contas[jogadorGoleiro(goleiroNaSelecao.nome).id]} nome={goleiroNaSelecao.nome} comEspaco={comFotos} />
+              <span className="nome">{goleiroNaSelecao.nome}</span>
+              <span style={col}>{goleiroNaSelecao.jogos}</span>
+              <span className="num" style={{ ...col, fontSize: 22 }}>{goleiroNaSelecao.vitorias}</span>
+            </div>
+          )}
           {vitorias.map((v, i) => {
             const naSelecao = i < estado.config.linha && v.vitorias > 0
             return (
-              <button key={v.id} className="tr" aria-label={`Ficha de ${v.nome}`} disabled={fichaGerando !== null}
-                style={{ width: '100%', border: 0, font: 'inherit', color: 'var(--navy)', textAlign: 'left', cursor: 'pointer', ...(naSelecao ? { background: '#fff6d0' } : {}) }}
-                onClick={() => ficha(v.id, v.nome)}>
+              <div key={v.id} className="tr" style={naSelecao ? { background: '#fff6d0' } : undefined}>
                 <span className={'no' + (naSelecao ? ' g' : '')}>{i + 1}</span>
-                <span className="nome">{fichaGerando === v.id ? 'Gerando a ficha…' : v.nome}</span>
+                <FotoDoJogador foto={fotos[contas[v.id]]} conta={contas[v.id]} nome={v.nome} comEspaco={comFotos} />
+                <span className="nome">{v.nome}</span>
                 <span style={col}>{v.jogos}</span>
                 <span className="num" style={{ ...col, fontSize: 22 }}>{v.vitorias}</span>
-              </button>
+              </div>
             )
           })}
         </section>
 
         {estado.config.goleiros.length > 0 && (
           <section className="panel">
-            <div className="ph">Goleiro menos vazado</div>
+            <div className="ph">Goleiro menos vazado<span className="sub">luva de ouro</span></div>
             <div className="tr" style={{ minHeight: 30, fontSize: 12, color: 'var(--mut)', letterSpacing: .8, background: '#e3e8d6' }}>
               <span style={{ width: 24 }} /><span className="nome">GOLEIRO</span>
               <span style={col}>J</span><span style={col}>GS</span><span style={{ ...col, width: 44 }}>MÉDIA</span>

@@ -34,7 +34,7 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         // guarda o app e os áudios de gol para tocar sem internet
-        globPatterns: ['**/*.{js,css,html,png,svg,mp3}'],
+        globPatterns: ['**/*.{js,css,html,png,svg,mp3,webp}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         // /__/auth/ é a volta do login do Google (servida pelo Firebase Hosting, não pelo app)
         navigateFallbackDenylist: [/^\/__\//],

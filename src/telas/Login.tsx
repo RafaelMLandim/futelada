@@ -20,7 +20,7 @@ function Silhueta({ arquivo, cor, style }: { arquivo: string; cor: string; style
  * No fundo, o goleiro voa e o jogador chuta, os dois em pinceladas (public/arte: goleiro.png, feito a partir da
  * silhueta do troféu com rastros e respingos, e chute.png).
  */
-export function Login({ conta }: { conta?: ReturnType<typeof useConta> }) {
+export function Login({ conta, onVoltar }: { conta?: ReturnType<typeof useConta>; onVoltar?: () => void }) {
   const [comEmail, setComEmail] = useState(false)
   return (
     <div className="scr" style={{ height: 'var(--altura-tela)', position: 'relative', overflow: 'hidden' }}>
@@ -41,6 +41,7 @@ export function Login({ conta }: { conta?: ReturnType<typeof useConta> }) {
             <div style={{ display: 'grid', gap: 10, width: '100%', maxWidth: 320 }}>
               <button className="btn w" style={{ textTransform: 'none', gap: 10 }} onClick={conta.entrar}>{google} Entrar com Google</button>
               <button className="btn" style={{ textTransform: 'none', gap: 10 }} onClick={() => setComEmail(true)}><Icone nome="email" /> Entrar com e-mail</button>
+              {onVoltar && <button className="btn w sm" onClick={onVoltar}>Voltar</button>}
               {conta.erro && <span style={{ color: '#ffb39e', fontSize: 14, fontWeight: 700 }}>{conta.erro}</span>}
               <span style={{ color: '#fff', fontSize: 13, lineHeight: 1.4, textShadow: '0 1px 0 rgba(0,0,0,.35)' }}>
                 Ao entrar, você concorda com os{' '}
@@ -65,6 +66,7 @@ function EntrarComEmail({ conta, onFechar }: { conta: ReturnType<typeof useConta
   const [senha, setSenha] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
+  const [linkEnviado, setLinkEnviado] = useState<string | null>(null) // e-mail para onde foi o link da senha nova
   const pronto = !!email.trim() && !!senha && (!criando || !!nome.trim())
   const enviar = async (ev: FormEvent) => {
     ev.preventDefault()
@@ -73,7 +75,15 @@ function EntrarComEmail({ conta, onFechar }: { conta: ReturnType<typeof useConta
     setErro(await conta.comEmail(email, senha, criando ? nome : undefined))
     setEnviando(false)
   }
-  const trocar = () => { setCriando(!criando); setErro(null) }
+  const trocar = () => { setCriando(!criando); setErro(null); setLinkEnviado(null) }
+  const esqueciASenha = async () => {
+    if (!email.trim()) { setErro('Digite o seu e-mail acima e toque em "Esqueci a senha".'); return }
+    setEnviando(true)
+    const falha = await conta.redefinirSenha(email)
+    setEnviando(false)
+    setErro(falha)
+    setLinkEnviado(falha ? null : email.trim())
+  }
 
   return (
     <div className="modal" role="dialog" aria-modal="true" aria-label={criando ? 'Criar conta' : 'Entrar com e-mail'} onClick={onFechar}>
@@ -98,10 +108,18 @@ function EntrarComEmail({ conta, onFechar }: { conta: ReturnType<typeof useConta
               placeholder={criando ? 'Senha (pelo menos 6)' : 'Senha'} value={senha}
               onChange={(ev) => { setSenha(ev.target.value); setErro(null) }} />
           </label>
+          {linkEnviado && (
+            <div role="status" style={{ color: 'var(--navy)', fontSize: 14, fontWeight: 600, lineHeight: 1.4 }}>
+              Se existir uma conta com <b>{linkEnviado}</b>, chega um e-mail com o link para criar uma senha nova. Veja também o spam.
+            </div>
+          )}
           {erro && <div role="alert" style={{ color: 'var(--vermelho)', fontSize: 14, fontWeight: 700 }}>{erro}</div>}
           <button className="btn" type="submit" disabled={enviando || !pronto}>
             {enviando ? '…' : criando ? 'Criar conta' : 'Entrar'}
           </button>
+          {!criando && (
+            <button className="lnk" type="button" disabled={enviando} onClick={() => void esqueciASenha()} style={{ justifySelf: 'center' }}>Esqueci a senha</button>
+          )}
           <button className="lnk" type="button" onClick={trocar} style={{ justifySelf: 'center' }}>
             {criando ? 'Já tenho conta · Entrar' : 'Não tem conta? Criar conta'}
           </button>

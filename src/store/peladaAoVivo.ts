@@ -13,6 +13,6 @@ export const SEM_COBRANCA: ReturnType<typeof useCobranca> = { marcar: nada, cria
 export function peladaSoParaVer(dados: PeladaCompartilhada): Pelada {
   return {
     app: { estado: completarEstado(dados.app.estado), iniciada: true, crono: dados.app.crono },
-    aplicar: nada, iniciar: nada, crono: nada, acrescimos: nada, desfazer: nada, compartilhar: nada, substituir: nada, encerrar: nada, cancelar: nada,
+    aplicar: nada, iniciar: nada, crono: nada, fimDoTempo: nada, acrescimos: nada, desfazer: nada, compartilhar: nada, substituir: nada, encerrar: nada, cancelar: nada,
   }
 }

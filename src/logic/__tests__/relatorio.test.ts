@@ -57,6 +57,15 @@ describe('relatório da temporada', () => {
     expect(relatorioDoAno([antiga, nova], [], 2025).peladas).toBe(1)
   })
 
+  it('guarda a conta de quem entrou pelo link (de onde vem a foto do Time do ano)', () => {
+    const comConta = pelada(LISTA)
+    const primeiro = comConta.historico[0].timeA.jogadores[0]
+    const ligado = { ...comConta, historico: comConta.historico.map((partida) => ({ ...partida, timeA: { ...partida.timeA, jogadores: partida.timeA.jogadores.map((jogador) => (jogador.id === primeiro.id ? { ...jogador, conta: 'conta-dele' } : jogador)) } })) }
+    const r = relatorioDoAno([guardar(pelada(LISTA), 1), guardar(ligado, 2), guardar(pelada(LISTA), 3)], [], 2026)
+    expect(r.jogadores.find((j) => j.nome === primeiro.nome)?.conta).toBe('conta-dele')
+    expect(r.jogadores.filter((j) => j.conta)).toHaveLength(1)
+  })
+
   it('time do ano: presença vem antes dos gols; quem veio menos de 65% fica de fora', () => {
     // o João (artilheiro) só veio a 6 das 10 (< 65%); o Bruno veio a todas, sem gols
     const comJoao = (i: number) => guardar(pelada(LISTA, 3), i)

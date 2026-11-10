@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Barra } from '../../components/Barra'
+import { useMusicaDeFundo } from '../../utils/musica'
 import { Icone, type NomeIcone } from '../../components/Icone'
 import { StatusDaBarra } from '../../components/navegacao'
 import { campeao, timesDoJogo } from '../../logic/torneio'
@@ -23,6 +24,7 @@ type Aba = 'times' | 'jogos' | 'jogo' | 'tabela' | 'ajustes'
 export function TorneioApp({ onInicio }: { onInicio: () => void }) {
   const hook = useTorneio()
   const { torneio } = hook
+  useMusicaDeFundo(!torneio) // música enquanto cria o torneio; com o torneio rolando, silêncio
   const [abaEscolhida, setAba] = useState<Aba | null>(null)
   const [jogoAberto, setJogoAberto] = useState<string | null>(null)
   const { compartilhado } = hook
@@ -59,7 +61,7 @@ export function TorneioApp({ onInicio }: { onInicio: () => void }) {
     return (
       <div className="scr" style={{ height: 'var(--altura-tela)' }}>
         <Barra titulo="Torneio" sub={`Código ${compartilhado.codigo}`} />
-        <div className="conteudo" style={{ justifyContent: 'center' }}>
+        <div className="conteudo" style={{ justifyContent: 'safe center' }}>
           <div className="panel pb" style={{ fontWeight: 600, fontSize: 16 }}>{textos[compartilhado.status]}</div>
           <button className="btn w sm" onClick={() => { hook.sair(); onInicio() }}>Voltar ao início</button>
         </div>

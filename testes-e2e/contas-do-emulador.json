@@ -1,0 +1,6 @@
+{
+  "observacao": "Contas de teste do emulador do Firebase (auth 9099). Só valem no emulador local.",
+  "contas": [
+    { "email": "organizador-premium@exemplo.test", "senha": "teste-c43f9e9517d6", "uso": "ver a tela do Pro e a lista da pelada" }
+  ]
+}

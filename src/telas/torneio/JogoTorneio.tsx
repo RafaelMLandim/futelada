@@ -10,7 +10,7 @@ import { LADOS, outro, restanteAzulNaLista } from '../../logic'
 import { tempoDecorrido, tempoTotalMs } from '../../logic/cronometro'
 import { EscolherAcrescimos } from '../../components/EscolherAcrescimos'
 import {
-  acrescimosNaPartida, cancelarPartida, cartaoNaPartida, comecarIntervalo, cronoDaPartida, decorridoNoPeriodo, duracaoDoPeriodo, nomeDoPeriodo,
+  acrescimosNaPartida, cancelarPartida, cartaoNaPartida, comecarIntervalo, cronoDaPartida, fimDoTempoDaPartida, decorridoNoPeriodo, duracaoDoPeriodo, nomeDoPeriodo,
   passeNaPartida, periodoDaPartida, placarDecisivo, proximoTempo, expulsosNaPartida, goleiroNaPartida, golNaPartida, golVazioPorExpulsao, irParaOGol, jogoPorId, partidaDoJogo, removerGolDaPartida,
   substituirNaPartida, timesDoJogo, ultimoPeriodo,
 } from '../../logic/torneio'
@@ -23,6 +23,7 @@ import { formatarTempo } from '../../utils/formatar'
 import { apitoFim, apitoInicio, somDeGol } from '../../utils/sons'
 import { nomeDoJogo } from './nomes'
 import { FimDeJogo } from './FimDeJogo'
+import { useCronometroNoCelular } from '../../utils/cronometroNoCelular'
 
 /** Quanto falta até a hora `ate` (fora do componente: usa o relógio). */
 const faltaAte = (ate: number) => Math.max(0, ate - Date.now())
@@ -82,10 +83,12 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
       if (!editavel) return // quem só acompanha não apita nem mexe no jogo
       if (regras.som) apitoFim()
       navigator.vibrate?.([300, 150, 300, 150, 600])
-      if (p.crono.rodando) aplicar((x) => cronoDaPartida(x, jogoId, false))
+      // fim pelo tempo: para no limite deste tempo (o celular pode ter ficado bloqueado e passado do fim)
+      const limite = (p.inicioDoPeriodo ?? 0) + tempoTotalMs(duracao, p.crono)
+      if (p.crono.rodando) aplicar((x) => (acabouTempo ? fimDoTempoDaPartida(x, jogoId, limite) : cronoDaPartida(x, jogoId, false)))
     }
     if (!parou) avisou.current = false
-  }, [parou, regras.som, p.crono.rodando, aplicar, jogoId, editavel])
+  }, [parou, acabouTempo, duracao, p.crono, p.inicioDoPeriodo, regras.som, aplicar, jogoId, editavel])
 
   // Fim do intervalo: apita e vibra uma vez (o próximo tempo começa no botão)
   const restanteIntervalo = noIntervalo ? faltaAte(p.intervaloAte!) : 0
@@ -99,6 +102,19 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
     }
     if (!noIntervalo || restanteIntervalo > 0) avisouIntervalo.current = false
   }, [noIntervalo, restanteIntervalo, editavel, regras.som])
+
+  // App minimizado ou tela bloqueada: o tempo (ou o intervalo) desce na notificação e o apito fica agendado
+  const placarDoJogo = `${times.A.nome} ${p.placar[0]} x ${p.placar[1]} ${times.B.nome}`
+  useCronometroNoCelular(!editavel || fim ? null : noIntervalo ? {
+    titulo: 'Intervalo · faltam', texto: placarDoJogo, fimEm: p.intervaloAte ?? null, apitar: regras.som, tituloDoFim: 'Fim do intervalo',
+  } : fimDoTempo ? null : {
+    titulo: `${periodo ? `${periodo} · ` : ''}${p.crono.rodando ? 'faltam' : 'pausado'}`,
+    texto: placarDoJogo,
+    // o tempo acaba quando o tempo do jogo chega no início deste tempo + a duração dele
+    fimEm: p.crono.rodando ? p.crono.inicio + (p.inicioDoPeriodo ?? 0) + tempoTotalMs(duracao, p.crono) - p.crono.acumulado : null,
+    apitar: regras.som,
+    tituloDoFim: ultimo ? 'Acabou o tempo!' : `Fim do ${periodo}`,
+  })
 
   // O resumo de fim de jogo abre pelo botão ou sozinho quando acaba o tempo
   const acrescimoMin = p.crono.acrescimoMin ?? 0

@@ -1,5 +1,6 @@
 import { useContext, useState } from 'react'
 import type { Perfil } from '../nuvem/tipos'
+import { useDadosDoJogador } from '../store/carta'
 import { useConta } from '../store/conta'
 import { useConfirmar } from '../utils/confirmacao'
 import { abrirLink, paginaDoSite } from '../utils/nativo'
@@ -19,9 +20,11 @@ function Foto({ perfil, tamanho }: { perfil: Perfil; tamanho: number }) {
   )
 }
 
-// Foto de quem entrou com o Google, no topo. Tocar abre as opções: plano, voltar ao início, sair e excluir a conta.
+// Foto de quem entrou com o Google, no topo. Tocar abre as opções: plano, voltar ao início, sair e excluir a conta (trocar ou remover a foto fica no lápis do Meu perfil).
 export function Avatar({ tamanho = 36 }: { tamanho?: number }) {
-  const { perfil, logado, sair, excluirConta } = useConta()
+  const { perfil: conta, logado, sair, excluirConta } = useConta()
+  const { foto } = useDadosDoJogador()
+  const perfil = conta && foto ? { ...conta, foto } : conta
   const confirmar = useConfirmar()
   const [aberta, setAberta] = useState(false)
   const [plano, setPlano] = useState(false)

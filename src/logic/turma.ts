@@ -55,12 +55,6 @@ export function sugestoes(turma: readonly JogadorDaTurma[], texto: string, lista
     .map((x) => x.j)
 }
 
-/** "Quem costuma vir": a turma (menos quem já está na lista), os mais frequentes primeiro. */
-export function quemCostumaVir(turma: readonly JogadorDaTurma[], lista: readonly Jogador[]): JogadorDaTurma[] {
-  const jaEsta = naLista(lista)
-  return turma.filter((j) => !j.arquivado && !jaEsta(j)).sort(maisFrequentes)
-}
-
 /** Alguém da turma com nome parecido, mas não igual ("JOAO" x "JOÃO S.")? Para perguntar "é ele?". */
 export function parecidoNaTurma(turma: readonly JogadorDaTurma[], nome: string): JogadorDaTurma | null {
   const n = normalizarNome(nome)
@@ -99,4 +93,48 @@ export function turmaDoHistorico(peladas: readonly Pick<PeladaGuardada, 'data' |
 /** O jogador da turma que é este jogador da pelada (pelo id; nas peladas antigas, pelo nome). */
 export function naTurma(turma: readonly JogadorDaTurma[], jogador: Jogador): JogadorDaTurma | null {
   return turma.find((t) => t.id === jogador.id) ?? turma.find((t) => normalizarNome(t.nome) === normalizarNome(jogador.nome)) ?? null
+}
+
+// ---- Qual pelada é hoje? (escolher a turma ao criar a pelada) ----
+
+const DIAS_NO_PLURAL = ['domingos', 'segundas', 'terças', 'quartas', 'quintas', 'sextas', 'sábados']
+const DIAS = ['DOMINGO', 'SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA', 'SÁBADO']
+
+export type ResumoDaTurma = {
+  id: string
+  nome: string
+  peladas: number
+  ultima: number | null // data da última pelada (ms)
+  diaDaSemana: number | null // o dia em que a turma mais joga (0 = domingo)
+}
+
+/** "Joga aos sábados", "Joga às quintas". */
+export const textoDoDia = (dia: number) => `Joga ${dia === 0 || dia === 6 ? 'aos' : 'às'} ${DIAS_NO_PLURAL[dia]}`
+
+/** Nome sugerido para a primeira turma: o dia de hoje ("PELADA DE SÁBADO"). */
+export const nomeSugerido = (hoje: Date) => `PELADA DE ${DIAS[hoje.getDay()]}`
+
+/**
+ * As turmas com o que ajuda a reconhecer cada uma (última pelada, quantas, o dia em que joga). Primeiro a que
+ * costuma jogar no dia de hoje; depois a que jogou por último. As peladas antigas sem turma contam para a primeira
+ * turma (como no histórico).
+ */
+export function resumoDasTurmas(
+  turmas: readonly { id: string; nome: string }[], peladas: readonly Pick<PeladaGuardada, 'data' | 'turma'>[], hoje: Date,
+): ResumoDaTurma[] {
+  const primeira = turmas[0]?.id ?? null
+  const resumos = turmas.map((turma): ResumoDaTurma => {
+    const daTurma = peladas.filter((pelada) => pelada.turma === turma.id || (!pelada.turma && turma.id === primeira))
+    const porDia = new Array<number>(7).fill(0)
+    for (const pelada of daTurma) porDia[new Date(pelada.data).getDay()]++
+    const maisJogado = porDia.indexOf(Math.max(...porDia))
+    return {
+      id: turma.id, nome: turma.nome, peladas: daTurma.length,
+      ultima: daTurma.length ? Math.max(...daTurma.map((pelada) => pelada.data)) : null,
+      diaDaSemana: daTurma.length ? maisJogado : null,
+    }
+  })
+  const dia = hoje.getDay()
+  return resumos.sort((primeiraTurma, segunda) =>
+    Number(segunda.diaDaSemana === dia) - Number(primeiraTurma.diaDaSemana === dia) || (segunda.ultima ?? 0) - (primeiraTurma.ultima ?? 0))
 }

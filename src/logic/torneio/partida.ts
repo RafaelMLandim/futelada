@@ -3,7 +3,7 @@
 
 import type { CorCartao, Gol, Jogador, Lado, Placar } from '../../types/pelada'
 import type { JogoTorneio, PartidaTorneio, Torneio } from '../../types/torneio'
-import { alternarCrono, cronoZerado, darAcrescimos } from '../cronometro'
+import { alternarCrono, cronoZerado, darAcrescimos, pararNoFim } from '../cronometro'
 import { cartoesAoDar } from '../cartoes'
 import { outro } from '../lado'
 import { goleiroDoTime } from './criar'
@@ -131,6 +131,10 @@ export const acrescimosNaPartida = (t: Torneio, jogoId: string, min: number): To
 
 export const cronoDaPartida = (t: Torneio, jogoId: string, rodando: boolean): Torneio =>
   comPartida(t, jogoId, (p) => ({ ...p, crono: alternarCrono(p.crono, rodando) }))
+
+/** Para o relógio no fim do tempo (`limiteMs` = tempo do jogo todo até o fim deste tempo), sem contar o que passou dele. */
+export const fimDoTempoDaPartida = (t: Torneio, jogoId: string, limiteMs: number): Torneio =>
+  comPartida(t, jogoId, (p) => ({ ...p, crono: pararNoFim(p.crono, limiteMs) }))
 
 /** Quem está no gol do `lado` agora (um jogador em campo; null = gol vazio ou o goleiro foi expulso). */
 export function goleiroNaPartida(t: Torneio, partida: PartidaTorneio, lado: Lado): Jogador | null {

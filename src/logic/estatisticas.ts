@@ -2,13 +2,14 @@
 
 import type { Colete, Estado, Gol } from '../types/pelada'
 import { LADOS } from './lado'
+import { jogadorGoleiro } from './goleiros'
 
 export type Artilheiro = {
   id: string; nome: string; gols: number
   jogos: number; vitorias: number; cartoes: number // para o desempate
   ultimoGol: number // posição do último gol dele entre os gols do dia (quem chegou primeiro ao total)
 }
-export type GoleiroStats = { nome: string; jogos: number; sofridos: number; media: number }
+export type GoleiroStats = { nome: string; jogos: number; sofridos: number; media: number; vitorias: number }
 
 /** Todos os gols do dia, incluindo os da partida em andamento. */
 const todosOsGols = (estado: Estado): Gol[] => [...estado.historico.flatMap((p) => p.gols), ...estado.gols]
@@ -67,11 +68,13 @@ export function criterioDoArtilheiro(lista: Artilheiro[]): CriterioDaArtilharia 
 /** Goleiros fixos ordenados por menos gols sofridos por jogo (partidas terminadas). */
 export function goleirosMenosVazados(estado: Estado): GoleiroStats[] {
   const mapa = new Map<string, GoleiroStats>()
-  const stats = (nome: string) => mapa.get(nome) ?? mapa.set(nome, { nome, jogos: 0, sofridos: 0, media: 0 }).get(nome)!
+  const stats = (nome: string) => mapa.get(nome) ?? mapa.set(nome, { nome, jogos: 0, sofridos: 0, media: 0, vitorias: 0 }).get(nome)!
   for (const p of estado.historico) {
     for (const lado of LADOS) {
       const nome = p.goleiros[lado]
-      if (nome) stats(nome).jogos++
+      if (!nome) continue
+      stats(nome).jogos++
+      if (p.resultado === lado) stats(nome).vitorias++
     }
     for (const g of p.gols) if (g.goleiroSofreu) stats(g.goleiroSofreu).sofridos++
   }
@@ -144,36 +147,51 @@ export function vitoriasPorJogador(estado: Estado): VitoriasDoJogador[] {
   return [...mapa.values()].sort((x, y) => y.vitorias - x.vitorias || y.gols - x.gols || x.jogos - y.jogos || x.nome.localeCompare(y.nome))
 }
 
+/**
+ * Goleiro da seleção: o goleiro fixo que mais venceu (ele também joga nos times; o critério é o mesmo da linha).
+ * Desempate: menos gols sofridos por jogo. Sem vitória, não entra.
+ */
+export function goleiroDaSelecao(estado: Estado): GoleiroStats | null {
+  return goleirosMenosVazados(estado).filter((goleiro) => goleiro.vitorias > 0)
+    .sort((x, y) => y.vitorias - x.vitorias || x.media - y.media || y.jogos - x.jogos || x.nome.localeCompare(y.nome))[0] ?? null
+}
+
 /** Seleção da pelada: os jogadores com mais vitórias, um time inteiro (tamanho da linha). */
 export function selecaoDaPelada(estado: Estado): VitoriasDoJogador[] {
   return vitoriasPorJogador(estado).filter((j) => j.vitorias > 0).slice(0, estado.config.linha)
 }
 
-export type FichaDoJogador = {
-  id: string; nome: string; jogos: number; vitorias: number; empates: number; derrotas: number
-  gols: number; golsContra: number; amarelos: number; vermelhos: number; azuis: number
-  posicao: number // na contagem de vitórias (1 = mais vitórias)
-  naSelecao: boolean
+
+/** Uma linha da tabela da pelada (para compartilhar no grupo): o que cada jogador fez no dia. */
+export type LinhaDaTabela = {
+  id: string; nome: string; goleiro: boolean
+  jogos: number; vitorias: number; empates: number; derrotas: number; gols: number; assistencias: number
 }
 
-/** Números do dia de um jogador (partidas terminadas; gols e cartões incluem a partida em andamento). */
-export function fichaDoJogador(estado: Estado, id: string): FichaDoJogador | null {
-  const ranking = vitoriasPorJogador(estado)
-  const i = ranking.findIndex((v) => v.id === id)
-  if (i === -1) return null
-  const v = ranking[i]
-  let empates = 0
-  for (const p of estado.historico) {
-    const jogou = [...p.timeA.jogadores, ...p.timeB.jogadores].some((j) => j.id === id)
-    if (jogou && p.resultado === 'empate') empates++
+/**
+ * Tabela da pelada: todo mundo que jogou (e os goleiros fixos), com J, V, E, D, gols e assistências das partidas
+ * terminadas e da que está em andamento (gols e passes). Ordem: mais vitórias, mais gols, mais assistências, nome.
+ */
+export function tabelaDaPelada(estado: Estado): LinhaDaTabela[] {
+  const mapa = new Map<string, LinhaDaTabela>()
+  const linha = (id: string, nome: string, goleiro = false) =>
+    mapa.get(id) ?? mapa.set(id, { id, nome, goleiro, jogos: 0, vitorias: 0, empates: 0, derrotas: 0, gols: 0, assistencias: 0 }).get(id)!
+  const resultado = (alvo: LinhaDaTabela, partida: Estado['historico'][number], lado: 'A' | 'B') => {
+    alvo.jogos++
+    if (partida.resultado === 'empate') alvo.empates++
+    else if (partida.resultado === lado) alvo.vitorias++
+    else alvo.derrotas++
   }
-  const gols = todosOsGols(estado).filter((g) => g.autorId === id)
-  const cartoes = [...estado.historico.flatMap((p) => p.cartoes), ...estado.cartoes].filter((c) => c.jogadorId === id && !c.porDoisAmarelos)
-  return {
-    id, nome: v.nome, jogos: v.jogos, vitorias: v.vitorias, empates, derrotas: v.jogos - v.vitorias - empates,
-    gols: gols.filter((g) => !g.contra).length, golsContra: gols.filter((g) => g.contra).length,
-    amarelos: cartoes.filter((c) => c.cor === 'amarelo').length, vermelhos: cartoes.filter((c) => c.cor === 'vermelho').length,
-    azuis: cartoes.filter((c) => c.cor === 'azul').length,
-    posicao: i + 1, naSelecao: selecaoDaPelada(estado).some((s) => s.id === id),
+  for (const partida of estado.historico) {
+    for (const lado of LADOS) {
+      for (const jogador of (lado === 'A' ? partida.timeA : partida.timeB).jogadores) resultado(linha(jogador.id, jogador.nome), partida, lado)
+      const goleiro = partida.goleiros[lado]
+      if (goleiro) resultado(linha(jogadorGoleiro(goleiro).id, goleiro, true), partida, lado)
+    }
   }
+  for (const gol of todosOsGols(estado)) {
+    if (gol.autorId && gol.autor && !gol.contra) linha(gol.autorId, gol.autor, gol.autorId.startsWith('goleiro:')).gols++
+    if (gol.assistenciaId && gol.assistencia) linha(gol.assistenciaId, gol.assistencia, gol.assistenciaId.startsWith('goleiro:')).assistencias++
+  }
+  return [...mapa.values()].sort((x, y) => y.vitorias - x.vitorias || y.gols - x.gols || y.assistencias - x.assistencias || x.nome.localeCompare(y.nome))
 }

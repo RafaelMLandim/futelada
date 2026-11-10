@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { comecar, vitoria } from '..'
-import { jogaramNaPelada, naTurma, parecidoNaTurma, quemCostumaVir, sugestoes, turmaDoHistorico, type JogadorDaTurma } from '../turma'
+import { jogaramNaPelada, naTurma, nomeSugerido, parecidoNaTurma, resumoDasTurmas, sugestoes, textoDoDia, turmaDoHistorico, type JogadorDaTurma } from '../turma'
 import { LISTA, sessao } from './utils'
 
 const jt = (id: string, nome: string, peladas: number, ultimaPelada = 0, arquivado = false): JogadorDaTurma => ({ id, nome, peladas, ultimaPelada, arquivado })
@@ -23,10 +23,6 @@ describe('turma: sugestões na Lista', () => {
   it('quem já está na lista e quem foi arquivado não aparecem', () => {
     expect(sugestoes(TURMA, 'ju', [{ id: 'j1', nome: 'JUNINHO' }]).map((j) => j.nome)).toEqual(['JULIO'])
     expect(sugestoes(TURMA, 'marc', [])).toEqual([])
-  })
-
-  it('"quem costuma vir": a turma toda por frequência, menos quem já chegou', () => {
-    expect(quemCostumaVir(TURMA, [{ id: 'x', nome: 'beto' }]).map((j) => j.nome)).toEqual(['JUNINHO', 'JOÃO PEDRO', 'JULIO', 'ZÉ GOLEIRO'])
   })
 })
 
@@ -56,5 +52,33 @@ describe('turma: a partir do histórico', () => {
     expect(joao).toMatchObject({ peladas: 2, ultimaPelada: 2 }) // nome da pelada mais recente
     expect(turma.find((j) => j.nome === 'Mano')).toBeUndefined() // ficou na fila: não jogou
     expect(jogaramNaPelada(s1)).toHaveLength(8)
+  })
+})
+
+describe('qual pelada é hoje', () => {
+  // 01/11/2026 é domingo; 07/11/2026 é sábado
+  const dia = (texto: string) => new Date(`${texto}T20:00:00`).getTime()
+  const turmas = [{ id: 'quinta', nome: 'PELADA DE QUINTA' }, { id: 'sabado', nome: 'FUT DE SÁBADO' }]
+  const peladas = [
+    { data: dia('2026-10-29'), turma: 'quinta' }, { data: dia('2026-11-05'), turma: 'quinta' },
+    { data: dia('2026-10-31'), turma: 'sabado' }, { data: dia('2026-10-24'), turma: 'sabado' },
+  ]
+
+  it('põe primeiro a turma que joga no dia de hoje, com o dia, a última e quantas', () => {
+    const resumo = resumoDasTurmas(turmas, peladas, new Date('2026-11-07T10:00:00'))
+    expect(resumo.map((turma) => turma.id)).toEqual(['sabado', 'quinta'])
+    expect(resumo[0]).toMatchObject({ peladas: 2, diaDaSemana: 6, ultima: dia('2026-10-31') })
+    expect(textoDoDia(6)).toBe('Joga aos sábados')
+    expect(textoDoDia(4)).toBe('Joga às quintas')
+  })
+
+  it('sem turma do dia, a que jogou por último vem primeiro; turma nova fica sem dia', () => {
+    const resumo = resumoDasTurmas([...turmas, { id: 'nova', nome: 'NOVA' }], peladas, new Date('2026-11-09T10:00:00'))
+    expect(resumo.map((turma) => turma.id)).toEqual(['quinta', 'sabado', 'nova'])
+    expect(resumo[2]).toMatchObject({ peladas: 0, ultima: null, diaDaSemana: null })
+  })
+
+  it('sugere o nome pelo dia de hoje', () => {
+    expect(nomeSugerido(new Date('2026-11-07T10:00:00'))).toBe('PELADA DE SÁBADO')
   })
 })

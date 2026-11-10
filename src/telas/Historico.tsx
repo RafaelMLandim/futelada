@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { Barra } from '../components/Barra'
 import { Carrossel, CarrosselDeTurmas } from '../components/CarrosselDeTurmas'
 import { Icone } from '../components/Icone'
-import { anosDasPeladas, artilharia, goleirosMenosVazados, peladasDaTurma, relatorioDoAno, vitoriasPorJogador } from '../logic'
+import { anosDasPeladas, artilharia, goleirosMenosVazados, peladasDaTurma, relatorioDoAno, tabelaDaPelada, vitoriasPorJogador } from '../logic'
 import type { PeladaNoHistorico, Turma } from '../nuvem/tipos'
 import { useJogadoresDaTurma, useTurmas } from '../store/turmas'
+import { fotosDaPelada, fotosDoTimeDoAno } from '../store/carta'
+import { useFotosDasContas } from '../store/denuncias'
+import { FotoDoJogador } from '../components/FotoDoJogador'
 import { useConta, useHistorico } from '../store/conta'
-import { useConfirmar } from '../utils/confirmacao'
-import { compartilharImagem, imagemDoResumo, imagemDoTimeDoAno } from '../utils/resumoDaPelada'
+import { compartilharImagem, imagemDaTabela, imagemDoResumo, imagemDoTimeDoAno } from '../utils/resumoDaPelada'
 
 type Aba = 'temporada' | 'peladas'
 const qtd = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`
@@ -16,7 +18,7 @@ const media = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 
 /** Histórico das peladas encerradas e ranking da temporada (no perfil de quem entrou com o Google). O início fica no menu da foto. */
 export function Historico() {
   const conta = useConta()
-  const { peladas, apagar } = useHistorico()
+  const { peladas } = useHistorico()
   const [aba, setAba] = useState<Aba>('temporada')
   const [aberta, setAberta] = useState<PeladaNoHistorico | null>(null)
   // Turma e ano (temporada): as peladas sem turma (de antes das turmas) ficam com a primeira
@@ -71,7 +73,7 @@ export function Historico() {
           </>
         )}
       </div>
-      {aberta && <PeladaAberta pelada={aberta} onFechar={() => setAberta(null)} onApagar={() => { setAberta(null); void apagar(aberta.id) }} />}
+      {aberta && <PeladaAberta pelada={aberta} onFechar={() => setAberta(null)} />}
     </div>
   )
 }
@@ -80,11 +82,14 @@ export function Historico() {
 function Relatorio({ peladas, ano, turma }: { peladas: PeladaNoHistorico[]; ano: number; turma: Turma | null }) {
   const jogadoresDaTurma = useJogadoresDaTurma(turma?.id ?? null)
   const r = relatorioDoAno(peladas, jogadoresDaTurma, ano)
+  // fotos de quem tem conta, no Time do ano e no ranking
+  const fotos = useFotosDasContas([...r.timeDoAno, ...r.jogadores].flatMap((jogador) => (jogador.conta ? [jogador.conta] : [])))
+  const comFotos = Object.keys(fotos).length > 0
   const col = { width: 34, textAlign: 'center' as const }
   const [gerando, setGerando] = useState(false)
   const compartilhar = async () => {
     setGerando(true)
-    await imagemDoTimeDoAno(r, turma?.nome ?? 'Minha pelada').then((img) => compartilharImagem(img, `dois-ou-dez-time-do-ano-${ano}`)).catch(() => null)
+    await fotosDoTimeDoAno(r.timeDoAno).then((fotos) => imagemDoTimeDoAno(r, turma?.nome ?? 'Minha pelada', fotos)).then((img) => compartilharImagem(img, `dois-ou-dez-time-do-ano-${ano}`)).catch(() => null)
     setGerando(false)
   }
   const destaque = (titulo: string, nome: string | undefined, detalhe: string) => (
@@ -110,6 +115,7 @@ function Relatorio({ peladas, ano, turma }: { peladas: PeladaNoHistorico[]; ano:
         {r.timeDoAno.map((j, i) => (
           <div key={j.id} className="tr" style={{ borderTop: i ? '1px solid #e3e8d6' : 0 }}>
             <span className="num" style={{ width: 22, fontSize: 18 }}>{i + 1}</span>
+            <FotoDoJogador foto={j.conta ? fotos[j.conta] : undefined} conta={j.conta} nome={j.nome} comEspaco={comFotos} />
             <span className="nome" style={{ flex: 1 }}>{j.nome}{r.artilheiro?.id === j.id && ' ⚽'}</span>
             <span className="mut">{qtd(j.gols, 'gol', 'gols')}</span>
             <span className="num" style={{ width: 52, textAlign: 'center', fontSize: 20 }}>{j.peladas}/{r.peladas}</span>
@@ -135,12 +141,13 @@ function Relatorio({ peladas, ano, turma }: { peladas: PeladaNoHistorico[]; ano:
       <section className="panel">
         <div className="ph">Vitórias<span className="sub">{r.peladas} {r.peladas === 1 ? 'pelada' : 'peladas'}</span></div>
         <div className="tr mut" style={{ minHeight: 30, fontSize: 12 }}>
-          <span style={{ width: 22 }} /><span className="nome" style={{ flex: 1 }}>Jogador</span>
+          <span style={{ width: 22 }} />{comFotos && <span className="foto-do-jogador vazia" />}<span className="nome" style={{ flex: 1 }}>Jogador</span>
           <span style={col}>PEL</span><span style={col}>J</span><span style={col}>V</span>
         </div>
         {r.jogadores.map((j, i) => (
           <div key={j.id} className="tr" style={{ borderTop: '1px solid #e3e8d6' }}>
             <span className="num" style={{ width: 22, fontSize: 18 }}>{i + 1}</span>
+            <FotoDoJogador foto={j.conta ? fotos[j.conta] : undefined} conta={j.conta} nome={j.nome} comEspaco={comFotos} />
             <span className="nome" style={{ flex: 1 }}>{j.nome}</span>
             <span style={col}>{j.peladas}</span><span style={col}>{j.jogos}</span>
             <span className="num" style={{ ...col, fontSize: 20 }}>{j.vitorias}</span>
@@ -201,18 +208,25 @@ function ListaDePeladas({ peladas, onAbrir }: { peladas: PeladaNoHistorico[]; on
   )
 }
 
-/** Uma pelada do histórico: resultados, destaques, compartilhar de novo e apagar. */
-function PeladaAberta({ pelada, onFechar, onApagar }: { pelada: PeladaNoHistorico; onFechar: () => void; onApagar: () => void }) {
-  const confirmar = useConfirmar()
+/** Uma pelada do histórico: resultados, destaques e compartilhar de novo. Pelada encerrada não se apaga (os números já estão nas cartas). */
+function PeladaAberta({ pelada, onFechar }: { pelada: PeladaNoHistorico; onFechar: () => void }) {
   const { estado } = pelada
   const artilheiro = artilharia(estado)[0]
   const goleiro = goleirosMenosVazados(estado)[0]
   const destaque = vitoriasPorJogador(estado)[0]
-  const [gerando, setGerando] = useState(false)
+  const [gerando, setGerando] = useState<'selecao' | 'tabela' | null>(null)
+  const tabela = tabelaDaPelada(estado)
+  const dataDoArquivo = new Date(pelada.data).toISOString().slice(0, 10)
   const compartilhar = async () => {
-    setGerando(true)
-    await imagemDoResumo(estado).then((img) => compartilharImagem(img, `dois-ou-dez-${new Date(pelada.data).toISOString().slice(0, 10)}-selecao`)).catch(() => null)
-    setGerando(false)
+    setGerando('selecao')
+    await fotosDaPelada(estado).then((fotos) => imagemDoResumo(estado, fotos)).then((img) => compartilharImagem(img, `dois-ou-dez-${dataDoArquivo}-selecao`)).catch(() => null)
+    setGerando(null)
+  }
+  // a tabela com os números de todo mundo (J, V, E, D, gols e assistências), para mandar no grupo
+  const compartilharTabela = async () => {
+    setGerando('tabela')
+    await imagemDaTabela(estado, pelada.dia).then((img) => compartilharImagem(img, `dois-ou-dez-${dataDoArquivo}-tabela`)).catch(() => null)
+    setGerando(null)
   }
   return (
     <div className="modal" role="dialog" aria-modal="true" aria-label={`Pelada ${pelada.dia}`} onClick={onFechar}>
@@ -224,6 +238,19 @@ function PeladaAberta({ pelada, onFechar, onApagar }: { pelada: PeladaNoHistoric
             {destaque && destaque.vitorias > 0 && <div>🏆 Mais vitórias: <b>{destaque.nome}</b> ({destaque.vitorias})</div>}
             {goleiro && <div>🧤 Menos vazado: <b>{goleiro.nome}</b> ({goleiro.sofridos} em {goleiro.jogos} {goleiro.jogos === 1 ? 'jogo' : 'jogos'})</div>}
           </div>
+          {tabela.length > 0 && (
+            <table className="tabela-da-pelada">
+              <thead><tr><th>Jogador</th><th>J</th><th>V</th><th>E</th><th>D</th><th>G</th><th>A</th></tr></thead>
+              <tbody>
+                {tabela.map((linha) => (
+                  <tr key={linha.id}>
+                    <td>{linha.goleiro ? '🧤 ' : ''}{linha.nome}</td>
+                    <td>{linha.jogos}</td><td>{linha.vitorias}</td><td>{linha.empates}</td><td>{linha.derrotas}</td><td>{linha.gols}</td><td>{linha.assistencias}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
           {estado.historico.map((p) => (
             <div key={p.numero} className="tr" style={{ borderTop: '1px solid #e3e8d6' }}>
               <span className="mut" style={{ width: 26 }}>{p.numero}º</span>
@@ -234,12 +261,12 @@ function PeladaAberta({ pelada, onFechar, onApagar }: { pelada: PeladaNoHistoric
           ))}
         </div>
         <div className="pb" style={{ display: 'grid', gap: 8 }}>
-          <button className="btn" disabled={gerando} onClick={compartilhar}>
-            <Icone nome="compartilhar" /> {gerando ? 'Gerando a imagem…' : 'Compartilhar seleção'}
+          <button className="btn" disabled={gerando !== null} onClick={compartilharTabela}>
+            <Icone nome="compartilhar" /> {gerando === 'tabela' ? 'Gerando a imagem…' : 'Compartilhar tabela'}
           </button>
-          <button className="btn r sm" onClick={() => confirmar({
-            titulo: 'Apagar esta pelada?', mensagem: `${pelada.dia} sai do histórico e da temporada.`, botao: 'Apagar', perigo: true, aoConfirmar: onApagar,
-          })}><Icone nome="lixo" tamanho={20} /> Apagar do histórico</button>
+          <button className="btn w" disabled={gerando !== null} onClick={compartilhar}>
+            <Icone nome="compartilhar" /> {gerando === 'selecao' ? 'Gerando a imagem…' : 'Compartilhar seleção'}
+          </button>
           <button className="btn w sm" onClick={onFechar}>Fechar</button>
         </div>
       </section>

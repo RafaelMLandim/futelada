@@ -1,6 +1,7 @@
 // Tipos do domínio da pelada (regras em PLANO.md, seção 3).
 
-export type Jogador = { id: string; nome: string }
+// conta: quem entrou pelo link com a conta (é para ela que vão os números da carta)
+export type Jogador = { id: string; nome: string; conta?: string }
 
 export type Time = {
   numero: number
@@ -115,6 +116,9 @@ export type Estado = {
   foraDoJogo: { lado: Lado; jogador: Jogador }[] // jogou a partida em andamento e saiu dela (machucado, substituto que voltou)
   proximoNumero: number // número do próximo time novo (só nasce quando chega gente)
   pagamentos: Record<string, Pagamento> // campo pago: quem avisou/pagou (por id do jogador)
+  listaDaPelada?: string | null // código do link da lista na nuvem (null = ainda não criou)
+  foramEmbora?: Jogador[] // quem saiu da lista hoje (se voltar, volta como o mesmo jogador, com a conta)
+  contasDosGoleiros?: Record<string, string> // goleiro fixo (nome) → conta de quem entrou pelo link como goleiro
   cobranca: string | null // código do link de pagamento na nuvem (null = ainda não compartilhado)
   caixaLancado: boolean // o campo pago desta pelada já foi lançado no caixa
 }

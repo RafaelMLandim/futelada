@@ -1,17 +1,17 @@
-import { useCallback, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Aviso } from '../components/Aviso'
 import { Barra } from '../components/Barra'
 import { Camisa } from '../components/Camisa'
 import { Cartao } from '../components/Cartao'
 import { Chave } from '../components/Chave'
-import { EscolherTurma } from '../components/EscolherTurma'
 import { Icone } from '../components/Icone'
 import { Passo } from '../components/Passo'
-import { LADOS, alterarLinha, definirColete, definirGoleiros } from '../logic'
+import { LADOS, alterarLinha, definirColete, definirGoleiros, passarParaALinha } from '../logic'
 import type { Pelada } from '../store/usePelada'
 import type { Config as Cfg } from '../types/pelada'
 import { apitoInicio } from '../utils/sons'
 import { COLETES } from '../utils/cores'
+import { useConfirmar } from '../utils/confirmacao'
 import { dataHoje, limitar, maiusculas, normalizarNome } from '../utils/formatar'
 
 const PRESETS: [string, number][] = [['Futsal', 4], ['Soc.', 5], ['Soc.', 6], ['Campo', 10]]
@@ -19,6 +19,13 @@ const PRESETS: [string, number][] = [['Futsal', 4], ['Soc.', 5], ['Soc.', 6], ['
 /** Ajustes da pelada. Na criação (`onPronto`), tem o botão para seguir para a lista; no fim, cancelar a pelada. */
 export function Config({ pelada, onPronto, onCancelar }: { pelada: Pelada; onPronto?: () => void; onCancelar?: () => void }) {
   const { app, aplicar } = pelada
+  // com 2 partidas terminadas já não é teste, é a pelada: não dá mais para cancelar (só encerrar)
+  const peladaDeVerdade = app.estado.historico.length >= 2
+  const confirmar = useConfirmar()
+  const irParaALinha = (nome: string) => confirmar({
+    titulo: 'Vai jogar na linha?', mensagem: `${nome} sai do gol e entra no fim da fila. Os números dele continuam indo para a mesma carta.`, botao: 'Vai para a linha',
+    aoConfirmar: () => aplicar((e) => passarParaALinha(e, nome)),
+  })
   const cfg = app.estado.config
   const mudar = (parcial: Partial<Cfg>) => aplicar((e) => ({ ...e, config: { ...e.config, ...parcial } }))
   const pag = cfg.pagamento
@@ -26,7 +33,6 @@ export function Config({ pelada, onPronto, onCancelar }: { pelada: Pelada; onPro
   /** "120", "120,50" → número (vazio = 0) */
   const numero = (texto: string) => Math.max(0, Number(texto.replace(/[^\d,.]/g, '').replace(',', '.')) || 0)
   const linha = (n: number) => aplicar((e) => alterarLinha(e, limitar(n, 2, 11)))
-  const escolherTurma = useCallback((turma: string | null) => aplicar((e) => ({ ...e, config: { ...e.config, turma } })), [aplicar])
   const [goleiro, setGoleiro] = useState('')
   const [repetido, setRepetido] = useState<string | null>(null)
   const addGoleiro = (ev: FormEvent) => {
@@ -46,7 +52,6 @@ export function Config({ pelada, onPronto, onCancelar }: { pelada: Pelada; onPro
     <div className="scr">
       <Barra titulo={app.iniciada ? 'Ajustes' : 'Nova pelada'} sub={dataHoje()} />
       <div className="conteudo">
-        <EscolherTurma turma={cfg.turma} onEscolher={escolherTurma} />
         <section className="panel">
           <div className="ph">Jogadores na linha<span className="tag t-y">+ goleiro</span></div>
           <div className="pb" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -227,6 +232,7 @@ export function Config({ pelada, onPronto, onCancelar }: { pelada: Pelada; onPro
             <div key={g + i} className="tr">
               <span className="no g">G</span>
               <span className="nome">{g}</span>
+              <button className="btn w sm" style={{ flex: 'none', width: 'auto', padding: '6px 10px', minHeight: 0, fontSize: 13 }} onClick={() => irParaALinha(g)}>Ir para a linha</button>
               <button className="ib g" aria-label={`Remover goleiro ${g}`}
                 onClick={() => aplicar((e) => definirGoleiros(e, cfg.goleiros.filter((_, k) => k !== i)))}>
                 <Icone nome="lixo" tamanho={20} />
@@ -249,11 +255,14 @@ export function Config({ pelada, onPronto, onCancelar }: { pelada: Pelada; onPro
         </section>
         {/* nova pelada: o "Montar lista" fica no fim dos ajustes (não flutua por cima) */}
         {onPronto && <button className="btn" style={{ flex: 'none' }} onClick={onPronto}>Montar lista <Icone nome="seta" /></button>}
-        {/* descarta a pelada de hoje sem salvar (teste, pelada que não aconteceu…) */}
-        {onCancelar && (
+        {/* descarta a pelada de hoje sem salvar (teste, pelada que não aconteceu…); com 2 partidas jogadas, não dá mais */}
+        {onCancelar && !peladaDeVerdade && (
           <button className="btn w sm" style={{ flex: 'none', color: 'var(--vermelho)' }} onClick={onCancelar}>
             <Icone nome="lixo" tamanho={20} /> Cancelar pelada
           </button>
+        )}
+        {onCancelar && peladaDeVerdade && (
+          <div className="mut" style={{ textAlign: 'center', color: '#fff' }}>Já foram 2 partidas: a pelada não pode mais ser cancelada. No fim, é só encerrar.</div>
         )}
       </div>
       {repetido && (

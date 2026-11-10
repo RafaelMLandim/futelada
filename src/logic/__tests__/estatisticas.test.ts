@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { artilharia, comecar, criterioDoArtilheiro, darCartao, removerJogador, configPadrao, empate, gol, goleirosMenosVazados, selecaoDaPelada, vitoria, vitoriasPorJogador } from '..'
+import { artilharia, buscarGoleiro, comecar, passe, tabelaDaPelada, criterioDoArtilheiro, darCartao, removerJogador, configPadrao, empate, gol, goleirosMenosVazados, selecaoDaPelada, vitoria, vitoriasPorJogador } from '..'
 import { LISTA, sessao } from './utils'
 
 describe('artilharia', () => {
@@ -110,5 +110,33 @@ describe('vitórias por jogador (seleção da pelada)', () => {
     const sel = selecaoDaPelada(s)
     expect(sel).toHaveLength(4)
     expect(sel.every((j) => j.vitorias > 0)).toBe(true)
+  })
+})
+
+describe('tabelaDaPelada', () => {
+  it('J, V, E, D, gols e assistências de cada jogador, com o goleiro fixo', () => {
+    let s = comecar(sessao(LISTA, { ...configPadrao, goleiros: ['Zé', 'Tião'] }))
+    const [joao, carlos] = s.emCampo!.A.jogadores
+    s = gol(s, 'A', joao)
+    s = passe(s, 0, carlos)
+    s = vitoria(s, 'A')
+    s = empate(s, 'B')
+    const tabela = tabelaDaPelada(s)
+    const linhaDe = (nome: string) => tabela.find((linha) => linha.nome === nome)!
+    expect(linhaDe('João')).toMatchObject({ jogos: 2, vitorias: 1, empates: 1, derrotas: 0, gols: 1, assistencias: 0 })
+    expect(linhaDe('Carlos')).toMatchObject({ assistencias: 1 })
+    expect(linhaDe('Rafael')).toMatchObject({ vitorias: 0, derrotas: 1 })
+    for (const linha of tabela) expect(linha.vitorias + linha.empates + linha.derrotas).toBe(linha.jogos)
+    expect(linhaDe('Zé')).toMatchObject({ goleiro: true, jogos: 2, vitorias: 1, empates: 1 })
+    expect(tabela[0].vitorias).toBe(1)
+  })
+
+  it('passe de quem estava no gol (goleiro não fixo) conta como assistência dele', () => {
+    let s = comecar(sessao(LISTA))
+    const [joao] = s.emCampo!.A.jogadores
+    const quemEstavaNoGol = buscarGoleiro(s, [], s.fila[0].nome)[0]
+    s = gol(s, 'A', joao)
+    s = passe(s, 0, quemEstavaNoGol)
+    expect(tabelaDaPelada(s).find((linha) => linha.id === quemEstavaNoGol.id)).toMatchObject({ assistencias: 1, jogos: 0 })
   })
 })

@@ -42,10 +42,10 @@ política de privacidade publicada (https://dois-ou-dez.web.app/privacidade.html
 | Informações pessoais → **Nome** | Sim | Não | Obrigatório | Funcionalidade do app, gerenciamento da conta |
 | Informações pessoais → **Endereço de e-mail** | Sim | Não | Obrigatório | Gerenciamento da conta |
 | Informações pessoais → **IDs do usuário** (código da conta no Firebase) | Sim | Não | Obrigatório | Funcionalidade do app, gerenciamento da conta |
-| Fotos e vídeos → **Fotos** (a foto do perfil do Google) | Sim | Não | Opcional | Funcionalidade do app (mostrar quem é o mesário) |
+| Fotos e vídeos → **Fotos** (foto do Google e a foto da carta, que outros jogadores veem) | Sim | Não | Opcional | Funcionalidade do app |
 | Informações financeiras → **Outras informações financeiras** (chave Pix de quem recebe, valores do caixa) | Sim | Não | Opcional | Funcionalidade do app |
-| Informações financeiras → **Histórico de compras** (Premium e créditos de torneio) | Sim | Não | Opcional | Funcionalidade do app (só quando as assinaturas forem ligadas) |
-| Atividade no app → **Outros conteúdos gerados pelo usuário** (apelidos dos jogadores, gols, times, tabelas) | Sim | Não | Obrigatório | Funcionalidade do app |
+| Informações financeiras → **Histórico de compras** (Pro, Ultimate e torneio avulso, via RevenueCat) | Sim | Não | Opcional | Funcionalidade do app, gerenciamento da conta (declarado em 07/11/2026) |
+| Atividade no app → **Outros conteúdos gerados pelo usuário** (apelidos, gols, times, tabelas, denúncias de foto) | Sim | Não | Obrigatório | Funcionalidade do app, segurança e prevenção de fraudes (denúncia, 07/11/2026) |
 | IDs do dispositivo ou outros → **IDs do dispositivo ou outros** (código do aparelho para o limite grátis) | Sim | Não | Obrigatório | Prevenção de fraudes (limite de peladas grátis) |
 
 - **"Compartilhado" é Não** em todos: o Google Firebase e o RevenueCat são prestadores de serviço que

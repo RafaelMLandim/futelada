@@ -53,6 +53,8 @@ PLANO.md, seção 14.4).
 - Link para os testadores: https://play.google.com/apps/testing/app.doisoudez
 - 24/10: **12 testadores atingidos** (lista com 19 e-mails) e versão 1.0.2 (ícone igual ao da loja) aprovada. Os 14 dias
   contam a partir de 24/10: por volta de **07/11/2026** liberar "Solicitar a produção" no Painel.
+- 06/11: versão 5 (1.0.4) enviada ao teste fechado: assistências no torneio, tela toda em tablet e computador, área dos
+  botões do Android nas telas sem menu, código e "ao vivo" no cabeçalho do torneio. Painel: 13 de 14 dias.
 
 ## Teste fechado (obrigatório para conta pessoal nova)
 - **12 testadores, 14 dias seguidos**, com o app instalado pela Play Store. Só depois disso o Play Console
@@ -71,3 +73,42 @@ PLANO.md, seção 14.4).
   pedido de produção, como o teste foi e o que mudou com o retorno dos testadores).
 - **Depois dos 14 dias:** Painel → **Solicitar acesso à produção** → responder o questionário → a revisão do
   Google costuma levar alguns dias.
+
+- 07/11/2026: versão 6 (1.0.5) enviada para revisão no teste fechado. A foto já estava declarada na Segurança dos dados (Fotos, concluído), sem mudança ali. "Solicitar a produção" ainda desligado.
+- 07/11/2026: versão 6 (1.0.5) aprovada para os testadores. Versão 7 (1.0.6) enviada para revisão no teste fechado (foto sem fundo, goleiro fixo, Luva de ouro, ações na lista, música de fundo, textura da carta em imagem).
+- 07/11/2026: versão 7 (1.0.6) aprovada para os testadores. Versão 8 (1.0.7) enviada para revisão (carta por turma, conquista aberta com os 3 níveis, compartilhar com a turma e as melhores conquistas, "Me incluir" do organizador, volume da música, metas do goleiro).
+
+## Acesso de produção (07/11/2026)
+- Teste fechado cumprido (12+ testadores por 14+ dias). Questionário respondido e pedido enviado hoje às 15:33.
+- O Google analisa em até ~7 dias e avisa por e-mail o proprietário da conta.
+- Depois de aprovado: criar a versão na faixa de Produção (mesmo .aab da última versão aprovada ou uma nova).
+
+## Versão 1.0.8 (código 9) — 07/11/2026
+- Enviada para revisão no teste fechado (substitui a 1.0.7, já aprovada para testadores).
+- Novidades: denunciar foto imprópria (3 pessoas → sai do app), ajustar a foto (arrastar/zoom com grade) antes de tirar o fundo,
+  "Esqueci a senha" no login com e-mail, jogador sem fundo (sem círculo) nas imagens da seleção e do Time do ano.
+- Site, regras e funções (nova: `denunciarFoto`) publicados no mesmo dia.
+
+## Capturas de novembro (07/11/2026)
+- `imagens/novembro/captura-1..8-*.png` (1080×1920): carta, conquistas, link de presença, Time do ano, lista, jogo, tabela, torneio.
+- Foto da carta e do Time do ano: Unsplash, licença gratuita (https://unsplash.com/pt-br/fotografias/4uj3iZ5m084 e
+  https://unsplash.com/pt-br/fotografias/_tcJW4nqVtw). Não usar como depoimento/endosso (regra da licença).
+
+## Versão 1.0.9 (código 10) — 07/11/2026, enviada para revisão no teste fechado (substitui a 1.0.8)
+- Recorte da foto: em foto em pé, o quadrado sai do alto (não corta a cabeça); "Ajustar a foto" abre no topo; centraliza pela cabeça.
+- Mesmo conteúdo da 1.0.8 + o recorte novo da foto. Site publicado no mesmo dia.
+- 1.0.9 aprovada para os testadores em 07/11/2026 (18:26).
+
+## Versão 1.0.10 (código 11) — 07/11/2026, aprovada no teste fechado às 20:09 (formulário de segurança dos dados e capturas novas também publicados)
+- Turma obrigatória ("Qual pelada é hoje?"), remover turma digitando o nome, "Remover foto" no lápis do perfil,
+  pelada encerrada não se apaga, cancelar a pelada só até a 2ª partida, modais de apagar abrem no "Cancelar".
+- Site publicado no mesmo dia (index-_-IA0DyR.js).
+
+## Versão 1.0.11 (código 12) — 08/11/2026, aprovada no teste fechado às 01:33
+
+- Cronômetro na notificação com o app minimizado ou a tela bloqueada, e apito agendado no fim do tempo (pelada e torneio, inclusive intervalo).
+- Corrigido: com o celular bloqueado no fim do tempo, o tempo passado virava acréscimo e os acréscimos dados depois chegavam gastos.
+- Tela de planos em cards (Pro com anual/mensal e cartão/Pix no anual, Ultimate só mensal, Torneio avulso), com o preço por jogador e a conta à mostra.
+- Permissões novas no manifesto: POST_NOTIFICATIONS, SCHEDULE_EXACT_ALARM, VIBRATE.
+- Textos da página da loja enviados para revisão depois da aprovação da 1.0.11 (sem ícones; abre com "funciona sem internet, sem anúncios, preço justo"). Declaração de recursos de IA: "Não rotular recursos".
+- Site publicado junto (`index-IFxfgO1W.js`).

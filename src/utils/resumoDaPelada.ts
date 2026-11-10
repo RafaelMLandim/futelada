@@ -1,10 +1,12 @@
 // Resumo da pelada para compartilhar, na identidade do app:
 // - imagem da seleção da pelada (1080×1920, 9:16): a seleção no campo e a chuteira e luva de ouro;
-// - cartinha de um jogador (também 9:16);
+// - carta do jogador, a do perfil (também 9:16);
 
-import { artilharia, criterioDoArtilheiro, fichaDoJogador, garcons, goleirosMenosVazados, selecaoDaPelada } from '../logic'
+import { artilharia, criterioDoArtilheiro, garcons, goleiroDaSelecao, goleirosMenosVazados, jogadorGoleiro, selecaoDaPelada, tabelaDaPelada } from '../logic'
 import type { RelatorioDoAno } from '../logic'
+import { FORMA_DA_CARTA, FORMA_DE_DENTRO_DA_CARTA, METAIS_DA_CARTA, type NivelDaCarta, type NumerosDaCarta } from '../logic/carta'
 import type { Estado } from '../types/pelada'
+import { fotoSemFundo } from './foto'
 import { dataHoje } from './formatar'
 import { compartilharArquivoNativo, nativo } from './nativo'
 
@@ -60,9 +62,11 @@ function camisa(c: Ctx, x: number, y: number, cor: string, numero: string, corNu
 }
 
 
-function carregarImagem(src: string): Promise<HTMLImageElement | null> {
+/** `deOutroSite`: pede permissão ao site da imagem; sem ela, não carrega (senão a imagem final não poderia ser gerada). */
+function carregarImagem(src: string, deOutroSite = false): Promise<HTMLImageElement | null> {
   return new Promise((ok) => {
     const img = new Image()
+    if (deOutroSite) img.crossOrigin = 'anonymous'
     img.onload = () => ok(img)
     img.onerror = () => ok(null)
     img.src = src
@@ -135,17 +139,50 @@ function estadio(c: Ctx, topo: number, base: number) {
 /**
  * Seleção da pelada num campo em perspectiva (como as artes de "seleção da rodada"):
  * cada jogador é uma peça com a camisa (nº = vitórias), a plaquinha do nome e os gols.
- * O goleiro menos vazado fica no gol.
+ * No gol, o goleiro fixo que mais venceu (o mesmo critério da linha).
  */
 /** O que vai no campo: os jogadores da seleção (com a plaquinha e os gols) e o goleiro. */
 type SelecaoParaDesenhar = { jogadores: { id: string; nome: string; gols: number }[]; goleiro: string | null; vazio: string }
 
 const selecaoDoDia = (estado: Estado): SelecaoParaDesenhar => ({
-  jogadores: selecaoDaPelada(estado), goleiro: goleirosMenosVazados(estado)[0]?.nome ?? null,
+  jogadores: selecaoDaPelada(estado), goleiro: goleiroDaSelecao(estado)?.nome ?? null,
   vazio: 'A seleção aparece quando a primeira partida terminar',
 })
 
-function selecaoNoCampo(c: Ctx, sel: SelecaoParaDesenhar, topo: number, base: number, comTitulo = true) {
+/** Fotos dos jogadores, pelo id (dois "BRUNO" não se confundem). semFundo: só a pessoa (sai do círculo). */
+type FotosDosJogadores = Map<string, { imagem: HTMLImageElement; semFundo: boolean }>
+
+/** O jogador sem fundo, de pé sobre a plaquinha do nome (sem o círculo), com sombra para descolar do campo. */
+function jogadorSoltoNaPeca(c: Ctx, foto: HTMLImageElement, x: number, y: number, raio: number) {
+  const lado = raio * 2 // o mesmo tamanho do círculo: time grande continua cabendo
+  const base = y + raio - 4 // a plaquinha do nome começa aqui
+  c.save()
+  c.shadowColor = 'rgba(0,0,0,.55)'; c.shadowBlur = 18; c.shadowOffsetY = 6
+  c.drawImage(foto, x - lado / 2, base - lado, lado, lado)
+  c.restore()
+}
+
+function rostoNaPeca(c: Ctx, foto: HTMLImageElement, x: number, y: number, raio: number) {
+  const dentro = raio - 3
+  c.save()
+  c.beginPath(); c.arc(x, y, dentro, 0, Math.PI * 2); c.clip()
+  c.drawImage(foto, x - dentro, y - dentro, dentro * 2, dentro * 2)
+  c.restore()
+}
+
+/** A foto genérica: cabeça e ombros, para quem ainda não tem foto. */
+function silhuetaNaPeca(c: Ctx, x: number, y: number, raio: number) {
+  const dentro = raio - 3
+  c.save()
+  c.beginPath(); c.arc(x, y, dentro, 0, Math.PI * 2); c.clip()
+  c.fillStyle = '#2a3b52'; c.fillRect(x - raio, y - raio, raio * 2, raio * 2)
+  c.fillStyle = CINZA
+  c.beginPath(); c.arc(x, y - raio * 0.2, raio * 0.36, 0, Math.PI * 2); c.fill()
+  c.beginPath(); c.ellipse(x, y + raio * 0.86, raio * 0.68, raio * 0.62, 0, 0, Math.PI * 2); c.fill()
+  c.restore()
+}
+
+function selecaoNoCampo(c: Ctx, sel: SelecaoParaDesenhar, topo: number, base: number, comTitulo = true, fotos: FotosDosJogadores = new Map()) {
   c.save()
   c.beginPath(); c.rect(0, topo, L, base - topo); c.clip()
   estadio(c, topo, base)
@@ -207,7 +244,7 @@ function selecaoNoCampo(c: Ctx, sel: SelecaoParaDesenhar, topo: number, base: nu
   const passo = niveis > 1 ? (cBase - cTopo) * dv : 400
   const k = Math.max(0.55, Math.min(1.3, (passo - 58) / (124 * 1.1)))
   // x já em pixels: assim dá para limitar a fileira à largura da imagem
-  const peca = (x: number, v: number, nome: string, numero: string, gols: number, corCamisa: string, corNumero: string, espaco = 999) => {
+  const peca = (x: number, v: number, nome: string, numero: string, gols: number, corCamisa: string, corNumero: string, espaco = 999, jogadorId = '') => {
     const y = ponto(0.5, v)[1]
     const e = (0.85 + 0.35 * v) * k // mais perto = maior
     const raio = 62 * e
@@ -215,23 +252,36 @@ function selecaoNoCampo(c: Ctx, sel: SelecaoParaDesenhar, topo: number, base: nu
     const t = Math.min(1, Math.max(0.6, (espaco / 2 - raio - 6) / (raio * 0.95)))
     const aba = raio * 0.95 * t // parte que aparece, à direita da peça
     const alturaDaAba = raio * 1.05 * t
-    if (gols > 0) {
-      const topoDaAba = y - alturaDaAba * 0.55
+    // solto (sem círculo): a aba vem na frente, ao lado do ombro, sem cobrir o rosto
+    const abaDosGols = (solto: boolean) => {
+      if (gols <= 0) return
+      const topoDaAba = solto ? y + raio - 10 - alturaDaAba : y - alturaDaAba * 0.55
+      const inicio = solto ? x + raio * 0.72 : x
+      const largura = solto ? aba + raio * 0.42 : raio + aba
       c.save()
       c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 10; c.shadowOffsetY = 4
-      retangulo(c, x, topoDaAba, raio + aba, alturaDaAba, alturaDaAba * 0.24); c.fillStyle = NAVY; c.fill()
+      retangulo(c, inicio, topoDaAba, largura, alturaDaAba, alturaDaAba * 0.24); c.fillStyle = NAVY; c.fill()
       c.restore()
       c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,.75)'; c.stroke()
-      const meio = x + raio + aba / 2 - 2
+      const meio = solto ? inicio + largura / 2 : x + raio + aba / 2 - 2
       texto(c, String(gols), meio, topoDaAba + alturaDaAba * 0.6, { tam: Math.round(alturaDaAba * 0.6), alinha: 'center' })
       texto(c, gols === 1 ? 'GOL' : 'GOLS', meio, topoDaAba + alturaDaAba * 0.88, { tam: Math.round(alturaDaAba * 0.22), alinha: 'center' })
     }
-    c.save()
-    c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 16; c.shadowOffsetY = 6
-    c.beginPath(); c.arc(x, y, raio, 0, Math.PI * 2); c.fillStyle = NAVY; c.fill()
-    c.restore()
-    c.beginPath(); c.arc(x, y, raio, 0, Math.PI * 2); c.lineWidth = 6; c.strokeStyle = AMARELO; c.stroke()
-    camisa(c, x, y + 4 * e, corCamisa, numero, corNumero, 0.17 * e)
+    // a foto de quem tem conta; quem não tem foto fica com a silhueta (o "G" sem goleiro fixo continua com a camisa)
+    const foto = fotos.get(jogadorId)
+    const solto = foto?.semFundo === true
+    if (!solto) abaDosGols(false) // a aba sai de trás do círculo
+    if (!solto) {
+      c.save()
+      c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 16; c.shadowOffsetY = 6
+      c.beginPath(); c.arc(x, y, raio, 0, Math.PI * 2); c.fillStyle = NAVY; c.fill()
+      c.restore()
+      c.beginPath(); c.arc(x, y, raio, 0, Math.PI * 2); c.lineWidth = 6; c.strokeStyle = AMARELO; c.stroke()
+    }
+    if (foto && solto) { jogadorSoltoNaPeca(c, foto.imagem, x, y, raio); abaDosGols(true) } // sem círculo: a aba vem na frente
+    else if (foto) rostoNaPeca(c, foto.imagem, x, y, raio)
+    else if (nome) silhuetaNaPeca(c, x, y, raio)
+    else camisa(c, x, y + 4 * e, corCamisa, numero, corNumero, 0.17 * e)
     // plaquinha do nome (o "G" sem goleiro fixo não tem nome)
     if (nome) {
       c.font = `800 ${Math.round(30 * e)}px ${CONDENSADA}`
@@ -254,10 +304,10 @@ function selecaoNoCampo(c: Ctx, sel: SelecaoParaDesenhar, topo: number, base: nu
       const largura = Math.min(abertura * (lTopo + (lBase - lTopo) * v), L - 2 * margem)
       const x = qtd === 1 ? L / 2 : L / 2 - largura / 2 + (largura * col) / (qtd - 1)
       const espaco = qtd > 1 ? largura / (qtd - 1) : 999 // distância até a peça vizinha
-      peca(x, v, j.nome, '', j.gols, AMARELO, NAVY, espaco) // camisa sem número; ao lado, os gols
+      peca(x, v, j.nome, '', j.gols, AMARELO, NAVY, espaco, j.id) // foto (ou silhueta); ao lado, os gols
     }
   })
-  if (selecao.length) peca(L / 2, vs[linhas.length], sel.goleiro ?? '', 'G', 0, '#fff', NAVY)
+  if (selecao.length) peca(L / 2, vs[linhas.length], sel.goleiro ?? '', 'G', 0, '#fff', NAVY, 999, sel.goleiro ? jogadorGoleiro(sel.goleiro).id : '')
   c.restore()
 }
 
@@ -328,12 +378,19 @@ function trofeusNaFaixa(c: Ctx, premios: Premios, r: Recursos, y: number, altura
   })
 }
 
+/** Baixa as fotos para desenhar; a que não carregar fica de fora (o jogador sai com a silhueta). */
+async function carregarFotos(fotos: Record<string, string>): Promise<FotosDosJogadores> {
+  const carregadas = await Promise.all(Object.entries(fotos).map(async ([id, foto]) => [id, await carregarImagem(foto, true)] as const))
+  return new Map(carregadas.flatMap(([id, imagem]) => (imagem ? [[id, { imagem, semFundo: fotoSemFundo(fotos[id]) }] as const] : [])))
+}
+
 /** Imagem da seleção da pelada (1080×1920, 9:16): a seleção no campo e, embaixo, chuteira e luva de ouro. */
-export async function imagemDoResumo(estado: Estado): Promise<Blob> {
+export async function imagemDoResumo(estado: Estado, fotos: Record<string, string> = {}): Promise<Blob> {
   const { c, tela, r } = await prepararTela(ALTURA)
+  const fotosDosJogadores = await carregarFotos(fotos)
   cabecalho(c, r, 'SELEÇÃO DA PELADA')
   const faixa = ALTURA - 98 - 430 // embaixo do campo: chuteira e luva de ouro
-  selecaoNoCampo(c, selecaoDoDia(estado), 220, faixa, false)
+  selecaoNoCampo(c, selecaoDoDia(estado), 220, faixa, false, fotosDosJogadores)
   trofeusNaFaixa(c, premiosDoDia(estado), r, faixa, 430)
   rodape(c, ALTURA - 98, 98, numerosDoDia(estado))
   return paraPng(tela)
@@ -343,15 +400,16 @@ export async function imagemDoResumo(estado: Estado): Promise<Blob> {
  * Time do ano da turma (1080×1920): quem mais veio às peladas (no empate, mais gols) no campo ("11/11"),
  * o goleiro do ano no gol e, embaixo, o artilheiro e o goleiro do ano.
  */
-export async function imagemDoTimeDoAno(r: RelatorioDoAno, turma: string): Promise<Blob> {
+export async function imagemDoTimeDoAno(r: RelatorioDoAno, turma: string, fotos: Record<string, string> = {}): Promise<Blob> {
   const { c, tela, r: recursos } = await prepararTela(ALTURA)
+  const fotosDosJogadores = await carregarFotos(fotos)
   cabecalho(c, recursos, 'TIME DO ANO', `TEMPORADA ${r.ano} · ${turma.toUpperCase()}`)
   const faixa = ALTURA - 98 - 430
   selecaoNoCampo(c, {
     jogadores: r.timeDoAno.map((j) => ({ id: j.id, nome: `${j.nome} · ${j.peladas}/${r.peladas}`, gols: j.gols })),
     goleiro: r.goleiroDoAno?.nome ?? null,
     vazio: 'O Time do ano aparece com as peladas encerradas',
-  }, 220, faixa, false)
+  }, 220, faixa, false, fotosDosJogadores)
   trofeusNaFaixa(c, {
     tituloChuteira: 'ARTILHEIRO DO ANO', tituloLuva: 'GOLEIRO DO ANO',
     chuteira: r.artilheiro ? { nome: r.artilheiro.nome, detalhe: `${plural(r.artilheiro.gols, 'gol', 'gols')} em ${plural(r.artilheiro.peladas, 'pelada', 'peladas')}` } : null,
@@ -360,6 +418,50 @@ export async function imagemDoTimeDoAno(r: RelatorioDoAno, turma: string): Promi
     garcom: r.garcom ? { nome: r.garcom.nome, detalhe: plural(r.garcom.assistencias, 'assistência', 'assistências') } : null,
   }, recursos, faixa, 430)
   rodape(c, ALTURA - 98, 98, `${plural(r.peladas, 'pelada', 'peladas')} no ano · número = presença`)
+  return paraPng(tela)
+}
+
+/**
+ * Tabela da pelada para o grupo (1080 de largura; a altura cresce com a lista): cada jogador com jogos, vitórias,
+ * empates, derrotas, gols e assistências. `dia`: a data da pelada ("SÁB, 07 DE NOV").
+ */
+export async function imagemDaTabela(estado: Estado, dia: string): Promise<Blob> {
+  const linhas = tabelaDaPelada(estado)
+  const alturaDaLinha = 66
+  const topoDaTabela = 260
+  const altura = Math.max(1350, topoDaTabela + 76 + linhas.length * alturaDaLinha + 60 + 98)
+  const { c, tela, r } = await prepararTela(altura)
+  // fundo de gramado listrado, como no app
+  for (let y = 220; y < altura; y += 120) { c.fillStyle = Math.floor(y / 120) % 2 ? VERDE : VERDE_CLARO; c.fillRect(0, y, L, 120) }
+  cabecalho(c, r, 'TABELA DA PELADA', dia.toUpperCase())
+  const esquerda = 36
+  const largura = L - esquerda * 2
+  // colunas: posição, nome e os números (da direita para a esquerda)
+  const colunas = ['J', 'V', 'E', 'D', 'G', 'A'] as const
+  const larguraDoNumero = 92
+  const xDoNumero = (indice: number) => esquerda + largura - (colunas.length - indice) * larguraDoNumero + larguraDoNumero / 2
+  c.save()
+  c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 20; c.shadowOffsetY = 8
+  retangulo(c, esquerda, topoDaTabela, largura, 76 + linhas.length * alturaDaLinha, 18); c.fillStyle = '#fff'; c.fill()
+  c.restore()
+  // cabeçalho da tabela
+  c.save(); retangulo(c, esquerda, topoDaTabela, largura, 76, 18); c.clip(); c.fillStyle = NAVY; c.fillRect(esquerda, topoDaTabela, largura, 76); c.restore()
+  texto(c, 'JOGADOR', esquerda + 96, topoDaTabela + 52, { tam: 38, cor: AMARELO })
+  colunas.forEach((coluna, indice) => texto(c, coluna, xDoNumero(indice), topoDaTabela + 52, { tam: 38, cor: AMARELO, alinha: 'center' }))
+  linhas.forEach((linha, indice) => {
+    const y = topoDaTabela + 76 + indice * alturaDaLinha
+    if (indice % 2) { c.fillStyle = '#eef2e4'; c.fillRect(esquerda, y, largura, alturaDaLinha) }
+    const base = y + alturaDaLinha / 2 + 13
+    texto(c, `${indice + 1}`, esquerda + 48, base, { tam: 36, cor: '#6b7a8c', alinha: 'center' })
+    texto(c, `${linha.goleiro ? '🧤 ' : ''}${linha.nome}`, esquerda + 96, base, { tam: 38, cor: NAVY, max: xDoNumero(0) - larguraDoNumero / 2 - esquerda - 110 })
+    const valores = [linha.jogos, linha.vitorias, linha.empates, linha.derrotas, linha.gols, linha.assistencias]
+    valores.forEach((valor, coluna) => texto(c, `${valor}`, xDoNumero(coluna), base, {
+      tam: 38, alinha: 'center', cor: coluna === 1 && valor > 0 ? '#1F6B33' : coluna === 3 && valor > 0 ? '#c8352b' : valor > 0 ? NAVY : '#a9b4c2',
+    }))
+  })
+  texto(c, 'J jogos · V vitórias · E empates · D derrotas · G gols · A assistências', L / 2, topoDaTabela + 76 + linhas.length * alturaDaLinha + 44,
+    { tam: 26, peso: 600, fonte: NORMAL, alinha: 'center', max: L - 60 })
+  rodape(c, altura - 98, 98, numerosDoDia(estado))
   return paraPng(tela)
 }
 
@@ -409,92 +511,160 @@ function silhuetaDourada(c: Ctx, img: HTMLImageElement | null, x: number, y: num
   c.restore()
 }
 
-/** Contorno da cartinha (formato das cartas do FIFA). */
-function formaDaCarta(c: Ctx, x: number, y: number, l: number, a: number) {
-  c.beginPath()
-  c.moveTo(x + l * 0.14, y)
-  c.lineTo(x + l * 0.86, y)
-  c.quadraticCurveTo(x + l * 0.9, y + a * 0.05, x + l, y + a * 0.06)
-  c.lineTo(x + l, y + a * 0.8)
-  c.quadraticCurveTo(x + l, y + a * 0.86, x + l * 0.9, y + a * 0.9)
-  c.lineTo(x + l * 0.5, y + a)
-  c.lineTo(x + l * 0.1, y + a * 0.9)
-  c.quadraticCurveTo(x, y + a * 0.86, x, y + a * 0.8)
-  c.lineTo(x, y + a * 0.06)
-  c.quadraticCurveTo(x + l * 0.1, y + a * 0.05, x + l * 0.14, y)
-  c.closePath()
-}
+/** Uma insígnia para a imagem da carta: o desenho (SVG em data URL), o nome e o nível. */
+export type InsigniaNaImagem = { imagem: string; nome: string; nivel: string; destaque?: boolean } // destaque: a Lenda
 
-/** Ficha do jogador como cartinha do FIFA (preta e dourada): "nota" = vitórias e os números do dia. */
-export async function imagemDoJogador(estado: Estado, jogadorId: string): Promise<Blob> {
-  const f = fichaDoJogador(estado, jogadorId)
-  if (!f) throw new Error('Jogador sem partidas')
+/**
+ * A carta do perfil como imagem: no topo, a turma da carta; a carta (cor do nível, foto, números da temporada e
+ * logo) e, embaixo, as melhores conquistas dela.
+ */
+export async function imagemDaCarta(carta: {
+  nome: string; foto: string | null; numeros: NumerosDaCarta; rotulo: string; nivel: NivelDaCarta
+  titulo?: string; subtitulo?: string; insignias?: InsigniaNaImagem[]
+}): Promise<Blob> {
+  const { nome, foto, numeros, rotulo, nivel, titulo = 'MINHA CARTA', subtitulo = rotulo, insignias = [] } = carta
   const A = ALTURA
   const { c, tela, r } = await prepararTela(A)
   estadio(c, 0, A)
-  const OURO = '#E9C46A'
+  const { metal: [claro, meio, brilho], borda: [bordaClara, bordaEscura], tinta } = METAIS_DA_CARTA[nivel]
 
-  // acima da carta: logo e título
   if (r.logo) c.drawImage(r.logo, 40, 150, 130, 130)
-  texto(c, 'FICHA DO JOGADOR', 190, 230, { tam: 76, cor: AMARELO })
-  texto(c, dataHoje().toUpperCase(), 192, 272, { tam: 32, cor: CINZA, peso: 600, fonte: NORMAL })
+  texto(c, titulo.toUpperCase(), 190, 230, { tam: 76, cor: AMARELO, max: 850 })
+  texto(c, subtitulo.toUpperCase(), 192, 272, { tam: 32, cor: CINZA, peso: 600, fonte: NORMAL, max: 840 })
 
-  // carta
-  const [x, y, lc, ac] = [170, 470, 740, 1060] // carta no meio da tela
+  // a carta, na mesma tela de 740 x 1060 do app (sobe um pouco quando tem conquistas embaixo)
+  const [x, y] = [170, insignias.length ? 330 : 400]
+  c.save()
+  c.translate(x, y)
+  const forma = new Path2D(FORMA_DA_CARTA)
   c.save()
   c.shadowColor = 'rgba(0,0,0,.7)'; c.shadowBlur = 40; c.shadowOffsetY = 16
-  formaDaCarta(c, x, y, lc, ac)
-  const preto = c.createLinearGradient(x, y, x + lc, y + ac)
-  preto.addColorStop(0, '#1b222c'); preto.addColorStop(0.5, '#0c1016'); preto.addColorStop(1, '#1d242e')
-  c.fillStyle = preto; c.fill()
+  const fundo = c.createLinearGradient(0, 0, 740, 1060)
+  fundo.addColorStop(0, claro); fundo.addColorStop(0.5, meio); fundo.addColorStop(1, brilho)
+  c.fillStyle = fundo; c.fill(forma)
   c.restore()
-  const borda = c.createLinearGradient(x, y, x + lc, y + ac)
-  borda.addColorStop(0, '#fbe6a2'); borda.addColorStop(0.45, '#c9a227'); borda.addColorStop(1, '#f5d77a')
-  formaDaCarta(c, x, y, lc, ac); c.lineWidth = 14; c.strokeStyle = borda; c.stroke()
-  formaDaCarta(c, x + 26, y + 26, lc - 52, ac - 52); c.lineWidth = 2; c.strokeStyle = 'rgba(233,196,106,.55)'; c.stroke()
 
-  // linhas douradas geométricas (como nas cartas TOTW)
   c.save()
-  formaDaCarta(c, x, y, lc, ac); c.clip()
-  c.strokeStyle = 'rgba(233,196,106,.35)'; c.lineWidth = 2
-  for (const [x1, y1, x2, y2] of [[0.55, 0.05, 0.95, 0.45], [0.7, 0.04, 0.4, 0.5], [0.95, 0.2, 0.62, 0.52], [0.45, 0.12, 0.9, 0.3]]) {
-    c.beginPath(); c.moveTo(x + lc * x1, y + ac * y1); c.lineTo(x + lc * x2, y + ac * y2); c.stroke()
+  c.clip(forma)
+  if (nivel === 'diamante') {
+    // holográfico e facetas
+    const arco = c.createLinearGradient(0, 0, 740, 520)
+    ;['#ff4fa3', '#ffe24a', '#4dff9a', '#4ad2ff', '#9a5cff', '#ff4fa3', '#ffe24a'].forEach((cor, indice) => arco.addColorStop(indice / 6, cor))
+    c.globalAlpha = 0.34; c.fillStyle = arco; c.fillRect(0, 0, 740, 1060)
+    c.globalAlpha = 0.36; c.fillStyle = '#fff'
+    for (const faceta of ['M0 64L180 0 120 240Z', 'M740 64L560 0 620 240Z', 'M0 620L150 760 0 860Z', 'M740 620L590 760 740 860Z', 'M370 1060L230 900H510Z']) c.fill(new Path2D(faceta))
+  } else if (nivel !== 'lendaria') {
+    // metal escovado: riscos finos na horizontal, sempre iguais para a mesma carta
+    c.lineWidth = 1
+    for (let linha = 0; linha < 1060; linha += 2) {
+      const sorteio = Math.abs(Math.sin(linha * 12.9898) * 43758.5453) % 1
+      c.globalAlpha = (0.04 + sorteio * 0.16) * (nivel === 'bronze' ? 0.5 : 1)
+      c.strokeStyle = sorteio > 0.5 ? '#fff' : tinta
+      c.beginPath(); c.moveTo(0, linha); c.lineTo(740, linha); c.stroke()
+    }
   }
   c.restore()
 
-  // nota (vitórias) e posição, no canto
-  texto(c, String(f.vitorias), x + 130, y + 200, { tam: 150, cor: OURO, alinha: 'center' })
-  texto(c, f.naSelecao ? 'SEL' : `#${f.posicao}`, x + 130, y + 262, { tam: 58, cor: OURO, alinha: 'center' })
-  texto(c, 'VITÓRIAS', x + 130, y + 298, { tam: 22, cor: CINZA, peso: 700, fonte: NORMAL, alinha: 'center' })
-  if (r.logo) c.drawImage(r.logo, x + 82, y + 316, 96, 96)
+  // marcações do campo
+  c.save()
+  c.clip(forma)
+  c.globalAlpha = 0.16; c.strokeStyle = tinta; c.lineWidth = 3
+  c.beginPath(); c.arc(370, 300, 170, 0, Math.PI * 2); c.moveTo(0, 300); c.lineTo(740, 300); c.moveTo(180, 0); c.lineTo(180, 110); c.lineTo(560, 110); c.lineTo(560, 0); c.stroke()
+  c.restore()
 
-  // camisa grande com a inicial
-  camisa(c, x + lc * 0.6, y + 300, AMARELO, f.nome.charAt(0), NAVY, 0.62)
+  const borda = c.createLinearGradient(0, 0, 740, 1060)
+  borda.addColorStop(0, bordaClara); borda.addColorStop(0.5, bordaEscura); borda.addColorStop(1, bordaClara)
+  c.lineWidth = 14; c.strokeStyle = borda; c.stroke(forma)
+  c.save()
+  c.globalAlpha = 0.4; c.lineWidth = 2; c.strokeStyle = tinta; c.stroke(new Path2D(FORMA_DE_DENTRO_DA_CARTA))
+  c.restore()
 
-  // nome entre filetes dourados
-  c.fillStyle = OURO
-  c.fillRect(x + 70, y + 520, lc - 140, 3)
-  texto(c, f.nome, x + lc / 2, y + 610, { tam: 96, max: lc - 120, alinha: 'center' })
-  c.fillRect(x + 70, y + 640, lc - 140, 3)
+  // aproveitamento e logo
+  texto(c, String(numeros.aproveitamento), 170, 245, { tam: 150, cor: tinta, alinha: 'center' })
+  texto(c, '% APROV.', 170, 285, { tam: 24, cor: tinta, peso: 700, fonte: NORMAL, alinha: 'center' })
+  if (r.logo) c.drawImage(r.logo, 118, 305, 104, 104)
 
-  // atributos em duas colunas
-  const aproveitamento = f.jogos ? Math.round(((f.vitorias * 3 + f.empates) / (f.jogos * 3)) * 100) : 0
-  const cartoes = f.amarelos + f.vermelhos + f.azuis
-  const colunas: [string, string][][] = [
-    [[String(f.vitorias), 'VIT'], [String(f.jogos), 'JOG'], [String(f.gols), 'GOL']],
-    [[String(f.empates), 'EMP'], [String(cartoes), 'CRT'], [`${aproveitamento}%`, 'APR']],
+  // foto (a da conta do Google pode não deixar desenhar: aí vai a inicial)
+  const [fotoX, fotoY, lado] = [288, 100, 378]
+  const semFundo = fotoSemFundo(foto) ? await carregarImagem(foto!, true) : null
+  if (semFundo) {
+    // sem fundo: sem moldura, maior, e some aos poucos embaixo (igual à carta na tela)
+    const [x, y, tamanho] = [244, 53, 459]
+    const pessoa = document.createElement('canvas')
+    pessoa.width = tamanho
+    pessoa.height = tamanho
+    const desenho = pessoa.getContext('2d')!
+    desenho.drawImage(semFundo, 0, 0, tamanho, tamanho)
+    const sumir = desenho.createLinearGradient(0, tamanho * 0.78, 0, tamanho)
+    sumir.addColorStop(0, '#000'); sumir.addColorStop(1, 'rgba(0,0,0,0)')
+    desenho.globalCompositeOperation = 'destination-in'
+    desenho.fillStyle = sumir; desenho.fillRect(0, 0, tamanho, tamanho) // acima de 78% o degradê é opaco: a pessoa fica inteira
+    c.drawImage(pessoa, x, y)
+  } else {
+    c.save()
+    retangulo(c, fotoX, fotoY, lado, lado, 26); c.fillStyle = NAVY; c.fill(); c.clip()
+    const imagem = foto ? await carregarImagem(foto, true) : null
+    if (imagem) c.drawImage(imagem, fotoX, fotoY, lado, lado)
+    else texto(c, nome.charAt(0).toUpperCase(), fotoX + lado / 2, fotoY + 250, { tam: 200, cor: AMARELO, alinha: 'center' })
+    c.restore()
+    retangulo(c, fotoX, fotoY, lado, lado, 26); c.lineWidth = 4; c.strokeStyle = tinta; c.stroke()
+  }
+
+  // nome entre filetes
+  c.fillStyle = tinta
+  c.fillRect(70, 530, 600, 4)
+  texto(c, nome.toUpperCase(), 370, 620, { tam: 88, max: 590, cor: tinta, alinha: 'center' })
+  c.fillStyle = tinta
+  c.fillRect(70, 652, 600, 4)
+
+  // números em duas colunas
+  const colunas: [string, number][][] = [
+    [['JOG', numeros.jogos], ['VIT', numeros.vitorias], ['GOL', numeros.gols]],
+    [['ASS', numeros.assistencias], ['EMP', numeros.empates], ['PEL', numeros.peladas]],
   ]
-  colunas.forEach((col, ci) => {
-    col.forEach(([valor, rotulo], li) => {
-      const cx = x + (ci === 0 ? 150 : lc / 2 + 70)
-      const cy = y + 720 + li * 74
-      texto(c, valor, cx + 120, cy, { tam: 64, alinha: 'right' })
-      texto(c, rotulo, cx + 140, cy, { tam: 52, cor: OURO })
+  colunas.forEach((coluna, indice) => {
+    coluna.forEach(([sigla, valor], linha) => {
+      const centro = indice === 0 ? 215 : 525
+      const base = 750 + linha * 74
+      texto(c, String(valor), centro + 10, base, { tam: 66, cor: tinta, alinha: 'right' })
+      texto(c, sigla, centro + 24, base, { tam: 50, cor: tinta })
     })
   })
-  c.fillRect(x + lc / 2, y + 670, 3, 220)
+  c.fillStyle = tinta
+  c.fillRect(368, 684, 4, 214)
+  c.restore()
 
-  if (f.naSelecao) texto(c, '★ SELEÇÃO DA PELADA ★', x + lc / 2, y + 935, { tam: 34, cor: OURO, peso: 700, fonte: NORMAL, alinha: 'center' })
+  // as melhores conquistas, lado a lado embaixo da carta; a Lenda vai no meio, maior e brilhando
+  const lenda = insignias.find((insignia) => insignia.destaque)
+  const outras = insignias.filter((insignia) => insignia !== lenda)
+  const emOrdem = lenda ? [...outras.slice(0, Math.floor(outras.length / 2)), lenda, ...outras.slice(Math.floor(outras.length / 2))] : outras
+  const desenhos = await Promise.all(emOrdem.map((insignia) => carregarImagem(insignia.imagem)))
+  if (emOrdem.length) {
+    texto(c, 'MELHORES CONQUISTAS', L / 2, 1440, { tam: 34, cor: AMARELO, alinha: 'center' })
+    const largura = 180
+    const inicio = L / 2 - (emOrdem.length * largura) / 2
+    emOrdem.forEach((insignia, indice) => {
+      const centro = inicio + largura * indice + largura / 2
+      const desenho = desenhos[indice]
+      if (insignia.destaque) {
+        // raios dourados atrás, como no perfil
+        c.save()
+        const brilho = c.createRadialGradient(centro, 1572, 10, centro, 1572, 100)
+        brilho.addColorStop(0, 'rgba(255,214,90,.55)'); brilho.addColorStop(1, 'rgba(255,214,90,0)')
+        c.fillStyle = brilho
+        c.beginPath(); c.arc(centro, 1572, 100, 0, Math.PI * 2); c.fill()
+        c.strokeStyle = 'rgba(245,200,70,.5)'; c.lineWidth = 4
+        for (let raio = 0; raio < 12; raio++) {
+          const angulo = (raio / 12) * Math.PI * 2
+          c.beginPath(); c.moveTo(centro + Math.cos(angulo) * 66, 1572 + Math.sin(angulo) * 66); c.lineTo(centro + Math.cos(angulo) * 98, 1572 + Math.sin(angulo) * 98); c.stroke()
+        }
+        c.restore()
+        if (desenho) { c.save(); c.shadowColor = 'rgba(245,190,40,.95)'; c.shadowBlur = 30; c.drawImage(desenho, centro - 80, 1490, 160, 165); c.restore() }
+      } else if (desenho) c.drawImage(desenho, centro - 66, 1500, 132, 136)
+      texto(c, insignia.nome, centro, 1680, { tam: insignia.destaque ? 30 : 26, cor: insignia.destaque ? AMARELO : undefined, alinha: 'center', max: largura - 12 })
+      texto(c, insignia.nivel, centro, 1714, { tam: 22, cor: CINZA, peso: 600, fonte: NORMAL, alinha: 'center' })
+    })
+  }
 
   texto(c, 'dois-ou-dez.web.app', L / 2, A - 60, { tam: 26, cor: AMARELO, peso: 700, fonte: NORMAL, alinha: 'center' })
   return paraPng(tela)
@@ -524,8 +694,3 @@ export async function compartilharImagem(imagem: Blob, nome: string): Promise<bo
 }
 
 export const nomeDoArquivo = (sufixo: string) => `dois-ou-dez-${new Date().toISOString().slice(0, 10)}-${sufixo}`
-
-/** Gera e compartilha a ficha (cartinha) de um jogador. */
-export async function compartilharFicha(estado: Estado, jogadorId: string, nome: string): Promise<void> {
-  await compartilharImagem(await imagemDoJogador(estado, jogadorId), nomeDoArquivo(`ficha-${nome.toLowerCase().replace(/\s+/g, '-')}`))
-}

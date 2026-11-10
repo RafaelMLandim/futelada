@@ -86,3 +86,18 @@ export function textoDasPeladasGratis(s: Situacao): string | null {
   if (s.peladasGratisRestantes === 0) return 'Peladas grátis usadas'
   return `Pelada ${s.peladasUsadas + 1} de ${PELADAS_GRATIS} grátis`
 }
+
+/** Jogadores de uma pelada comum, para a conta "por jogador" quando não há lista aberta. */
+export const JOGADORES_DE_UMA_PELADA = 15
+/** Preço por mês: Pro mensal, Pro anual (ou 12 meses no Pix) dividido pelos 12 meses e Ultimate. */
+export const PRO_MENSAL = 14.9
+export const PRO_ANUAL_POR_MES = 119 / 12
+export const ULTIMATE_MENSAL = 49.9
+
+/**
+ * Quanto sai por jogador, por mês, se a turma dividir o Pro (os usuários fazem essa conta para decidir se vale).
+ * Arredonda para cima no centavo, como o campo pago.
+ */
+export function porJogadorPorMes(valorPorMes: number, jogadores: number): number {
+  return Math.ceil((valorPorMes / Math.max(1, jogadores)) * 100) / 100
+}

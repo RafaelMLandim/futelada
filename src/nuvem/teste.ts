@@ -90,8 +90,22 @@ export function criarNuvemDeTeste(servidor: string): Nuvem {
     async entrarComGoogle() { throw new Error('Login só funciona com o Firebase') },
     async entrarComEmail() { throw new Error('Login só funciona com o Firebase') },
     async criarContaComEmail() { throw new Error('Login só funciona com o Firebase') },
+    async redefinirSenha() { throw new Error('Login só funciona com o Firebase') },
     async sair() {},
     ouvirCaixa(aoMudar) { aoMudar([]); return () => {} },
+    async abrirLista() { throw new Error('Link da pelada só funciona com o Firebase') },
+    ouvirLista(_codigo, aoMudar) { aoMudar(null, []); return () => {} },
+    async confirmarNaLista() { throw new Error('Link da pelada só funciona com o Firebase') },
+    async tirarDaLista() {},
+    async marcarNaFila() {},
+    async apagarLista() {},
+    ouvirCarta(aoMudar) { aoMudar([]); return () => {} },
+    ouvirDadosDoJogador(aoMudar) { aoMudar({ foto: null, apelido: null }); return () => {} },
+    async salvarDadosDoJogador() { throw new Error('Perfil só funciona com o Firebase') },
+    async denunciarFoto() { throw new Error('Denúncia só funciona com o Firebase') },
+    async fotosDasContas() { return {} },
+    async registrarNaCarta() {},
+    async retirarDaCarta() {},
     async lancarNoCaixa() { throw new Error('Caixa só funciona com o Firebase') },
     async apagarLancamento() {},
     // histórico também neste navegador (o mais novo primeiro, como no Firebase)
@@ -99,7 +113,6 @@ export function criarNuvemDeTeste(servidor: string): Nuvem {
     async guardarPelada(pelada) {
       local.salvar({ ...local.ler(), peladas: [...local.ler().peladas, { ...JSON.parse(JSON.stringify(pelada)), id: `p${Date.now().toString(36)}` }] })
     },
-    async apagarPelada(id) { local.salvar({ ...local.ler(), peladas: local.ler().peladas.filter((p) => p.id !== id) }) },
     // turmas: guardadas neste navegador (para testar a tela; no app de verdade, no Firebase)
     ouvirTurmas(aoMudar) { const f = () => aoMudar(local.turmas()); f(); return local.ouvir(f) },
     async criarTurma(nome) {

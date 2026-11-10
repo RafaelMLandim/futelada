@@ -163,7 +163,7 @@ fila [M, N, A, B, C, D] → blocos **[M, N, A, B]** e **[C, D]**.
   primeiro** ao número de gols (nunca empata). Gol contra não conta. Quando houve empate em gols,
   a imagem e o texto mostram o critério ("2 gols · desempate: menos jogos"); a Tabela lista a ordem.
 - Os destaques de zoeira (Pé de Rato, Açougueiro etc.) foram testados e **retirados**.
-- **Ficha do jogador** = **cartinha do FIFA preta e dourada** (TOTW): "nota" no canto = vitórias,
+- **Ficha do jogador (retirada em 07/11, a carta agora fica no perfil, seção 17.4)** = cartinha preta e dourada: "nota" no canto = vitórias,
   "SEL" se está na seleção (senão a posição no dia), camisa com a inicial, nome entre filetes
   dourados e atributos em duas colunas (VIT JOG GOL | EMP CRT APR).
 
@@ -614,6 +614,7 @@ A **pelada continua só no celular**.
   (data, descrição, +entrada / −saída); botões "+ Entrada" e "− Saída"; tocar apaga.
 - No campo pago: **"Lançar no caixa"** (uma vez por pelada) → entra o que foi pago e sai o campo
   (ex.: R$ 180 − R$ 120 = +R$ 60).
+- **Um caixa por turma (06/11):** cada lançamento guarda a turma; o caixa filtra por turma (Todas mostra o saldo total), e o "Lançar no caixa" usa a turma da pelada. Lançamentos antigos ficam em "Sem turma".
 - Nuvem: `usuarios/{uid}/caixa/{id}`; regra: só o dono lê e escreve. Fica no perfil: troca de
   celular, entra com o Google e o caixa está lá.
 
@@ -787,7 +788,7 @@ primeiro, App Store depois). Só o **organizador** paga; mesários e jogadores u
      reinstalar); no navegador, um código guardado no navegador (mais fraco).
    - Enquanto a cobrança está desligada, nada é contado (ninguém gasta as grátis antes do lançamento).
 3. **Funções no servidor** (Blaze ativo em 09/10, teste grátis do Google Cloud até 08/01/2027 — antes disso,
-   "Fazer upgrade" para conta paga): `functions/` (Node 22, região `southamerica-east1`).
+   "Fazer upgrade" para conta paga — **feito em 07/11/2026**: conta completa, créditos restantes valem até 08/01/2027; alerta de orçamento "Firebase Project dois-ou-dez" de R$ 50/mês, avisos em 50%, 90% e 100%, só alerta, sem limite): `functions/` (Node 22, região `southamerica-east1`).
    - `avisoDeCompra`: webhook do RevenueCat (senha no cabeçalho, segredo `REVENUECAT_WEBHOOK`); grava
      `planos/{uid}` com `functions/plano.js` (assinatura: data da loja; 12 meses: soma 365 dias; torneio: +1
      crédito; reembolso desfaz). Cada aviso conta uma vez (`avisosDeCompra/{id}`). O `app_user_id` no
@@ -840,8 +841,8 @@ Sem dado pessoal: só o **apelido** (o mesmo que já se digita hoje). Fica no pe
   `{ nome, peladas, ultimaPelada, arquivado }`. O `id` é o mesmo em todas as peladas daquela turma.
 - **Na Lista, ao digitar** ("JU…"): sugestões da turma (sem acento/maiúsculas; começa igual ou uma letra
   trocada), com "12 peladas". Tocar adiciona com o id dele.
-- **"Quem costuma vir"**: botão que mostra a turma, os mais frequentes primeiro; tocar na ordem em que
-  chegam põe na fila nessa ordem (montar a lista sem digitar).
+- ~~**"Quem costuma vir"**~~: removido em 07/11/2026. A presença agora é confirmada pelo link da pelada;
+  ao digitar, as sugestões da turma continuam aparecendo.
 - **Nome novo parecido** com alguém da turma: "Parece com JOÃO S. — é ele?" (Sim / Não, é outra pessoa).
 - **Dois iguais de verdade** (dois "JOÃO"): pede para diferenciar ("JOÃO PEDRO"), como a lista já faz.
 - **Tela "Turma"** (no Histórico): renomear, juntar duplicados, arquivar quem parou de vir (o histórico
@@ -949,6 +950,9 @@ próprio (a carta dele), sem obrigar ninguém a baixar nada. Ideia de presença 
 - **Só o nome:** ao digitar, aparecem os nomes da turma para tocar (como na Lista do organizador, seção 15.1); só vira
   nome novo se a pessoa não achar o dela. Não tem carta nem histórico pessoal (17.3).
 - Quem não abriu o link o organizador adiciona pelo nome, como hoje. A lista continua na mão dele (pode tirar alguém).
+- **Feito (07/11):** `?lista=CÓDIGO` e a parte de Confirmados na Lista (`listas/{código}/confirmados/{id}`). A pessoa cai em Confirmados, e o organizador toca em quem chegou: entra no fim da fila. Quem não veio fica ali e some ao encerrar. Quem é digitado e já confirmou vira a mesma pessoa.
+- **Nomes (07/11):** as estatísticas seguem a conta; o nome é só como a pessoa aparece. Apelido no perfil (até 20 letras; sugere o primeiro nome; o e-mail nunca aparece). Nome igual ao de alguém da lista: o app pergunta se é a mesma pessoa (liga a conta) ou outra (o organizador inclui o sobrenome). Digitou um nome com dois confirmados: mostra os dois.
+- **O link só coloca a pessoa na lista.** A ordem de chegada (que define os times) continua sendo do organizador: é ele quem diz quem chegou primeiro.
 - Entrou com a conta: não precisa de aprovação, o nome aparece na lista e a conta **fica salva na turma**. Na próxima
   pelada, ele aparece nas sugestões já com foto e ligado à conta.
 - **Abriu no navegador:** aparece a chamada **"Baixe o app e tenha todo o seu histórico de jogos!"** com o botão da
@@ -974,6 +978,44 @@ próprio (a carta dele), sem obrigar ninguém a baixar nada. Ideia de presença 
   copiar a carta deles, nem no app nem na Play Store.
 - A carta mostra números (jogos, vitórias, gols, assistências…). Uma "nota" não pode depender só de quem marca.
 - **Compartilhar a carta** como imagem, sempre com a marca do app (propaganda no WhatsApp e no Instagram).
+- **Toda carta leva a logo do Dois ou Dez** (na tela e na imagem de compartilhar): é importante para a marca.
+- **Layout decidido (06/11):** veio da ficha do jogador que ficava na Tabela (escudo vertical): a foto entra
+  no lugar da camisa, a carta inteira muda de cor com as conquistas (`nivelDaCarta`) e o desenho de fundo são marcações de campo.
+  Acima do ouro existe a **diamante** (bronze 0, prata 6, ouro 12 e diamante 16 pontos; insígnia bronze vale 1, prata 2, ouro 3; máximo 18).
+  No topo, a **lendária**, preta e dourada como a ficha original: pede 18 pontos e 8 insígnias no ouro na mesma temporada (um gol contra já tira).
+  Materiais: bronze, prata e ouro em metal escovado; diamante holográfico com facetas (cromado e martelado foram testados e ficaram de fora).
+  O número grande é o aproveitamento. Foram testados e recusados: Placar, Figurinha, Ingresso e os escudos A a D.
+- **Conquistas:** insígnias de bronze, prata e ouro abaixo da carta, sobre todas as peladas da temporada (o filtro por turma não muda):
+  Artilheiro, Garçom, Vencedor, Assíduo (metas por temporada, abaixo),
+  Dia inspirado (3/5/8 gols em uma pelada), Rodado, Aproveitamento (50/60/75%, com 20+ jogos), Muralha
+  e Dia de paredão (2/3/5 jogos sem levar gol em uma pelada; não precisam ser seguidos). Metas ainda podem ser ajustadas. A cor da carta soma só as **6 melhores**
+  conquistas, para goleiro e linha terem as mesmas chances.
+- **Insígnias em forma de flâmula, uma imagem por conquista** (cor e ícone próprios; listras e franjas sobem com o nível). Ícones do Phosphor (MIT, aviso em `iconesDasConquistas.ts`).
+- **Mais conquistas (06/11):** Rei do Camarote (2/5/15 vezes na seleção), Artilheiro do dia (2/5/12), Imortal (3/6/10 vitórias seguidas em uma pelada), Pé de Anjo (2/4/6 assistências em uma pelada).
+- **Lenda:** conquista especial, sem níveis e sem pontos: ter a carta lendária em alguma temporada. Não recomeça em janeiro.
+  Flâmula preta e dourada do mesmo tamanho das outras, com raios atrás e o escudo com estrela no centro (07/11: louros com ano, jogador e outros ícones foram testados e recusados).
+- **Link depois do "Chegou" (07/11):** a pessoa continua na lista marcada como `naFila`; no link ela vê "Você já está na fila!", e o organizador não a vê mais nos Confirmados.
+- **Carta sem sinal (07/11):** encerrar ou apagar uma pelada guarda o pedido no celular (`cartas:pendentes`, por conta) até chegar ao servidor. Sai quando a internet volta ou quando o app abre. Só organizador logado registra na carta.
+- **Goleiro fixo na carta (07/11):** no link a pessoa escolhe "Na linha" ou "No gol". No gol, ao tocar em "Chegou" ela entra nos goleiros fixos ligada à conta (`contasDosGoleiros`, só desta pelada). Conta para ela: jogos, vitórias, empates, sequência, gols, passes, cartões e jogos sem levar gol (Muralha e Dia de paredão valem só para goleiro fixo).
+  **Seleção da pelada:** no gol, o goleiro fixo que mais venceu (desempate: menos gols sofridos por jogo); ele ganha o "na seleção" (Rei do Camarote).
+  **Luva de ouro:** conquista nova, goleiro fixo menos vazado da pelada 2/5/12 vezes (o servidor guarda `luvaDeOuro`).
+- **Foto sem fundo na carta (07/11):** a carta mostra a pessoa sem fundo, sem moldura, sumindo na altura do nome (modelo B).
+  Foto PNG/WebP já transparente entra como está; as outras passam pelo recorte do MediaPipe (`@mediapipe/tasks-vision` 1.1.1, Apache 2.0,
+  modelo selfie_segmenter de 250 KB), no próprio celular. Os arquivos do recorte vêm do jsDelivr e do Google só quando alguém escolhe uma
+  foto. Salva em WebP (uns 25 KB). Sem recorte (sem internet ou sem pessoa na foto), fica a foto com fundo, em JPEG, na moldura.
+- **Me incluir (07/11):** o organizador logado tem o botão "Me incluir" na lista: entra na linha ou no gol ligado à própria conta (se já tem o nome dele digitado, pergunta "É você?"). Some quando ele já está. Se ele também confirmar pelo próprio link, o "Chegou" só marca, não cria outro jogador.
+- **Uma carta por turma (07/11):** no perfil, desliza para o lado entre "Todas as peladas" e uma carta para cada turma (com uma turma só, uma carta). A cor da carta e as insígnias de cada carta usam só as peladas daquela turma; o layout das insígnias é o mesmo. O Filtrar ficou só para a temporada. A Lenda continua valendo para a conta toda.
+- **Foto sem piscar (07/11):** a foto e o apelido escolhidos ficam guardados no celular (`carta:dados`), e a carta abre já com eles.
+- **Volume da música (07/11):** janela no botão de alto-falante, de 0 a 100%; 100% é o volume de ambiente (18% do áudio), o padrão.
+- **Metas do goleiro (07/11):** contam partidas sem levar gol (não a pelada inteira); como o goleiro fixo joga todas, subiram: Muralha 5/20/50 na temporada e Dia de paredão 3/5/8 numa pelada.
+- **Música de fundo (07/11):** "Jogo de Bola", feita pelo dono do app no Suno, no plano pago (uso comercial permitido). Arquivo `public/sons/musica-de-fundo.mp3`, volume nivelado. Toca nos menus e na preparação da pelada e do torneio; para no primeiro apito; botão de silenciar no topo.
+- **Foi embora e voltou (07/11):** quem sai da lista fica guardado (`foramEmbora`). Ao digitar o nome de novo, o app pergunta "Voltou?": sim, volta como o mesmo jogador (mesmo id e conta, os números se juntam); não, pede o sobrenome. Da turma (mesmo id), volta direto.
+- **Ações na lista (07/11):** três pontinhos no jogador (Vai para o gol · Foi embora) e no goleiro fixo (Vai para a linha · Foi embora). "Quem costuma vir" saiu. Machucado continua só dentro da partida.
+- **Time do ano (07/11):** foto do jogador quando ele tem conta e foto; sem isso, a silhueta padrão. O goleiro continua sem foto.
+- **Pé Trocado (1/3/5 gols contra) tira pontos da carta** (1, 2 ou 3): é a única negativa, e por causa dela a carta pode cair de nível.
+- **Por temporada (06/11):** a temporada é o ano. A carta, a cor e as conquistas recomeçam em janeiro, e as temporadas passadas ficam no seletor do perfil, como coleção.
+  Metas por temporada: Artilheiro 10/30/80, Garçom 5/15/40, Vencedor 15/60/150, Assíduo 5/20/40, Muralha 3/10/30, Rodado 2/3/4. As demais seguem como acima.
+  Na carta, PEL (peladas) entrou no lugar de CRT (cartões).
 
 ### 17.5 Foto nas imagens de compartilhamento
 - Quem tem conta aparece com a **foto no lugar da camisa**. Quem é só nome continua com a camisa.
@@ -981,9 +1023,12 @@ próprio (a carta dele), sem obrigar ninguém a baixar nada. Ideia de presença 
 ### 17.6 Cuidados antes de publicar
 - **Foto é dado pessoal:** atualizar a política de privacidade e a segurança dos dados na Play Store; excluir a conta
   apaga a foto.
-- **Foto imprópria:** botão de denunciar e como remover.
+- **Foto imprópria (feito 07/11):** a foto de outro jogador aparece ao lado do nome na Seleção da pelada e no Time do ano; tocar abre a foto e "Denunciar" (motivos: imprópria/ofensiva, não é a pessoa, outro). Quem denuncia deixa de ver na hora (`fotos:denunciadas` no celular, também nas imagens de compartilhar). A função `denunciarFoto` guarda `denuncias/{conta}_{quem}` (uma por pessoa; o app não lê nem grava) e, na 3ª pessoa diferente, tira foto e apelido do perfil, marca `fotoRemovida` (aviso na carta do dono até escolher outra foto) e apaga as denúncias. Sem revisão manual (não escala).
+- **Ajustar a foto (07/11):** depois de escolher, abre "Ajustar a foto" (arrastar, pinça/roda/barra de zoom até 4x; grade em terços, como na câmera); o quadrado escolhido (PNG, até 1024 px) segue para o recorte. Serve para foto de longe e foto com mais gente.
+- **Foto sem fundo na imagem da seleção/Time do ano (07/11):** o jogador aparece solto (sem círculo), do mesmo tamanho do círculo (time grande continua cabendo), com a aba dos gols ao lado do ombro. Foto com fundo continua no círculo.
+- **Esqueci a senha (07/11):** na janela do e-mail; o Firebase manda o link (em português). A mensagem é a mesma exista ou não a conta.
 - **Regras do Firebase:** jogador só mexe na própria conta; estatísticas só vêm das peladas (ele não edita a carta).
-- **Custo:** guardar fotos pequenas (Firebase Storage) e olhar o gasto; a cobrança do Firebase já está pendente.
+- **Custo:** guardar fotos pequenas (Firebase Storage) e olhar o gasto; conta do Google Cloud virou completa em 07/11/2026 (paga só o que usar).
 
 ### 17.7 Etapas
 1. Perfil: conta do jogador, foto e carta.
@@ -993,3 +1038,42 @@ próprio (a carta dele), sem obrigar ninguém a baixar nada. Ideia de presença 
 
 **Testar quando estiver pronto:** turma nova com a lista vazia (sem sugestões; cada um entra com a
 conta ou digita o nome), a mesma pessoa aparecendo duas vezes (entrou com a conta e o organizador digitou o nome) e a ordem da lista quando as pessoas entram pelo link antes de chegar ao campo.
+
+### Turma obrigatória (07/11/2026)
+- Toda pelada nova começa em **"Qual pelada é hoje?"** (`src/components/QualPeladaHoje.tsx`, chamado no `PeladaApp` antes dos ajustes), com login.
+  Sem turma: criar (nome sugerido pelo dia, "PELADA DE SÁBADO"). Uma turma: vem marcada. Várias: nenhuma marcada, o "Continuar" só
+  libera ao tocar numa e mostra o nome ("Continuar · Fut de Sábado"); a que costuma jogar no dia de hoje vem primeiro (`resumoDasTurmas`).
+- Os ajustes não mostram mais a turma (o antigo `EscolherTurma` saiu). Criar e remover turma ficam nessa tela (remover pede confirmação).
+- Sem login/sem nuvem (modo local), segue sem turma como antes.
+- "Remover foto" saiu do menu da foto (topo) e foi para o lápis do Meu perfil, junto de Foto e Apelido.
+- **Pelada encerrada não se apaga (07/11/2026):** saiu o "Apagar do histórico". Os números já estão nas cartas e o jogador não perde o que
+  conquistou. Remover a turma apaga as peladas dela só do histórico do organizador; as cartas dos jogadores não mudam (o aviso diz isso).
+  Remover turma pede para digitar o nome; todo modal de apagar abre com o "Cancelar" selecionado.
+- **Cancelar a pelada (07/11/2026):** só até 2 partidas terminadas (antes disso pode ser teste). Com 2, o botão some dos ajustes e fica o
+  aviso "Já foram 2 partidas: a pelada não pode mais ser cancelada". O Desfazer continua valendo.
+
+## 18. Concorrência (pesquisa de 07/11/2026)
+
+- **Líder:** Chega+ (500 mil+ downloads, 19,5 mil avaliações). Era grátis e passou a cobrar **R$ 99/mês por grupo** em 2023, tirando até o sorteio do grátis: muitas notas 1 por preço, bugs na hora do jogo (cronômetro pulando, partida que não fecha) e por só funcionar com internet.
+- **Outros:** Sorteia Times - Pelada Monstra (50 mil+), FutRua e Joga+ (10 mil+), Partida (5 mil+); Meu Ranking R$ 29,90/mês, FootyPro R$ 19,90/mês ou R$ 149/ano, MontaTime R$ 4,99/mês; Campinho é grátis e ganha com donos de quadra (50+ downloads).
+- **Reclamações que mais se repetem:** preço alto ou recurso grátis que virou pago de repente; app que falha na hora do jogo; depender de internet; pagou e não liberou; anúncio mesmo pagando; suporte que não responde; sorteio que não equilibra.
+- **O que fizemos com isso (08/11):**
+  - Tela de planos em cards (como nas páginas de venda): Pro (destaque na pelada), Ultimate e Torneio avulso (destaque no
+    torneio), cada um com o seu botão. No Pro, a pessoa escolhe Anual (R$ 119) ou Mensal (R$ 14,90); no anual, como pagar:
+    Cartão (assinatura que renova) ou Pix (os 12 meses avulsos, porque a Google Play só aceita Pix em compra única).
+    O Ultimate continua só mensal (decidido em 08/11: sem Ultimate anual e sem chave Mensal/Anual no topo).
+    Cada card mostra a conta por jogador com a conta à mostra ("R$ 119 ÷ 12 meses ÷ 15 jogadores"). A vantagem do campo pago agora diz que o
+    QR Code vai para o grupo e o dinheiro cai direto para o organizador (não confundir com pagar o app no Pix).
+  - Tela do Pro mostra o preço dividido pela turma (acompanha o plano tocado): "Dividido entre os N jogadores de hoje, o Pro sai por R$ 0,67 por mês para cada um no anual" (sem lista aberta, uma pelada de 15). `porJogadorPorMes` em `logic/plano.ts`.
+  - Textos da loja (`loja/textos.md`) abrem com: funciona sem internet, sem anúncios, preço justo; e ganharam a carta do jogador e o link de presença.
+  - Teste de resistência do cronômetro: celular bloqueado no fim do tempo fazia o tempo passado virar acréscimo, e os acréscimos dados depois já chegavam gastos (sem apito nem "Acabou o tempo"). Agora o relógio para no limite (`pararNoFim`, pelada e torneio). Testado também: app fechado à força no meio do jogo (tempo e gols voltam certos) e gol marcado sem internet.
+- **Ficou de fora de propósito:** equilibrar os times por nível. O "Sortear o primeiro jogo" já mistura os dois primeiros times, e dar nota aos amigos gera briga (como as votações do Chega+).
+- **Cronômetro na notificação e apito agendado (08/11, só no app de loja; pelada e torneio):** quando o app sai da tela
+  (minimizado, tela bloqueada ou fechado) com a partida rolando, aparece a notificação "Partida 3 · faltam" com o tempo
+  descendo (quem conta é o Android: `setUsesChronometer` + contagem regressiva) e o placar. O apito do fim fica agendado
+  no Android (`AlarmManager`) e toca com a notificação "Acabou o tempo!" (canal com o som `res/raw/apito_fim.wav`, o mesmo
+  desenho do apito do app, e vibração). No torneio vale também para o intervalo ("Fim do intervalo") e para o fim de cada tempo.
+  Pausado: a notificação mostra "pausada", sem apito. Ao voltar para o app, tudo some (lá dentro já tem relógio e apito).
+  Código: `src/utils/cronometroNoCelular.ts` + `android/.../CronometroPlugin.java`, `NotificacaoDaPartida.java`, `ApitoDoFim.java`.
+  Permissões: notificações (pedida no primeiro play, Android 13+) e alarme exato (Android 12+; sem ela o apito pode atrasar um pouco).
+  O navegador não deixa nada disso: no site continua só o relógio na tela.

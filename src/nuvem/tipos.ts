@@ -1,5 +1,6 @@
 import type { DadosNuvem, Operacao } from '../logic/torneio'
 import type { PeladaGuardada } from '../logic/historico'
+import type { PeladaDaCarta, ResumoDaCarta } from '../logic/carta'
 import type { DadosDoPlano } from '../logic/plano'
 import type { JogadorDaTurma } from '../logic/turma'
 import type { Cronometro } from '../types/app'
@@ -30,10 +31,21 @@ export type PeladaCompartilhada = {
   atualizadaEm: number
 }
 
+/** O que o jogador escolhe no perfil. */
+/** fotoRemovida: o servidor tirou a foto e o apelido por denúncias (o dono vê o aviso até escolher outra foto). */
+export type DadosDoJogador = { foto: string | null; apelido: string | null; fotoRemovida?: boolean }
+export type MotivoDaDenuncia = 'impropria' | 'nao-e-a-pessoa' | 'outro'
+/** Link da pelada (PLANO.md, seção 17.2): o que quem abre o link vê. */
+export type ListaDaPelada = { organizador: string; data: string }
+/** Quem se colocou na lista pelo link (`id` = a conta, ou o celular de quem usou só o nome). */
+/** naFila: o organizador já pôs a pessoa na fila (ela continua na lista para ver isso no link). */
+/** goleiro: vai como goleiro fixo (os números do gol vão para a carta dele). */
+export type ConfirmadoNaLista = { id: string; nome: string; comConta: boolean; em: number; naFila?: boolean; goleiro?: boolean }
+
 /** Quem está usando o app: anônimo (sem login), com a conta Google ou com e-mail e senha. */
 export type Perfil = { uid: string; nome: string | null; email: string | null; foto: string | null; anonimo: boolean; comSenha?: boolean }
 /** Lançamento do caixa da pelada (fica no perfil de quem fez login). */
-export type Lancamento = { id: string; tipo: 'entrada' | 'saida'; valor: number; descricao: string; data: number }
+export type Lancamento = { id: string; tipo: 'entrada' | 'saida'; valor: number; descricao: string; data: number; turma?: string | null }
 /** Turma ("Pelada de terça"): os jogadores de sempre de uma pelada. */
 export type Turma = { id: string; nome: string; criadaEm: number }
 
@@ -95,6 +107,8 @@ export interface Nuvem {
   entrarComEmail(email: string, senha: string): Promise<void>
   /** Cria a conta com nome, e-mail e senha (erro auth/email-already-in-use se o e-mail já tem conta). */
   criarContaComEmail(email: string, senha: string, nome: string): Promise<void>
+  /** Manda o e-mail do Firebase com o link para criar uma senha nova. */
+  redefinirSenha(email: string): Promise<void>
   sair(): Promise<void>
   /** Lançamentos do caixa de quem está logado (vazio sem login), do mais novo ao mais antigo. */
   ouvirCaixa(aoMudar: (lancamentos: Lancamento[]) => void, aoErro?: (e: Error) => void): () => void
@@ -103,7 +117,33 @@ export interface Nuvem {
   /** Peladas encerradas de quem está logado (vazio sem login), da mais nova à mais antiga. */
   ouvirHistorico(aoMudar: (peladas: PeladaNoHistorico[]) => void, aoErro?: (e: Error) => void): () => void
   guardarPelada(pelada: PeladaGuardada): Promise<void>
-  apagarPelada(id: string): Promise<void>
+
+  // ---- link da pelada (PLANO.md, seção 17.2) ----
+  abrirLista(codigo: string, data: string): Promise<void>
+  /** Acompanha o link: os dados (null = não existe) e quem confirmou, na ordem em que confirmou. */
+  ouvirLista(codigo: string, aoMudar: (lista: ListaDaPelada | null, confirmados: ConfirmadoNaLista[]) => void, aoErro?: (erro: Error) => void): () => void
+  confirmarNaLista(codigo: string, nome: string, comConta: boolean, goleiro: boolean): Promise<void>
+  /** A pessoa sai da lista. */
+  tirarDaLista(codigo: string, id: string): Promise<void>
+  /** O organizador pôs a pessoa na fila. */
+  marcarNaFila(codigo: string, id: string): Promise<void>
+  /** Pelada encerrada ou cancelada: o link deixa de existir (só o organizador). */
+  apagarLista(codigo: string): Promise<void>
+
+  // ---- carta e foto do jogador (PLANO.md, seção 17) ----
+  /** Peladas da carta de quem está logado (só o servidor grava; vazio sem login). */
+  ouvirCarta(aoMudar: (peladas: PeladaDaCarta[]) => void): () => void
+  /** Foto e apelido que quem está logado escolheu (null = nenhum: usa os da conta). */
+  ouvirDadosDoJogador(aoMudar: (dados: DadosDoJogador) => void): () => void
+  salvarDadosDoJogador(dados: Partial<DadosDoJogador>): Promise<void>
+  /** Pelada encerrada: o servidor grava os números na carta de cada conta (só ele grava). */
+  registrarNaCarta(data: number, turma: string | null, jogadores: ResumoDaCarta[]): Promise<void>
+  /** Pelada apagada do histórico: os números saem da carta de quem jogou. */
+  retirarDaCarta(data: number, contas: string[]): Promise<void>
+  /** Denuncia a foto ou o apelido de outra conta (com 3 pessoas diferentes, o servidor tira). */
+  denunciarFoto(conta: string, motivo: MotivoDaDenuncia): Promise<void>
+  /** Fotos de quem jogou com conta (conta → foto; quem não escolheu foto não vem). */
+  fotosDasContas(contas: string[]): Promise<Record<string, string>>
 
   // ---- turmas (jogadores de sempre; PLANO.md, seção 15) ----
   ouvirTurmas(aoMudar: (turmas: Turma[]) => void): () => void

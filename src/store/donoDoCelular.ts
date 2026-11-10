@@ -9,6 +9,15 @@ const guardado = (uid: string) => `celular:guardado:${uid}`
 /** O que fica salvo no celular e é de uma pessoa (o modo e a identidade do aparelho não são). */
 export const CHAVES_DA_CONTA = ['pelada:v5', 'torneio:v1', 'torneio:ativo']
 
+/** A conta dona do que está no celular (null: sem login). */
+export function donoDoCelular(): string | null {
+  try {
+    return localStorage.getItem(CHAVE_DONO)
+  } catch {
+    return null
+  }
+}
+
 /** Guarda à parte o que está no celular, em nome de `uid`, e limpa. */
 function guardar(uid: string) {
   const dados: Record<string, string> = {}

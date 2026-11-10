@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { comoCriarTorneio, situacaoDoPlano, textoDasPeladasGratis, type DadosDoPlano } from '../plano'
+import { comoCriarTorneio, porJogadorPorMes, PRO_ANUAL_POR_MES, PRO_MENSAL, situacaoDoPlano, textoDasPeladasGratis, type DadosDoPlano } from '../plano'
 
 // Plano pago (PLANO.md, seção 14).
 
@@ -62,5 +62,16 @@ describe('plano', () => {
     const assinatura = situacaoDoPlano(dados({ plano: { premiumAte: AGORA + 20 * DIA, creditosTorneio: 0, assinatura: true } }), AGORA)
     expect(assinatura.renovaSozinho).toBe(true)
     expect(assinatura.diasParaVencer).toBeNull()
+  })
+})
+
+describe('porJogadorPorMes', () => {
+  it('divide o Pro pela turma, arredondando para cima no centavo', () => {
+    expect(porJogadorPorMes(PRO_MENSAL, 15)).toBe(1)
+    expect(porJogadorPorMes(PRO_ANUAL_POR_MES, 15)).toBe(0.67)
+    expect(porJogadorPorMes(PRO_MENSAL, 20)).toBe(0.75)
+  })
+  it('sem jogadores, não divide por zero', () => {
+    expect(porJogadorPorMes(PRO_MENSAL, 0)).toBe(14.9)
   })
 })

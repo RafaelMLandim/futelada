@@ -40,6 +40,17 @@ export function useConta() {
       return mensagemDeLogin((e as { code?: string }).code)
     }
   }, [])
+  /** Esqueci a senha: manda o link por e-mail. Devolve o erro para mostrar (null = enviou). */
+  const redefinirSenha = useCallback(async (email: string): Promise<string | null> => {
+    try {
+      await (await obterNuvem())?.redefinirSenha(email.trim())
+      return null
+    } catch (e) {
+      const codigo = (e as { code?: string }).code
+      if (codigo === 'auth/user-not-found') return null // não conta quem tem conta: a mensagem é a mesma
+      return codigo === 'auth/invalid-email' || codigo === 'auth/missing-email' ? 'Esse e-mail não parece certo.' : mensagemDeLogin(codigo)
+    }
+  }, [])
   const sair = useCallback(async () => { await (await obterNuvem())?.sair() }, [])
   /** Exclui a conta e tudo o que ela criou. Devolve o erro para mostrar (null = excluiu ou desistiu). */
   const excluirConta = useCallback(async (senha?: string): Promise<string | null> => {
@@ -56,7 +67,7 @@ export function useConta() {
   }, [])
 
   const logado = !!perfil && !perfil.anonimo
-  return { perfil, logado, entrar, comEmail, sair, excluirConta, erro }
+  return { perfil, logado, entrar, comEmail, redefinirSenha, sair, excluirConta, erro }
 }
 
 /** Texto do erro do login com e-mail e senha. */
@@ -105,8 +116,7 @@ export function useHistorico() {
     })
     return () => { ativo = false; parar() }
   }, [])
-  const apagar = useCallback(async (id: string) => { await (await obterNuvem())?.apagarPelada(id) }, [])
-  return { peladas, apagar }
+  return { peladas } // pelada encerrada não se apaga (os números já estão nas cartas)
 }
 
 /** Guarda a pelada encerrada no histórico de quem está logado. */

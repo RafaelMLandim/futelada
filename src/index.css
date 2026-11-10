@@ -57,7 +57,7 @@ button, input { font: inherit; }
    painel (campo de nome, avisos) ocupa a largura toda. Mesma regra de tela deitada de utils/telaGrande.ts */
 @media (min-width: 900px) and (min-aspect-ratio: 5/4) {
   .conteudo.lado-a-lado { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: max-content; align-content: start; align-items: start; column-gap: 14px; }
-  .conteudo.lado-a-lado > :not(.panel) { grid-column: 1 / -1; }
+  .conteudo.lado-a-lado > :not(.panel), .conteudo.lado-a-lado > .inteiro { grid-column: 1 / -1; }
 }
 .rodape { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; }
 
@@ -93,6 +93,81 @@ button.tr:nth-child(even) { background: var(--zebra); }
 .linha-jogador { width: 100%; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; gap: 6px; }
 .linha-jogador:nth-child(even) { background: var(--zebra); }
 .linha-jogador:active { background: #dfe6cf; }
+/* carta do jogador: o desenho fica no SVG de fundo; as posições são em % da carta (740 x 1060) */
+.carta { position: relative; width: 88%; max-width: 330px; aspect-ratio: 740 / 1060; margin: 0 auto; flex: none; color: var(--tinta); container-type: inline-size; filter: drop-shadow(0 8px 12px rgba(0, 0, 0, .55)); }
+.carta.lendaria { filter: drop-shadow(0 0 14px rgba(245, 215, 122, .5)) drop-shadow(0 8px 12px rgba(0, 0, 0, .55)); }
+.carta.diamante { filter: drop-shadow(0 0 14px rgba(120, 225, 255, .55)) drop-shadow(0 8px 12px rgba(0, 0, 0, .55)); }
+.carta-fundo { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.carta-lado { position: absolute; top: 12%; left: 10%; width: 26%; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.carta-lado svg { width: 14cqw; height: 14cqw; }
+.carta-nota { font-size: 21cqw; line-height: .95; letter-spacing: 0; }
+.carta-sigla { font-size: 3.2cqw; font-weight: 700; letter-spacing: .5px; margin-bottom: 6px; white-space: nowrap; }
+.carta-moldura { position: absolute; top: 9.5%; right: 10%; width: 51%; aspect-ratio: 1; }
+.carta-foto { width: 100%; height: 100%; border-radius: 12px; overflow: hidden; background: #10223a; border: 2px solid var(--tinta); display: grid; place-items: center; color: var(--amarelo); }
+.carta-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* foto sem fundo: sem a moldura, maior, a pessoa some aos poucos na altura do nome (como nas cartas de futebol) */
+.carta-moldura.sem-fundo { top: 5%; right: 5%; width: 62%; }
+.carta-moldura.sem-fundo .carta-foto { background: transparent; border: 0; border-radius: 0;
+  -webkit-mask-image: linear-gradient(#000 78%, transparent 100%); mask-image: linear-gradient(#000 78%, transparent 100%); }
+.carta-moldura.sem-fundo .carta-foto img { object-fit: contain; object-position: bottom; }
+.carta-foto .num { font-size: 26cqw; }
+.carta-nome {
+  position: absolute; top: 50%; left: 9.5%; right: 9.5%; padding: 2.2cqw 0; text-align: center; font-size: 11.5cqw; line-height: 1; text-transform: uppercase;
+  border-top: 2px solid var(--tinta); border-bottom: 2px solid var(--tinta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.carta-numeros { position: absolute; top: 64%; left: 13%; right: 13%; display: grid; grid-template-columns: 1fr 1fr; }
+.carta-numeros > div { display: flex; flex-direction: column; align-items: center; gap: 1.2cqw; }
+.carta-numeros > div:first-child { border-right: 2px solid var(--tinta); }
+.carta-numeros > div > div { display: grid; grid-template-columns: 11cqw 11cqw; align-items: baseline; gap: 2cqw; }
+.carta-numeros .num:first-child { font-size: 8.2cqw; line-height: 1.05; letter-spacing: 0; text-align: right; }
+.carta-numeros .num:last-child { font-size: 6.2cqw; letter-spacing: 0; text-align: left; }
+.carta-rotulo { position: absolute; top: 86.5%; left: 20%; right: 20%; text-align: center; font-size: 3.2cqw; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.insignias { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 6px; padding: 12px 8px; }
+.insignia { display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; min-width: 0; padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
+.flamula { width: 68px; height: auto; display: block; }
+.legenda { width: 100%; max-width: 440px; max-height: calc(var(--altura-tela) * .88); display: flex; flex-direction: column; }
+.legenda-lista { overflow-y: auto; color: var(--navy); }
+.legenda-texto { padding: 12px; font-size: 13px; font-weight: 600; line-height: 1.35; display: grid; gap: 6px; background: var(--zebra); container-type: inline-size; }
+.legenda-texto > b { font-size: 15px; }
+/* cabendo, as 5 numa linha; senão, 3 em cima e 2 embaixo, sempre centralizadas */
+.legenda-cartas { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 6px; max-width: 240px; margin: 0 auto; text-align: center; font-size: 11px; }
+@container (min-width: 404px) { .legenda-cartas { max-width: none; } }
+.legenda-cartas > div { width: 76px; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.legenda-cartas .carta { width: 100%; margin-bottom: 4px; filter: none; }
+/* carta de exemplo: tracinhos no lugar dos textos */
+.carta.exemplo .traco { display: block; height: 4.6cqw; border-radius: 9cqw; background: var(--tinta); opacity: .85; }
+.carta.exemplo .traco-nota { width: 20cqw; height: 13cqw; border-radius: 3cqw; margin: 2cqw 0 1cqw; }
+.carta.exemplo .traco-sigla { width: 16cqw; height: 3cqw; margin-bottom: 6px; opacity: .6; }
+.carta.exemplo .carta-nome { display: flex; justify-content: center; }
+.carta.exemplo .traco-nome { width: 46cqw; height: 7cqw; }
+.carta.exemplo .carta-numeros > div > div { align-items: center; padding: .9cqw 0; }
+.carta.exemplo .traco-valor { width: 9cqw; height: 6.2cqw; justify-self: end; }
+.carta.exemplo .traco-rotulo { width: 11cqw; height: 4cqw; opacity: .6; }
+.carta.exemplo .carta-foto { color: #3a4c66; }
+.carta-silhueta { width: 82%; height: 82%; align-self: end; }
+.legenda-cartas b { font-size: 12px; line-height: 1.1; }
+.legenda-item { padding: 8px 12px; display: grid; gap: 4px; }
+.legenda-item:nth-child(even) { background: var(--zebra); }
+.legenda-detalhe { display: flex; flex-direction: column; min-width: 0; }
+.legenda-detalhe b { font-size: 15px; line-height: 1.15; }
+.legenda-niveis-insignia { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.legenda-niveis-insignia > div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.legenda-niveis-insignia .flamula { width: 52px; }
+.legenda-niveis-insignia span { min-width: 42px; padding: 1px 6px; border-radius: 4px; text-align: center; font-size: 12px; font-weight: 700; color: var(--navy); }
+.legenda-niveis-insignia .bronze { background: #e0a371; }
+.legenda-niveis-insignia .prata { background: #d4dbe2; }
+.legenda-niveis-insignia .ouro { background: #ffd23f; }
+/* Lenda: mesmo formato das outras, com raios de luz finos saindo de trás da flâmula */
+.insignia.lenda:not(.bloqueada) { position: relative; }
+.insignia.lenda:not(.bloqueada)::before {
+  content: ''; position: absolute; left: 50%; top: 34px; width: 130px; height: 130px; transform: translate(-50%, -50%); pointer-events: none;
+  background: repeating-conic-gradient(rgba(224, 168, 0, .75) 0 3deg, transparent 3deg 30deg);
+  -webkit-mask-image: radial-gradient(circle, #000 28%, transparent 68%); mask-image: radial-gradient(circle, #000 28%, transparent 68%);
+}
+.insignia.lenda:not(.bloqueada) .flamula { position: relative; filter: drop-shadow(0 0 7px rgba(245, 190, 40, .9)); }
+.insignia.lenda:not(.bloqueada) .insignia-nome, .insignia.lenda:not(.bloqueada) .insignia-progresso { position: relative; }
+.insignia-nome { font-size: 13px; font-weight: 700; color: var(--navy); line-height: 1.1; }
+.insignia-progresso { font-size: 11px; font-weight: 600; color: var(--mut); line-height: 1.15; }
 .bstatus { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; font-size: 11px; font-weight: 600; line-height: 1.25; white-space: nowrap; }
 .bstatus b { color: var(--amarelo); letter-spacing: 1px; }
 .bstatus .on { color: #7ee08f; }
@@ -261,3 +336,78 @@ label { min-width: 0; }
 /* botão com cara de link (termos, privacidade, excluir conta) */
 .lnk { padding: 4px 2px; border: 0; background: none; color: var(--azul); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
 .lnk:disabled { opacity: .6; cursor: default; }
+
+/* duas ações lado a lado numa janela (opções do jogador): o texto fica numa linha só */
+.opcoes-lado-a-lado { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* Qual pelada é hoje? (escolher a turma) */
+.turma-opcao { display: flex; gap: 12px; align-items: center; text-align: left; width: 100%; padding: 12px; border: 2px solid #d5dcc8; border-radius: 10px; background: #fff; color: var(--navy); font: inherit; font-size: 16px; cursor: pointer; }
+.turma-opcao.escolhida { border-color: var(--navy); background: #fff6d0; box-shadow: 0 3px 0 var(--navy); }
+.turma-opcao .marca { flex: none; width: 26px; height: 26px; border-radius: 50%; border: 2px solid #9aa58c; display: grid; place-items: center; }
+.turma-opcao.escolhida .marca { background: var(--amarelo); border-color: var(--navy); }
+/* Ajustar a foto: quadrado onde a pessoa arrasta e dá zoom */
+.ajustar-foto { position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; touch-action: none; border-radius: 12px; background: var(--navy); cursor: grab; user-select: none; }
+.ajustar-foto:active { cursor: grabbing; }
+.ajustar-foto-grade { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; fill: none; stroke: rgba(255,255,255,.55); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.ajustar-foto img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; pointer-events: none; }
+/* Foto de outro jogador nos painéis: tocar abre a foto e a denúncia */
+.foto-do-jogador { flex: none; width: 32px; height: 32px; padding: 0; border: 2px solid var(--amarelo); border-radius: 50%; overflow: hidden; background: var(--navy); cursor: pointer; }
+.foto-do-jogador.vazia { border-color: transparent; background: none; cursor: default; }
+.foto-do-jogador img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.foto-do-jogador-grande { width: 180px; height: 180px; border-radius: 12px; object-fit: cover; object-position: top; background: var(--navy); }
+.opcoes-lado-a-lado .btn { font-size: 15px; white-space: nowrap; gap: 6px; padding: 0 8px; }
+.dicas-da-foto { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-weight: 700; }
+.dicas-da-foto li { display: flex; align-items: center; gap: 8px; }
+.dicas-da-foto svg { color: #1f8a3b; flex: none; }
+/* cartas por turma: desliza para o lado, uma de cada vez, com as vizinhas aparecendo nas bordas.
+   As pontas têm um espaço do tamanho certo para a primeira e a última carta também pararem no meio. */
+.cartas-deslizar { display: flex; gap: 10px; margin: 0 -12px; padding: 4px 0 14px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.cartas-deslizar::-webkit-scrollbar { display: none; }
+.cartas-deslizar::before, .cartas-deslizar::after { content: ''; flex: 0 0 calc(11% - 10px); }
+.carta-da-turma { flex: 0 0 78%; scroll-snap-align: center; transition: opacity .2s, transform .2s; opacity: .5; transform: scale(.92); }
+.carta-da-turma.atual { opacity: 1; transform: none; }
+.carta-da-turma .carta { width: 100%; }
+.ponto-da-carta { width: 8px; height: 8px; padding: 0; border: 0; border-radius: 4px; background: rgba(255, 255, 255, .45); cursor: pointer; transition: width .2s; }
+.ponto-da-carta.atual { width: 22px; background: var(--amarelo); }
+/* uma conquista aberta: as 3 versões lado a lado, com a meta e quanto falta */
+.niveis-da-conquista { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; text-align: center; }
+.niveis-da-conquista > div { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.niveis-da-conquista .flamula { width: 72px; }
+.niveis-da-conquista .meta { min-width: 46px; padding: 1px 6px; border-radius: 4px; font-size: 13px; font-weight: 700; }
+.niveis-da-conquista .meta.bronze { background: #e0a371; }
+.niveis-da-conquista .meta.prata { background: #d4dbe2; }
+.niveis-da-conquista .meta.ouro { background: #ffd23f; }
+.niveis-da-conquista .mut { font-size: 12px; line-height: 1.2; }
+.niveis-da-conquista .ganhou .mut { color: #1f8a3b; font-weight: 700; }
+
+/* Tela de planos em cards (TelaPremium) */
+.plano-card { position: relative; display: grid; gap: 10px; background: #fff; border: 3px solid var(--navy); border-radius: 14px; padding: 18px 14px 14px; box-shadow: 0 4px 0 var(--borda); }
+.plano-card.destaque { border-color: var(--amarelo); box-shadow: 0 0 0 3px var(--navy), 0 6px 0 var(--borda); }
+.plano-selo { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); white-space: nowrap; background: #fff; color: var(--navy); border: 2px solid var(--navy); border-radius: 99px; padding: 2px 12px; font: 800 13px 'Barlow Condensed', sans-serif; letter-spacing: .6px; text-transform: uppercase; }
+.plano-card.destaque .plano-selo { background: var(--amarelo); }
+.plano-nome { font: 800 26px 'Barlow Condensed', sans-serif; letter-spacing: .4px; text-transform: uppercase; line-height: 1; }
+.plano-preco { display: flex; align-items: baseline; gap: 4px; }
+.plano-preco b { font: 800 38px 'Barlow Condensed', sans-serif; line-height: 1; }
+.plano-preco small { font: 700 16px 'Barlow Condensed', sans-serif; color: var(--mut); }
+.plano-sub { color: var(--mut); font-size: 13px; font-weight: 600; margin-top: -6px; }
+.plano-rotulo { font: 700 13px 'Barlow Condensed', sans-serif; letter-spacing: .6px; text-transform: uppercase; color: var(--mut); margin-bottom: -4px; }
+.plano-conta { background: #fff3c4; border-radius: 8px; padding: 6px 10px; display: grid; gap: 1px; }
+.plano-conta b { font-size: 15px; }
+.plano-conta small { font-size: 12px; font-weight: 600; color: var(--mut); }
+.plano-vantagens { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.plano-vantagens li { display: flex; gap: 8px; font-size: 14px; font-weight: 600; line-height: 1.3; }
+.plano-vantagens li::before { content: '✓'; color: var(--verde); font-weight: 800; flex: none; }
+.plano-vantagens li.nao { color: #9aa6b4; }
+.plano-vantagens li.nao::before { content: '–'; color: #9aa6b4; }
+/* fundo de gramado listrado atrás dos cards (como o resto do app) */
+.planos-fundo { display: grid; gap: 18px; background: repeating-linear-gradient(180deg, var(--grama) 0 46px, var(--grama2) 46px 92px); }
+.planos-chamada { color: #fff; font-weight: 600; line-height: 1.45; text-align: center; text-shadow: 0 1px 2px rgba(0, 0, 0, .45); }
+.planos-rodape { color: #e4ecdf; font-size: 13px; text-align: center; text-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
+.planos-aviso { background: #fff; border-radius: 10px; padding: 10px 12px; font-weight: 600; color: var(--navy); }
+
+/* Tabela da pelada no Histórico (J, V, E, D, gols e assistências) */
+.tabela-da-pelada { width: 100%; border-collapse: collapse; color: var(--navy); font-weight: 600; margin: 4px 0 8px; }
+.tabela-da-pelada th { background: var(--navy); color: var(--amarelo); font: 800 15px 'Barlow Condensed', sans-serif; letter-spacing: .5px; padding: 6px 4px; text-transform: uppercase; }
+.tabela-da-pelada th:first-child, .tabela-da-pelada td:first-child { text-align: left; padding-left: 12px; }
+.tabela-da-pelada td { padding: 6px 4px; text-align: center; font-size: 15px; }
+.tabela-da-pelada td:first-child { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabela-da-pelada tbody tr:nth-child(even) { background: var(--zebra); }

@@ -8,6 +8,8 @@ export type PedidoDeConfirmacao = {
   botao: string // texto do botão que confirma
   perigo?: boolean // botão vermelho (apaga ou tira algo)
   voltar?: string // texto do botão que desiste (padrão: "Cancelar")
+  /** Para o que não tem volta: a pessoa digita este texto (ex.: o nome da turma) para liberar o botão. */
+  digitar?: string
   aoConfirmar: () => void
 }
 

@@ -3,13 +3,14 @@
 import { atualizarSubiram, configPadrao, novaSessao } from '../logic'
 import type { AppState } from '../types/app'
 import type { Estado } from '../types/pelada'
-import { alternarCrono, cronoZerado, darAcrescimos } from './cronometro'
+import { alternarCrono, cronoZerado, darAcrescimos, pararNoFim } from './cronometro'
 import { LIMITE_DESFAZER, descreverMudanca, mudouOJogo, restaurar } from './desfazer'
 
 export type Acao =
   | { tipo: 'aplicar'; fn: (e: Estado) => Estado; novaPartida?: boolean }
   | { tipo: 'iniciar' }
   | { tipo: 'crono'; rodando: boolean }
+  | { tipo: 'fimDoTempo'; limiteMs: number } // para o relógio no fim do tempo, sem contar o que passou dele
   | { tipo: 'acrescimos'; min: number }
   | { tipo: 'encerrar' }
   | { tipo: 'desfazer' }
@@ -56,6 +57,8 @@ export function reducer(app: AppState, acao: Acao): AppState {
       return { ...app, estado: acao.app.estado, crono: acao.app.crono, desfazer: [] }
     case 'crono':
       return { ...app, crono: alternarCrono(app.crono, acao.rodando) }
+    case 'fimDoTempo':
+      return { ...app, crono: pararNoFim(app.crono, acao.limiteMs) }
     case 'acrescimos':
       return { ...app, crono: darAcrescimos(app.crono, acao.min) }
     case 'encerrar':

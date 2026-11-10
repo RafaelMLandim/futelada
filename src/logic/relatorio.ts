@@ -10,6 +10,7 @@ import { jogaramNaPelada, naTurma, type JogadorDaTurma } from './turma'
 
 export type JogadorNoAno = {
   id: string; nome: string
+  conta?: string // quem entrou pelo link com a conta (de onde vem a foto)
   peladas: number; jogos: number; vitorias: number; gols: number
   assistencias: number // passes para gol (Troféu Garçom)
   vezesNaSelecao: number; artilheiroDoDia: number
@@ -59,7 +60,11 @@ export function relatorioDoAno(peladas: readonly PeladaGuardada[], turma: readon
   }
 
   for (const { estado } of doAno) {
-    for (const j of jogaramNaPelada(estado)) linhaDe(j).peladas++
+    for (const j of jogaramNaPelada(estado)) {
+      const linha = linhaDe(j)
+      linha.peladas++
+      if (j.conta) linha.conta = j.conta
+    }
     for (const v of vitoriasPorJogador(estado)) {
       const l = linhaDe(v)
       l.jogos += v.jogos
