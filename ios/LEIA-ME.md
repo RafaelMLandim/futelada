@@ -41,3 +41,9 @@ Atualizar depois de mudar o site: `npm run ios` (gera o site e copia para o proj
 - Build 1.0.16 (1) enviado à revisão beta em 12/11.
 - Link público (aberto a todos): https://testflight.apple.com/join/7Z3mzMh5 — só funciona depois que a Apple aprova a versão.
 - Próximos builds do Codemagic vão sozinhos para a revisão beta (`submit_to_testflight: true`).
+
+## App Store (12/11/2026)
+- Versão 1.0.16 (build 2) enviada à revisão da App Store às 13:11, lançamento automático ao aprovar.
+- Ficha: textos em `loja/textos-app-store.md`, capturas `loja/imagens/iphone/iphone-6-3-*.png` (1206×2622),
+  formulários (direitos, classificação 4+/Livre, privacidade publicada) em `loja/formularios-app-store.md`.
+- Grátis, 175 países, sem Mac/Vision Pro. Planos e preços escondidos no iPhone até ligar as compras da App Store.
