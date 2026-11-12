@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AVISO_DE_VENCIMENTO, PELADAS_GRATIS, TIMES_DO_TORNEIO_GRATIS } from '../logic/plano'
-import { nomeDaLoja, podeComprarAqui, restaurarCompras } from '../store/compras'
+import { ENDERECO_DAS_ASSINATURAS, mostraPlanos, nomeDaLoja, podeComprarAqui, restaurarCompras } from '../store/compras'
 import { usePlano } from '../store/plano'
 import { abrirLink } from '../utils/nativo'
 import { TelaPremium } from './TelaPremium'
@@ -44,11 +44,11 @@ export function MeuPlano({ onFechar }: { onFechar: () => void }) {
             </div>
           )}
           <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>
-            Torneios: {s.ultimate ? 'ilimitados, com o Ultimate' : s.torneioGratis ? `o 1º é grátis (até ${TIMES_DO_TORNEIO_GRATIS} times)` : s.creditosTorneio > 0 ? `${s.creditosTorneio} ${s.creditosTorneio === 1 ? 'crédito' : 'créditos'} de torneio` : 'Torneio avulso, R$ 34,90 cada'}
+            Torneios: {s.ultimate ? 'ilimitados, com o Ultimate' : s.torneioGratis ? `o 1º é grátis (até ${TIMES_DO_TORNEIO_GRATIS} times)` : s.creditosTorneio > 0 ? `${s.creditosTorneio} ${s.creditosTorneio === 1 ? 'crédito' : 'créditos'} de torneio` : mostraPlanos() ? 'Torneio avulso, R$ 34,90 cada' : 'o 1º grátis já foi usado'}
           </div>
           {s.diasParaVencer !== null && s.diasParaVencer <= AVISO_DE_VENCIMENTO && (
             <div className="mut" style={{ background: '#fff6cf', border: '1px solid var(--amarelo)', borderRadius: 5, padding: '8px 10px', color: 'var(--navy)', fontWeight: 600 }}>
-              {s.diasParaVencer === 1 ? 'Falta 1 dia' : `Faltam ${s.diasParaVencer} dias`} para o seu Pro vencer. Renove por mais 12 meses (Pix ou cartão).
+              {s.diasParaVencer === 1 ? 'Falta 1 dia' : `Faltam ${s.diasParaVencer} dias`} para o seu Pro vencer.{mostraPlanos() && ' Renove por mais 12 meses (Pix ou cartão).'}
             </div>
           )}
           {!s.cobrancaAtiva && (
@@ -57,13 +57,13 @@ export function MeuPlano({ onFechar }: { onFechar: () => void }) {
             </div>
           )}
           {aviso && <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>{aviso}</div>}
-          {(!s.premium || (s.diasParaVencer !== null && s.diasParaVencer <= AVISO_DE_VENCIMENTO)) && (
+          {mostraPlanos() && (!s.premium || (s.diasParaVencer !== null && s.diasParaVencer <= AVISO_DE_VENCIMENTO)) && (
             <button className="btn" onClick={() => setPremium(true)}>{s.premium ? 'Renovar o Pro' : 'Conhecer os planos'}</button>
           )}
           {s.renovaSozinho && (
-            <button className="btn w sm" onClick={() => void abrirLink('https://play.google.com/store/account/subscriptions')}>Gerenciar assinatura</button>
+            <button className="btn w sm" onClick={() => void abrirLink(ENDERECO_DAS_ASSINATURAS())}>Gerenciar assinatura</button>
           )}
-          <button className="btn w sm" disabled={restaurando} onClick={() => void restaurar()}>{restaurando ? 'Buscando…' : 'Restaurar compras'}</button>
+          {mostraPlanos() && <button className="btn w sm" disabled={restaurando} onClick={() => void restaurar()}>{restaurando ? 'Buscando…' : 'Restaurar compras'}</button>}
           <button className="btn w sm" onClick={onFechar}>Fechar</button>
         </div>
       </section>

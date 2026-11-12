@@ -33,3 +33,11 @@ Atualizar depois de mudar o site: `npm run ios` (gera o site e copia para o proj
    integração "Dois ou Dez" com a chave de API do App Store Connect e o grupo de variáveis `dois_ou_dez` (as VITE_* do `.env.local`).
    A versão do iPhone acompanha a do Android (MARKETING_VERSION no projeto do Xcode).
 4. **Publicar a função `avisoDeCompra`** com o novo formato dos códigos (`functions/plano.js`).
+
+## TestFlight (12/11/2026)
+- Informações de teste preenchidas (descrição, e-mail de feedback, contato da revisão, sem login obrigatório:
+  a revisão entra com o próprio Apple ID).
+- Grupos: interno "Equipe" e externo "Galera da pelada" (todas as compilações).
+- Build 1.0.16 (1) enviado à revisão beta em 12/11.
+- Link público (aberto a todos): https://testflight.apple.com/join/7Z3mzMh5 — só funciona depois que a Apple aprova a versão.
+- Próximos builds do Codemagic vão sozinhos para a revisão beta (`submit_to_testflight: true`).

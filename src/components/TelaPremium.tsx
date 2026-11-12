@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { JOGADORES_DE_UMA_PELADA, PELADAS_GRATIS, porJogadorPorMes, PRO_ANUAL_POR_MES, PRO_MENSAL, TIMES_DO_TORNEIO_GRATIS, ULTIMATE_MENSAL } from '../logic/plano'
-import { assinaturaAtiva, comprar, ENDERECO_NA_LOJA, nomeDaLoja, ofertas, podeComprarAqui, type Oferta, type Produto } from '../store/compras'
+import { aceitaPix, assinaturaAtiva, comprar, ENDERECO_NA_LOJA, nomeDaLoja, ofertas, podeComprarAqui, type Oferta, type Produto } from '../store/compras'
 import { usePlano } from '../store/plano'
 import { reais } from '../utils/formatar'
-import { abrirLink } from '../utils/nativo'
+import { abrirLink, noIphone } from '../utils/nativo'
 import { Icone } from './Icone'
 
 // Planos e preços (PLANO.md, seção 14.1): Dois ou Dez Pro, Dois ou Dez Ultimate e Torneio avulso, em cards como nas
@@ -89,7 +89,7 @@ export function TelaPremium({ motivo, onFechar, jogadores }: { motivo: MotivoPre
         <Escolha marcada={periodo === 'anual'} onClick={() => setPeriodo('anual')} titulo={`${preco('anual')}/ano`} detalhe="≈ R$ 9,92/mês · -33%" />
         <Escolha marcada={periodo === 'mensal'} onClick={() => setPeriodo('mensal')} titulo={`${preco('mensal')}/mês`} detalhe="Cancele quando quiser" />
       </div>
-      {periodo === 'anual' && (
+      {periodo === 'anual' && aceitaPix() && (
         <>
           <div className="plano-rotulo">Como pagar o anual</div>
           <div className="opcoes-lado-a-lado" role="radiogroup" aria-label="Forma de pagamento do Pro anual">
@@ -137,7 +137,7 @@ export function TelaPremium({ motivo, onFechar, jogadores }: { motivo: MotivoPre
           {situacao.tipo === 'aviso' && (
             <div className="planos-aviso">
               {situacao.texto}
-              {plano.cobrancaAtiva && !podeComprarAqui() && <> <button className="lnk" onClick={() => void abrirLink(ENDERECO_NA_LOJA)}>Baixar o app</button></>}
+              {plano.cobrancaAtiva && !podeComprarAqui() && !noIphone() && <> <button className="lnk" onClick={() => void abrirLink(ENDERECO_NA_LOJA)}>Baixar o app</button></>}
             </div>
           )}
           <div className="planos-rodape">O pagamento é feito na {nomeDaLoja()}: o app não vê o seu cartão.</div>

@@ -44,6 +44,18 @@ export interface Oferta {
 /** Dá para comprar aqui? Só no app de loja e com o RevenueCat configurado. */
 export const podeComprarAqui = () => nativo() && Boolean(CHAVE_DO_REVENUECAT)
 
+/**
+ * Pode mostrar planos e preços? No iPhone, só quando as compras da App Store estão ligadas (a Apple recusa app que
+ * mostra coisa paga que não dá para comprar por ela). Fora do iPhone, sempre.
+ */
+export const mostraPlanos = () => !noIphone() || podeComprarAqui()
+
+/** Pix só existe na Google Play (12 meses avulso); a App Store cobra no cartão dela. */
+export const aceitaPix = () => !noIphone()
+
+/** Onde o assinante cancela ou troca a assinatura. */
+export const ENDERECO_DAS_ASSINATURAS = () => (noIphone() ? 'https://apps.apple.com/account/subscriptions' : 'https://play.google.com/store/account/subscriptions')
+
 let configuradoPara: string | null = null
 async function revenueCat() {
   const { Purchases } = await import('@revenuecat/purchases-capacitor')
