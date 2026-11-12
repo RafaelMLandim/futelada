@@ -19,8 +19,14 @@ Atualizar depois de mudar o site: `npm run ios` (gera o site e copia para o proj
   `GoogleService-Info.plist` em `ios/App/App/` e no projeto do Xcode; `REVERSED_CLIENT_ID` no `Info.plist`.
 - Provedor **Apple** ativado no Firebase Authentication (para o login nativo não precisa de Services ID).
 
+- **Apple Developer Program:** inscrição como pessoa física (Bruno Magalhães Landim, Apple ID brunolandim13@gmail.com) feita
+  e paga pelo site em 11/11/2026, sem iPhone ("Continue enrollment on the web"). Aguardando o e-mail de ativação (até 2 dias úteis).
+
+- **Conta ativada** (Team ID `MZM2Q3HT7W`). App ID "Dois ou Dez" `app.doisoudez` registrado com Sign In with Apple e In-App Purchase.
+- **App Store Connect:** app "Dois ou Dez: Pelada e Torneio" criado (Apple ID do app `6833735719`, SKU `doisoudez`, pt-BR, só iOS).
+
 ## O que falta (fora do código)
-1. **Apple Developer**: App ID `app.doisoudez` com "Sign In with Apple"; certificado e perfil de distribuição.
+1. **Chave de API da App Store Connect** (Usuários e acesso → Integrações → Chaves, acesso "Gerente de apps") para o Codemagic; certificado e perfil o Codemagic cria.
 2. **App Store Connect**: criar o app, os produtos com os códigos acima (as assinaturas Pro e Ultimate no
    mesmo grupo, para a troca de plano) e ligar ao RevenueCat; pôr a chave em `VITE_REVENUECAT_IOS`.
 3. **Gerar o app sem Mac**: Codemagic, pelo `codemagic.yaml` (fluxo "iPhone · TestFlight"): ligar o repositório do GitHub, criar a

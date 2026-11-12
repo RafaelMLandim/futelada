@@ -22,7 +22,7 @@ workflows:
         distribution_type: app_store
         bundle_identifier: app.doisoudez
       vars:
-        APP_STORE_APPLE_ID: "" # número do app no App Store Connect (Informações do app → Apple ID), preencher quando o app existir
+        APP_STORE_APPLE_ID: "6833735719" # número do app no App Store Connect (Informações do app → Apple ID)
     scripts:
       - name: Instalar as dependências
         script: npm ci
