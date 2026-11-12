@@ -1,7 +1,7 @@
 import { useContext, useState, type ReactNode } from 'react'
 import { Avatar } from './Avatar'
 import { Logo } from './Logo'
-import { StatusDaBarra } from './navegacao'
+import { FaixaDaBateria, StatusDaBarra } from './navegacao'
 import { useSomenteLeitura } from '../utils/somenteLeitura'
 import { useBotaoDaMusica } from '../utils/musica'
 import { Icone } from './Icone'
@@ -11,7 +11,9 @@ import { Icone } from './Icone'
 export function Barra({ titulo, sub, direita }: { titulo: ReactNode; sub?: ReactNode; direita?: ReactNode }) {
   const somenteLeitura = useSomenteLeitura()
   const status = useContext(StatusDaBarra)
+  const bateriaFraca = useContext(FaixaDaBateria)
   return (
+    <>
     <header className="bar">
       <Logo fundo={false} />
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -25,6 +27,17 @@ export function Barra({ titulo, sub, direita }: { titulo: ReactNode; sub?: React
         {!somenteLeitura && <Avatar />}
       </div>
     </header>
+    {/* bateria fraca na pelada: faixa vermelha logo abaixo da barra, com o texto correndo */}
+    {bateriaFraca && !somenteLeitura && (
+      <div className="faixa-bateria" role="status">
+        <span className="faixa-bateria-texto">
+          🔋 Bateria fraca: passe o controle da pelada para alguém antes que seja tarde!!! · Clique no ícone{' '}
+          {/* o mesmo desenho do botão de compartilhar do topo (só para mostrar qual é; o toque é no botão de cima) */}
+          <span className="icone-na-faixa" aria-hidden="true"><Icone nome="compartilhar" tamanho={16} /></span>
+        </span>
+      </div>
+    )}
+    </>
   )
 }
 

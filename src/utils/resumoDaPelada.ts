@@ -108,12 +108,22 @@ function rodape(c: Ctx, y: number, altura: number, esquerda: string) {
   texto(c, 'dois-ou-dez.web.app', L - 40, meio, { tam: 32, cor: AMARELO, peso: 700, fonte: NORMAL, alinha: 'right' })
 }
 
-/** Linhas da formação (de cima para baixo) para `n` jogadores de linha. */
-function formacao(n: number): number[] {
-  if (n <= 3) return [n]
-  if (n <= 6) return [Math.ceil(n / 2), Math.floor(n / 2)]
-  const resto = n - 3
-  return [3, Math.ceil(resto / 2), Math.floor(resto / 2)].filter(Boolean)
+/**
+ * Formação pela quantidade de jogadores de linha, com o 4-3-3 como prioridade (a defesa enche primeiro, depois o
+ * meio, por último o ataque). Escrita como defesa-meio-ataque; as fileiras são desenhadas de cima (ataque) para baixo.
+ */
+const FORMACOES: Record<number, number[]> = {
+  4: [2, 2], 5: [3, 2], 6: [3, 3], 7: [3, 2, 2], 8: [3, 3, 2], 9: [4, 3, 2], 10: [4, 3, 3],
+}
+
+/** Linhas da formação (de cima para baixo) para `quantidade` jogadores de linha. */
+function formacao(quantidade: number): number[] {
+  if (quantidade <= 3) return [quantidade]
+  const conhecida = FORMACOES[quantidade]
+  if (conhecida) return [...conhecida].reverse()
+  // mais de 10: 3 no ataque e o resto dividido entre meio e defesa (a defesa fica com o que sobrar)
+  const resto = quantidade - 3
+  return [3, Math.floor(resto / 2), Math.ceil(resto / 2)]
 }
 
 /** Fundo de estádio: azul-marinho com luz de refletor no alto. */
@@ -196,11 +206,11 @@ function selecaoNoCampo(c: Ctx, sel: SelecaoParaDesenhar, topo: number, base: nu
     c.restore()
   }
 
-  // campo em perspectiva: do alto (estreito) até embaixo (largo, passando da imagem)
-  const cTopo = topo + (comTitulo ? 150 : 80)
-  const cBase = base
-  const lTopo = 700
-  const lBase = 1500
+  // campo em perspectiva leve, inteiro na imagem: do meio-campo (no alto, mais estreito) até a linha de fundo
+  const cTopo = topo + (comTitulo ? 150 : 40)
+  const cBase = base - 14
+  const lTopo = 760
+  const lBase = 1060
   const ponto = (u: number, v: number) => {
     const w = lTopo + (lBase - lTopo) * v
     return [L / 2 + (u - 0.5) * w, cTopo + (cBase - cTopo) * v] as const
@@ -215,34 +225,50 @@ function selecaoNoCampo(c: Ctx, sel: SelecaoParaDesenhar, topo: number, base: nu
     c.fillStyle = i % 2 ? VERDE_CLARO : VERDE
     c.fill()
   }
-  c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 4
-  quad(0.04, 0, 0.96, 1.2); c.stroke()
-  quad(0.27, 0.72, 0.73, 1.2); c.stroke() // área
-  quad(0.39, 0.9, 0.61, 1.2); c.stroke() // pequena área
-  c.beginPath() // meio-campo (arco no alto)
-  for (let k = 0; k <= 24; k++) {
-    const a = (Math.PI * k) / 24
-    const [x, y] = ponto(0.5 + Math.cos(a) * 0.16, Math.sin(a) * 0.22)
-    if (k) c.lineTo(x, y); else c.moveTo(x, y)
-  }
-  c.stroke()
+  // linhas com as medidas de um campo de verdade (68 m de largura; área 40,3 × 16,5 m; pequena área 18,3 × 5,5 m)
+  c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 4; c.lineJoin = 'round'
+  c.fillStyle = 'rgba(255,255,255,.8)'
+  quad(0.03, 0, 0.97, 1); c.stroke() // laterais, linha do meio-campo (no alto) e linha de fundo
+  const inicioDaArea = 0.84
+  quad(0.2, inicioDaArea, 0.8, 1); c.stroke() // área
+  quad(0.365, 0.945, 0.635, 1); c.stroke() // pequena área
+  // no chão, em perspectiva, os círculos ficam achatados: meio círculo central no alto e a meia-lua na frente da área
+  c.beginPath(); c.ellipse(L / 2, cTopo, lTopo * 0.13, 52, 0, 0, Math.PI); c.stroke()
+  c.beginPath(); c.ellipse(L / 2, cTopo, 6, 4, 0, 0, Math.PI * 2); c.fill() // centro do campo
+  const [, yDaArea] = ponto(0.5, inicioDaArea)
+  c.beginPath(); c.ellipse(L / 2, yDaArea, (lTopo + (lBase - lTopo) * inicioDaArea) * 0.11, 40, 0, Math.PI, Math.PI * 2); c.stroke()
+  const [xDaMarca, yDaMarca] = ponto(0.5, 0.895)
+  c.beginPath(); c.ellipse(xDaMarca, yDaMarca, 6, 4, 0, 0, Math.PI * 2); c.fill() // marca do pênalti
 
   // peças
   const selecao = sel.jogadores
   const linhas = formacao(selecao.length)
   // o gol sempre tem uma peça: o goleiro menos vazado ou, sem goleiro fixo, só o "G" (sem nome)
   const niveis = linhas.length + 1
-  // fileiras do alto até ~2/3 do campo (o goleiro mais embaixo, na área); nada fica atrás dos cartões
-  const ultimo = 0.8
+  // fileiras do alto até perto da área; o goleiro dentro da área, na frente do gol (a meia-lua fica à mostra)
   // time grande (muitas fileiras ou muita gente na fileira): peças menores para não encavalarem
   // tamanho das peças pelo espaço entre as fileiras (peça + plaquinha do nome cabem no passo)
-  // as fileiras ficam juntas (no máximo 0.26 do campo entre elas): com goleiro, encostadas nele;
-  // sem goleiro, centralizadas
-  const dv = niveis > 1 ? Math.min(0.26, (ultimo - 0.08) / (niveis - 1)) : 0
-  const primeira = ultimo - dv * (niveis - 1)
-  const vs = Array.from({ length: niveis }, (_, i) => (niveis <= 1 ? 0.35 : primeira + dv * i))
-  const passo = niveis > 1 ? (cBase - cTopo) * dv : 400
-  const k = Math.max(0.55, Math.min(1.3, (passo - 58) / (124 * 1.1)))
+  // as fileiras se espalham pelo campo (no máximo 0.36 do campo entre elas), a de cima perto do meio-campo
+  const disposicao = (ultimo: number) => {
+    const dv = niveis > 1 ? Math.min(0.36, (ultimo - 0.14) / (niveis - 1)) : 0
+    const primeira = ultimo - dv * (niveis - 1)
+    const vs = Array.from({ length: niveis }, (_, i) => (niveis <= 1 ? 0.35 : primeira + dv * i))
+    const passo = niveis > 1 ? (cBase - cTopo) * dv : 400
+    return { vs, k: Math.max(0.55, Math.min(1.3, (passo - 58) / (124 * 1.1))) }
+  }
+  // o goleiro fixo tem a plaquinha do nome embaixo: sobe o que for preciso para ela não passar da linha de fundo
+  const fimDaPlaquinha = (ultimo: number, k: number) => {
+    const e = (0.85 + 0.35 * ultimo) * k
+    return ponto(0.5, ultimo)[1] + 62 * e - 6 + 40 * e
+  }
+  let ultimo = 0.9
+  let { vs, k } = disposicao(ultimo)
+  for (let tentativa = 0; sel.goleiro && tentativa < 3; tentativa++) {
+    const sobra = fimDaPlaquinha(ultimo, k) - (cBase + 6)
+    if (sobra <= 0) break
+    ultimo -= sobra / (cBase - cTopo)
+    ;({ vs, k } = disposicao(ultimo))
+  }
   // x já em pixels: assim dá para limitar a fileira à largura da imagem
   const peca = (x: number, v: number, nome: string, numero: string, gols: number, corCamisa: string, corNumero: string, espaco = 999, jogadorId = '') => {
     const y = ponto(0.5, v)[1]
@@ -301,7 +327,8 @@ function selecaoNoCampo(c: Ctx, sel: SelecaoParaDesenhar, topo: number, base: nu
       const v = vs[li]
       const abertura = Math.min(0.8, 0.2 + 0.2 * (qtd - 1)) // mais gente na fileira = mais aberta
       const margem = 62 * k * (0.85 + 0.35 * v) + 70 // peça + metade da plaquinha cabem dentro da imagem
-      const largura = Math.min(abertura * (lTopo + (lBase - lTopo) * v), L - 2 * margem)
+      // a fileira pode passar um pouco das laterais (o campo é estreito): as plaquinhas não ficam apertadas
+      const largura = Math.min(abertura * 1.2 * (lTopo + (lBase - lTopo) * v), L - 2 * margem)
       const x = qtd === 1 ? L / 2 : L / 2 - largura / 2 + (largura * col) / (qtd - 1)
       const espaco = qtd > 1 ? largura / (qtd - 1) : 999 // distância até a peça vizinha
       peca(x, v, j.nome, '', j.gols, AMARELO, NAVY, espaco, j.id) // foto (ou silhueta); ao lado, os gols
@@ -385,10 +412,10 @@ async function carregarFotos(fotos: Record<string, string>): Promise<FotosDosJog
 }
 
 /** Imagem da seleção da pelada (1080×1920, 9:16): a seleção no campo e, embaixo, chuteira e luva de ouro. */
-export async function imagemDoResumo(estado: Estado, fotos: Record<string, string> = {}): Promise<Blob> {
+export async function imagemDoResumo(estado: Estado, fotos: Record<string, string> = {}, dia = dataHoje()): Promise<Blob> {
   const { c, tela, r } = await prepararTela(ALTURA)
   const fotosDosJogadores = await carregarFotos(fotos)
-  cabecalho(c, r, 'SELEÇÃO DA PELADA')
+  cabecalho(c, r, 'SELEÇÃO DA PELADA', dia.toUpperCase())
   const faixa = ALTURA - 98 - 430 // embaixo do campo: chuteira e luva de ouro
   selecaoNoCampo(c, selecaoDoDia(estado), 220, faixa, false, fotosDosJogadores)
   trofeusNaFaixa(c, premiosDoDia(estado), r, faixa, 430)
@@ -427,8 +454,14 @@ export async function imagemDoTimeDoAno(r: RelatorioDoAno, turma: string, fotos:
  */
 export async function imagemDaTabela(estado: Estado, dia: string): Promise<Blob> {
   const linhas = tabelaDaPelada(estado)
-  const alturaDaLinha = 66
   const topoDaTabela = 260
+  // mais de 20 jogadores: linhas mais baixas (54); muita gente: encolhem ainda mais para a imagem caber na tela do
+  // celular (1080 × 2340), nunca menos de 44
+  const ALTURA_DA_TELA = 2340
+  const espacoDaTabela = ALTURA_DA_TELA - topoDaTabela - 76 - 60 - 98
+  const alturaMaxima = linhas.length > 20 ? 54 : 66
+  const alturaDaLinha = Math.max(44, Math.min(alturaMaxima, Math.floor(espacoDaTabela / Math.max(1, linhas.length))))
+  const letra = Math.round(alturaDaLinha * 0.58)
   const altura = Math.max(1350, topoDaTabela + 76 + linhas.length * alturaDaLinha + 60 + 98)
   const { c, tela, r } = await prepararTela(altura)
   // fundo de gramado listrado, como no app
@@ -451,12 +484,12 @@ export async function imagemDaTabela(estado: Estado, dia: string): Promise<Blob>
   linhas.forEach((linha, indice) => {
     const y = topoDaTabela + 76 + indice * alturaDaLinha
     if (indice % 2) { c.fillStyle = '#eef2e4'; c.fillRect(esquerda, y, largura, alturaDaLinha) }
-    const base = y + alturaDaLinha / 2 + 13
-    texto(c, `${indice + 1}`, esquerda + 48, base, { tam: 36, cor: '#6b7a8c', alinha: 'center' })
-    texto(c, `${linha.goleiro ? '🧤 ' : ''}${linha.nome}`, esquerda + 96, base, { tam: 38, cor: NAVY, max: xDoNumero(0) - larguraDoNumero / 2 - esquerda - 110 })
+    const base = y + alturaDaLinha / 2 + letra * 0.34
+    texto(c, `${indice + 1}`, esquerda + 48, base, { tam: letra - 2, cor: '#6b7a8c', alinha: 'center' })
+    texto(c, `${linha.goleiro ? '🧤 ' : ''}${linha.nome}`, esquerda + 96, base, { tam: letra, cor: NAVY, max: xDoNumero(0) - larguraDoNumero / 2 - esquerda - 110 })
     const valores = [linha.jogos, linha.vitorias, linha.empates, linha.derrotas, linha.gols, linha.assistencias]
     valores.forEach((valor, coluna) => texto(c, `${valor}`, xDoNumero(coluna), base, {
-      tam: 38, alinha: 'center', cor: coluna === 1 && valor > 0 ? '#1F6B33' : coluna === 3 && valor > 0 ? '#c8352b' : valor > 0 ? NAVY : '#a9b4c2',
+      tam: letra, alinha: 'center', cor: coluna === 1 && valor > 0 ? '#1F6B33' : coluna === 3 && valor > 0 ? '#c8352b' : valor > 0 ? NAVY : '#a9b4c2',
     }))
   })
   texto(c, 'J jogos · V vitórias · E empates · D derrotas · G gols · A assistências', L / 2, topoDaTabela + 76 + linhas.length * alturaDaLinha + 44,

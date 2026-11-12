@@ -12,7 +12,7 @@ const MOTIVOS: { motivo: MotivoDaDenuncia; texto: string }[] = [
   { motivo: 'outro', texto: 'Outro motivo' },
 ]
 
-/** comEspaco: alguém do painel tem foto; quem não tem ganha um espaço vazio (nomes alinhados). */
+/** comEspaco: alguém do painel tem foto; quem não tem ganha o avatar padrão (nomes alinhados). */
 export function FotoDoJogador({ foto, conta, nome, comEspaco }: { foto: string | undefined; conta: string | undefined; nome: string; comEspaco: boolean }) {
   const [aberta, setAberta] = useState(false)
   const [denunciando, setDenunciando] = useState(false)
@@ -21,7 +21,12 @@ export function FotoDoJogador({ foto, conta, nome, comEspaco }: { foto: string |
   const [erro, setErro] = useState<string | null>(null)
   const [enviada, setEnviada] = useState(false)
   // sem foto: um espaço do mesmo tamanho, para os nomes ficarem alinhados
-  const vazio = comEspaco ? <span className="foto-do-jogador vazia" aria-hidden="true" /> : null
+  // sem foto, mas alguém do painel tem: avatar padrão (silhueta), para os nomes ficarem alinhados
+  const vazio = comEspaco ? (
+    <span className="foto-do-jogador vazia" aria-hidden="true">
+      <svg viewBox="0 0 32 32"><circle cx="16" cy="12.5" r="6" /><path d="M3 36c0-9 5.8-15 13-15s13 6 13 15z" /></svg>
+    </span>
+  ) : null
   if (!conta || (!foto && !enviada)) return vazio
 
   const fechar = () => { setAberta(false); setDenunciando(false); setMotivo(null); setErro(null); setEnviada(false) }

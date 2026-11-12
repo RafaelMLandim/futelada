@@ -51,10 +51,10 @@ service cloud.firestore {
           && (!('goleiro' in request.resource.data) || request.resource.data.goleiro == true)
           && request.resource.data.nome is string && request.resource.data.nome.size() > 0 && request.resource.data.nome.size() <= 40
           && request.resource.data.comConta is bool && request.resource.data.em is number;
-        // o organizador só marca que a pessoa já está na fila
+        // o organizador só marca que a pessoa já está na fila (ou a volta para os confirmados, se foi engano)
         allow update: if request.auth != null && request.auth.uid == organizador()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['naFila'])
-          && request.resource.data.naFila == true;
+          && request.resource.data.naFila is bool;
         allow delete: if request.auth != null && (request.auth.uid == id || request.auth.uid == organizador());
       }
     }
@@ -176,15 +176,14 @@ service cloud.firestore {
         allow update: if comConta() && (souOrganizador() || (mesarioDo(resource.data.campo) && mesarioDo(request.resource.data.campo)));
         allow delete: if comConta() && (souOrganizador() || mesarioDo(resource.data.campo));
       }
-      // Resultados: o organizador ou o mesário do campo onde o jogo estava (encerrar) ou volta (reabrir)
+      // Resultados: o mesário só cria o resultado ao encerrar o jogo que está no campo dele (o jogo em andamento
+      // existia antes de encerrar). Mudar ou apagar um resultado (corrigir depois) é só do organizador.
       match /resultados/{jogo} {
         function partida() { return /databases/$(database)/documents/torneios/$(codigo)/partidas/$(jogo); }
-        function jogoNoMeuCampo() {
-          return (exists(partida()) && mesarioDo(get(partida()).data.campo))
-            || (existsAfter(partida()) && mesarioDo(getAfter(partida()).data.campo));
-        }
+        function jogoNoMeuCampo() { return exists(partida()) && mesarioDo(get(partida()).data.campo); }
         allow read: if comConta();
-        allow write: if comConta() && (souOrganizador() || jogoNoMeuCampo());
+        allow create: if comConta() && (souOrganizador() || jogoNoMeuCampo());
+        allow update, delete: if comConta() && souOrganizador();
       }
     }
   }

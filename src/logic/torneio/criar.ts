@@ -26,6 +26,7 @@ export const regrasPadrao: RegrasTorneio = {
   finalUnica: true,
   cobrancasPenalti: 3,
   maxSubstituicoes: null,
+  reentrada: true,
   campos: 1,
   grupoPorCampo: true,
   chaveCopa: true,

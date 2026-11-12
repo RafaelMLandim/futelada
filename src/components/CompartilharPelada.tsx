@@ -1,5 +1,6 @@
 import { useContext, useState } from 'react'
 import { Compartilhamento, type LinksDaPelada } from '../store/compartilhamento'
+import { useBateriaFraca } from '../utils/bateria'
 import { compartilharTexto } from '../utils/nativo'
 import { Icone } from './Icone'
 import { QrCode } from './QrCode'
@@ -24,15 +25,17 @@ export function BotaoCompartilhar() {
   const [links, setLinks] = useState<LinksDaPelada | null>(null)
   const [tipo, setTipo] = useState<Tipo>('acompanhar')
   const [aviso, setAviso] = useState<string | null>(null)
-  if (!compartilhamento) return null
-
-  const abrir = async () => {
+  // bateria em 15% ou menos (fora da tomada): o botão fica piscando, para passar o controle a tempo
+  const bateriaFraca = useBateriaFraca()
+  const abrir = async (inicial: Tipo = bateriaFraca ? 'controle' : 'acompanhar') => {
+    if (!compartilhamento) return
     setAviso(null)
-    setTipo('acompanhar')
+    setTipo(inicial)
     const criados = await compartilhamento.criarLinks()
     if (criados) setLinks(criados)
     else setAviso('Sem conexão com a nuvem agora. Tente de novo.')
   }
+  if (!compartilhamento) return null
   const link = links?.[tipo] ?? ''
   const copiar = async () => {
     await navigator.clipboard.writeText(link).catch(() => null)
@@ -44,7 +47,7 @@ export function BotaoCompartilhar() {
 
   return (
     <>
-      <button className="ib s" aria-label="Compartilhar a pelada" onClick={() => void abrir()}>
+      <button className={'ib s' + (bateriaFraca ? ' piscando' : '')} aria-label={bateriaFraca ? 'Compartilhar a pelada (bateria fraca)' : 'Compartilhar a pelada'} onClick={() => void abrir()}>
         <Icone nome="compartilhar" />
       </button>
       {links && (

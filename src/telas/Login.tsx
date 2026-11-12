@@ -2,10 +2,14 @@ import { useState, type FormEvent } from 'react'
 import { Icone } from '../components/Icone'
 import { Logo } from '../components/Logo'
 import type { useConta } from '../store/conta'
-import { abrirLink, paginaDoSite } from '../utils/nativo'
+import { abrirLink, noIphone, paginaDoSite } from '../utils/nativo'
 
 const google = (
   <svg width="22" height="22" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+)
+
+const apple = (
+  <svg width="20" height="22" viewBox="0 0 22 24" aria-hidden="true"><path fill="currentColor" d="M15.4 1.4c0 1.1-.5 2.3-1.2 3.1-.7.9-2 1.6-3 1.6-.1 0-.2 0-.3-.1V5.6c0-1.1.6-2.3 1.2-3 .8-.9 2.1-1.6 3.2-1.7.1.2.1.3.1.5zm4.6 15.7c0 .1-.5 1.6-1.5 3.1-.9 1.3-1.9 2.7-3.4 2.7s-1.9-.9-3.6-.9c-1.7 0-2.3.9-3.7.9s-2.3-1.3-3.4-2.8C3.1 18.3 2 15.5 2 12.8c0-4.3 2.8-6.5 5.6-6.5 1.4 0 2.7.9 3.6.9.9 0 2.2-1 3.9-1 .6 0 2.9.1 4.4 2.2-.1.1-2.4 1.4-2.4 4.2 0 3.3 2.9 4.4 2.9 4.5z"/></svg>
 )
 
 /** Desenho de public/ (silhueta ou arte) pintado com uma cor (máscara CSS). */
@@ -15,7 +19,7 @@ function Silhueta({ arquivo, cor, style }: { arquivo: string; cor: string; style
 }
 
 /**
- * Primeira tela: entrar com o Google ou com e-mail e senha (o formulário abre por cima, para não cobrir o
+ * Primeira tela: entrar com o Google, com a Apple (só no iPhone) ou com e-mail e senha (o formulário abre por cima, para não cobrir o
  * desenho). Quem já entrou vai direto para o início. `conta` undefined = ainda vendo se já tem login (só a logo).
  * No fundo, o goleiro voa e o jogador chuta, os dois em pinceladas (public/arte: goleiro.png, feito a partir da
  * silhueta do troféu com rastros e respingos, e chute.png).
@@ -39,6 +43,8 @@ export function Login({ conta, onVoltar }: { conta?: ReturnType<typeof useConta>
               </div>
             </div>
             <div style={{ display: 'grid', gap: 10, width: '100%', maxWidth: 320 }}>
+              {/* no iPhone, a Apple pede o login dela com o mesmo destaque dos outros: fica em primeiro */}
+              {noIphone() && <button className="btn" style={{ textTransform: 'none', gap: 10, background: '#000', color: '#fff' }} onClick={conta.entrarComApple}>{apple} Entrar com a Apple</button>}
               <button className="btn w" style={{ textTransform: 'none', gap: 10 }} onClick={conta.entrar}>{google} Entrar com Google</button>
               <button className="btn" style={{ textTransform: 'none', gap: 10 }} onClick={() => setComEmail(true)}><Icone nome="email" /> Entrar com e-mail</button>
               {onVoltar && <button className="btn w sm" onClick={onVoltar}>Voltar</button>}

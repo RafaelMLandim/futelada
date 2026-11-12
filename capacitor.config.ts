@@ -6,10 +6,22 @@ const config: CapacitorConfig = {
   appName: 'Dois ou Dez',
   webDir: 'dist',
   plugins: {
-    // Login do Google nativo (tela de contas do próprio celular); o Firebase do site recebe o token
+    // Login nativo (tela de contas do próprio celular); o Firebase do site recebe o token.
+    // Apple: só no iPhone (a Apple exige o "Entrar com a Apple" quando o app tem login do Google)
     FirebaseAuthentication: {
       skipNativeAuth: true,
-      providers: ['google.com'],
+      providers: ['google.com', 'apple.com'],
+    },
+  },
+  experimental: {
+    ios: {
+      spm: {
+        // evita o conflito de nomes de pacote do plugin de login no Swift Package Manager
+        packageOptions: { '@capacitor-firebase/authentication': { symlink: true } },
+        // só o login do Google no iPhone (sem o SDK do Facebook, que o app não usa)
+        swiftToolsVersion: '6.1',
+        packageTraits: { '@capacitor-firebase/authentication': ['Google'] },
+      },
     },
   },
 }

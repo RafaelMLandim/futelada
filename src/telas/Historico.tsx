@@ -141,7 +141,7 @@ function Relatorio({ peladas, ano, turma }: { peladas: PeladaNoHistorico[]; ano:
       <section className="panel">
         <div className="ph">Vitórias<span className="sub">{r.peladas} {r.peladas === 1 ? 'pelada' : 'peladas'}</span></div>
         <div className="tr mut" style={{ minHeight: 30, fontSize: 12 }}>
-          <span style={{ width: 22 }} />{comFotos && <span className="foto-do-jogador vazia" />}<span className="nome" style={{ flex: 1 }}>Jogador</span>
+          <span style={{ width: 22 }} />{comFotos && <span className="foto-do-jogador espaco" aria-hidden="true" />}<span className="nome" style={{ flex: 1 }}>Jogador</span>
           <span style={col}>PEL</span><span style={col}>J</span><span style={col}>V</span>
         </div>
         {r.jogadores.map((j, i) => (
@@ -219,7 +219,7 @@ function PeladaAberta({ pelada, onFechar }: { pelada: PeladaNoHistorico; onFecha
   const dataDoArquivo = new Date(pelada.data).toISOString().slice(0, 10)
   const compartilhar = async () => {
     setGerando('selecao')
-    await fotosDaPelada(estado).then((fotos) => imagemDoResumo(estado, fotos)).then((img) => compartilharImagem(img, `dois-ou-dez-${dataDoArquivo}-selecao`)).catch(() => null)
+    await fotosDaPelada(estado).then((fotos) => imagemDoResumo(estado, fotos, pelada.dia)).then((img) => compartilharImagem(img, `dois-ou-dez-${dataDoArquivo}-selecao`)).catch(() => null)
     setGerando(null)
   }
   // a tabela com os números de todo mundo (J, V, E, D, gols e assistências), para mandar no grupo

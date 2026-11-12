@@ -11,6 +11,7 @@ import type { JogoTorneio, Torneio } from '../../types/torneio'
 import { useConfirmar } from '../../utils/confirmacao'
 import { SEM_COLETE } from '../../utils/cores'
 import { ChaveCompleta } from './ChaveCompleta'
+import { CorrigirResultado } from './CorrigirResultado'
 import { descreverOrigem, nomeDoJogo, timePorId } from './nomes'
 
 const NOME_FORMATO = { pontos: 'Pontos corridos', 'mata-mata': 'Mata-mata', grupos: 'Grupos + mata-mata' }
@@ -20,6 +21,7 @@ export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: 
   const torneio = hook.torneio!
   const confirmar = useConfirmar()
   const [chaveAberta, setChaveAberta] = useState(false) // mata-mata em tela cheia
+  const [corrigindo, setCorrigindo] = useState<string | null>(null) // jogo encerrado que o organizador está corrigindo
   const comecou = torneio.jogos.some((j) => j.resultado)
 
   if (!torneio.sorteado) {
@@ -95,6 +97,7 @@ export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: 
           </button>
         )}
         {chaveAberta && <ChaveCompleta torneio={torneio} onFechar={() => setChaveAberta(false)} />}
+        {corrigindo && <CorrigirResultado hook={hook} jogoId={corrigindo} onFechar={() => setCorrigindo(null)} />}
         {[...torneio.emAndamento].sort((a, b) => a.campo - b.campo).map((p) => (
           <button key={p.jogoId} className="panel destaque row" style={{ padding: '10px 12px', cursor: 'pointer', font: 'inherit', color: 'inherit', textAlign: 'left' }}
             onClick={() => onJogar(p.jogoId)}>
@@ -135,7 +138,7 @@ export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: 
                 })()}</div>
                 {g.map((id) => {
                   const t = timePorId(torneio, id)!
-                  return <div key={id} className="tr" style={{ fontSize: 14 }}><Camisa cor={t.cor} tamanho={18} /><span className="nome">{t.nome}</span></div>
+                  return <div key={id} className="tr" style={{ fontSize: 14 }}><Camisa cor={t.cor} uniforme={t.uniforme} tamanho={18} /><span className="nome">{t.nome}</span></div>
                 })}
               </section>
             ))}
@@ -147,6 +150,7 @@ export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: 
             {jogos.map((j) => (
               <LinhaDoJogo key={j.id} torneio={torneio} jogo={j}
                 onJogar={podemComecar.includes(j) ? () => jogar(j.id, meuCampo ?? undefined) : undefined}
+                onCorrigir={hook.souOrganizador && j.resultado ? () => setCorrigindo(j.id) : undefined}
                 emAndamento={torneio.emAndamento.some((p) => p.jogoId === j.id)} />
             ))}
           </section>
@@ -168,23 +172,25 @@ function descreverJogo(torneio: Torneio, jogoId: string) {
   return `${descreverOrigem(torneio, jogo.casa).nome} x ${descreverOrigem(torneio, jogo.fora).nome}`
 }
 
-function LinhaDoJogo({ torneio, jogo, onJogar, emAndamento }: {
-  torneio: Torneio; jogo: JogoTorneio; onJogar?: () => void; emAndamento?: boolean
+function LinhaDoJogo({ torneio, jogo, onJogar, onCorrigir, emAndamento }: {
+  torneio: Torneio; jogo: JogoTorneio; onJogar?: () => void; onCorrigir?: () => void; emAndamento?: boolean
 }) {
   const casa = descreverOrigem(torneio, jogo.casa)
   const fora = descreverOrigem(torneio, jogo.fora)
   const r = jogo.resultado
   return (
     <div className="tr" style={{ minHeight: 46, fontSize: 14 }}>
-      <Camisa cor={casa.time?.cor ?? SEM_COLETE} tamanho={18} />
+      <Camisa cor={casa.time?.cor ?? SEM_COLETE} uniforme={casa.time?.uniforme} tamanho={18} />
       <span className="nome" style={{ color: casa.time ? undefined : 'var(--mut)' }}>{casa.nome}</span>
       <span className="led num" style={{ fontSize: 18, padding: '3px 8px', boxShadow: 'none', borderWidth: 1, flex: 'none' }}>
         {r ? `${r.placar[0]}-${r.placar[1]}${r.penaltis ? ` (${r.penaltis[0]}-${r.penaltis[1]})` : ''}` : 'x'}
       </span>
       <span className="nome" style={{ textAlign: 'right', color: fora.time ? undefined : 'var(--mut)' }}>{fora.nome}</span>
-      <Camisa cor={fora.time?.cor ?? SEM_COLETE} tamanho={18} />
+      <Camisa cor={fora.time?.cor ?? SEM_COLETE} uniforme={fora.time?.uniforme} tamanho={18} />
       {onJogar && <button className="ib s" style={{ background: 'var(--amarelo)' }} aria-label={`Jogar ${casa.nome} x ${fora.nome}`} onClick={onJogar}><Icone nome="play" tamanho={18} /></button>}
       {emAndamento && <span className="tag t-ok">ao vivo</span>}
+      {/* jogo encerrado: o organizador corrige o resultado (gols, cartões, pênaltis) */}
+      {onCorrigir && <button className="ib s" aria-label={`Corrigir ${casa.nome} x ${fora.nome}`} onClick={onCorrigir}><Icone nome="editar" tamanho={18} /></button>}
     </div>
   )
 }

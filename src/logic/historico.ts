@@ -4,6 +4,7 @@
 import type { Estado } from '../types/pelada'
 import { normalizarNome } from '../utils/formatar'
 import { artilharia, goleirosMenosVazados, vitoriasPorJogador } from './estatisticas'
+import { registrarPartida } from './campo'
 
 /** Uma pelada encerrada, como fica guardada: o estado do dia só com as partidas terminadas. */
 export type PeladaGuardada = { data: number; dia: string; estado: Estado; turma?: string }
@@ -16,12 +17,25 @@ export function peladaParaGuardar(estado: Estado, data: number, dia: string): Pe
   return {
     data, dia,
     ...(estado.config.turma && { turma: estado.config.turma }),
-    estado: {
-      ...estado,
-      fila: [], filaTimes: [], emCampo: null, placar: [0, 0], gols: [], cartoes: [], subiram: [], machucados: [], foraDoJogo: [],
-      pagamentos: {}, cobranca: null,
-    },
+    estado: { ...soPartidasTerminadas(estado), pagamentos: {}, cobranca: null },
   }
+}
+
+/**
+ * Ao encerrar a pelada, a partida em andamento termina com o placar daquele momento e conta em tudo: quem está na
+ * frente vence (o outro perde); placar igual, empate para os dois. Só fica de fora a que nem começou (sem gol e com
+ * o cronômetro zerado).
+ */
+export function fecharPartidaEmAndamento(estado: Estado, cronometroComecou: boolean): Estado {
+  if (!estado.emCampo || (!cronometroComecou && estado.gols.length === 0)) return estado
+  const [golsA, golsB] = estado.placar
+  const resultado = golsA > golsB ? 'A' : golsB > golsA ? 'B' : 'empate'
+  return soPartidasTerminadas(registrarPartida(estado, resultado, []))
+}
+
+/** O dia só com as partidas terminadas (sem a partida em campo, a fila e o que é do jogo de agora). */
+export function soPartidasTerminadas(estado: Estado): Estado {
+  return { ...estado, fila: [], filaTimes: [], emCampo: null, placar: [0, 0], gols: [], cartoes: [], subiram: [], machucados: [], foraDoJogo: [] }
 }
 
 export type LinhaDaTemporada = {

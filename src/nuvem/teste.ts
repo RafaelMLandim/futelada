@@ -88,6 +88,7 @@ export function criarNuvemDeTeste(servidor: string): Nuvem {
     // usuário de teste já "logado" (passa da tela de login)
     ouvirPerfil(aoMudar) { void this.usuario().then((uid) => aoMudar({ uid, nome: nomeDeTeste(), email: null, foto: null, anonimo: false })); return () => {} },
     async entrarComGoogle() { throw new Error('Login só funciona com o Firebase') },
+    async entrarComApple() { throw new Error('Login só funciona com o Firebase') },
     async entrarComEmail() { throw new Error('Login só funciona com o Firebase') },
     async criarContaComEmail() { throw new Error('Login só funciona com o Firebase') },
     async redefinirSenha() { throw new Error('Login só funciona com o Firebase') },
@@ -98,6 +99,7 @@ export function criarNuvemDeTeste(servidor: string): Nuvem {
     async confirmarNaLista() { throw new Error('Link da pelada só funciona com o Firebase') },
     async tirarDaLista() {},
     async marcarNaFila() {},
+    async voltarParaConfirmados() {},
     async apagarLista() {},
     ouvirCarta(aoMudar) { aoMudar([]); return () => {} },
     ouvirDadosDoJogador(aoMudar) { aoMudar({ foto: null, apelido: null }); return () => {} },
@@ -108,6 +110,8 @@ export function criarNuvemDeTeste(servidor: string): Nuvem {
     async retirarDaCarta() {},
     async lancarNoCaixa() { throw new Error('Caixa só funciona com o Firebase') },
     async apagarLancamento() {},
+    ouvirCaixinhas(aoMudar) { aoMudar([]); return () => {} },
+    async salvarCaixinha() { throw new Error('Caixinha só funciona com o Firebase') },
     // histórico também neste navegador (o mais novo primeiro, como no Firebase)
     ouvirHistorico(aoMudar) { const f = () => aoMudar([...local.ler().peladas].sort((a, b) => b.data - a.data)); f(); return local.ouvir(f) },
     async guardarPelada(pelada) {

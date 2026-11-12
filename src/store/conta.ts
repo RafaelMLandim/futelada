@@ -30,6 +30,14 @@ export function useConta() {
       if (codigo !== 'auth/popup-closed-by-user' && codigo !== 'auth/cancelled-popup-request') setErro('Não deu para entrar com o Google. Tente de novo.')
     }
   }, [])
+  const entrarComApple = useCallback(async () => {
+    setErro(null)
+    try {
+      await (await obterNuvem())?.entrarComApple()
+    } catch {
+      setErro('Não deu para entrar com a Apple. Tente de novo.')
+    }
+  }, [])
   /** Entra com e-mail e senha (com `nome`: cria a conta). Devolve o erro para mostrar (null = entrou). */
   const comEmail = useCallback(async (email: string, senha: string, nome?: string): Promise<string | null> => {
     try {
@@ -60,14 +68,14 @@ export function useConta() {
     } catch (e) {
       const codigo = (e as { code?: string }).code
       if ((e as Error).message === 'cancelou' || codigo === 'auth/popup-closed-by-user' || codigo === 'auth/cancelled-popup-request') return null
-      if (codigo === 'auth/user-mismatch') return 'Escolha a mesma conta do Google que está no app.'
+      if (codigo === 'auth/user-mismatch') return 'Escolha a mesma conta que está no app.'
       if (codigo === 'auth/invalid-credential' || codigo === 'auth/wrong-password') return 'Senha errada.'
       return 'Não deu para excluir a conta. Confira a internet e tente de novo.'
     }
   }, [])
 
   const logado = !!perfil && !perfil.anonimo
-  return { perfil, logado, entrar, comEmail, redefinirSenha, sair, excluirConta, erro }
+  return { perfil, logado, entrar, entrarComApple, comEmail, redefinirSenha, sair, excluirConta, erro }
 }
 
 /** Texto do erro do login com e-mail e senha. */

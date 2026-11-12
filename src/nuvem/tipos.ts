@@ -3,6 +3,7 @@ import type { PeladaGuardada } from '../logic/historico'
 import type { PeladaDaCarta, ResumoDaCarta } from '../logic/carta'
 import type { DadosDoPlano } from '../logic/plano'
 import type { JogadorDaTurma } from '../logic/turma'
+import type { Caixinha } from '../logic/caixinha'
 import type { Cronometro } from '../types/app'
 import type { Estado, StatusPagamento } from '../types/pelada'
 
@@ -16,6 +17,8 @@ export type CobrancaNuvem = {
   recebedor: string
   confirmarAuto: boolean // "Já paguei" já vale como pago
   jogadores: { id: string; nome: string }[]
+  titulo?: string // caixinha: o nome ("Bola nova"); sem título = o campo da pelada
+  descricao?: string // caixinha: o motivo
 }
 /**
  * Pelada compartilhada (PLANO.md, seção 16): o que quem acompanha vê ao vivo. O cronômetro vai como
@@ -43,9 +46,9 @@ export type ListaDaPelada = { organizador: string; data: string }
 export type ConfirmadoNaLista = { id: string; nome: string; comConta: boolean; em: number; naFila?: boolean; goleiro?: boolean }
 
 /** Quem está usando o app: anônimo (sem login), com a conta Google ou com e-mail e senha. */
-export type Perfil = { uid: string; nome: string | null; email: string | null; foto: string | null; anonimo: boolean; comSenha?: boolean }
+export type Perfil = { uid: string; nome: string | null; email: string | null; foto: string | null; anonimo: boolean; comSenha?: boolean; comApple?: boolean }
 /** Lançamento do caixa da pelada (fica no perfil de quem fez login). */
-export type Lancamento = { id: string; tipo: 'entrada' | 'saida'; valor: number; descricao: string; data: number; turma?: string | null }
+export type Lancamento = { id: string; tipo: 'entrada' | 'saida'; valor: number; descricao: string; data: number; turma?: string | null; caixinha?: string; jogador?: string }
 /** Turma ("Pelada de terça"): os jogadores de sempre de uma pelada. */
 export type Turma = { id: string; nome: string; criadaEm: number }
 
@@ -103,6 +106,8 @@ export interface Nuvem {
   ouvirPerfil(aoMudar: (perfil: Perfil | null) => void): () => void
   /** Entra com o Google, mantendo o que já era deste celular (torneios, cobranças). */
   entrarComGoogle(): Promise<void>
+  /** Entra com a conta da Apple (só no app do iPhone), mantendo o que já era deste celular. */
+  entrarComApple(): Promise<void>
   /** Entra com e-mail e senha (conta criada no app). */
   entrarComEmail(email: string, senha: string): Promise<void>
   /** Cria a conta com nome, e-mail e senha (erro auth/email-already-in-use se o e-mail já tem conta). */
@@ -114,6 +119,9 @@ export interface Nuvem {
   ouvirCaixa(aoMudar: (lancamentos: Lancamento[]) => void, aoErro?: (e: Error) => void): () => void
   lancarNoCaixa(lancamentos: Omit<Lancamento, 'id'>[]): Promise<void>
   apagarLancamento(id: string): Promise<void>
+  /** Caixinhas do caixa ("Bola nova"), da mais nova à mais antiga; vazio sem login. */
+  ouvirCaixinhas(aoMudar: (caixinhas: Caixinha[]) => void, aoErro?: (e: Error) => void): () => void
+  salvarCaixinha(caixinha: Caixinha): Promise<void>
   /** Peladas encerradas de quem está logado (vazio sem login), da mais nova à mais antiga. */
   ouvirHistorico(aoMudar: (peladas: PeladaNoHistorico[]) => void, aoErro?: (e: Error) => void): () => void
   guardarPelada(pelada: PeladaGuardada): Promise<void>
@@ -123,6 +131,8 @@ export interface Nuvem {
   /** Acompanha o link: os dados (null = não existe) e quem confirmou, na ordem em que confirmou. */
   ouvirLista(codigo: string, aoMudar: (lista: ListaDaPelada | null, confirmados: ConfirmadoNaLista[]) => void, aoErro?: (erro: Error) => void): () => void
   confirmarNaLista(codigo: string, nome: string, comConta: boolean, goleiro: boolean): Promise<void>
+  /** O organizador tirou da fila por engano: a pessoa volta para os Confirmados. */
+  voltarParaConfirmados(codigo: string, id: string): Promise<void>
   /** A pessoa sai da lista. */
   tirarDaLista(codigo: string, id: string): Promise<void>
   /** O organizador pôs a pessoa na fila. */
@@ -150,7 +160,7 @@ export interface Nuvem {
   criarTurma(nome: string): Promise<string>
   ouvirJogadoresDaTurma(turma: string, aoMudar: (jogadores: JogadorDaTurma[]) => void): () => void
   /** Pelada encerrada: quem jogou ganha +1 de presença (e entra na turma, se for novo). */
-  registrarPeladaNaTurma(turma: string, jogadores: { id: string; nome: string }[], data: number): Promise<void>
+  registrarPeladaNaTurma(turma: string, jogadores: { id: string; nome: string; conta?: string }[], data: number): Promise<void>
   /** Primeira vez: cria a turma com os jogadores das peladas antigas e liga essas peladas a ela. */
   importarTurma(turma: string, jogadores: JogadorDaTurma[], peladas: string[]): Promise<void>
   // ---- plano pago (PLANO.md, seção 14) ----

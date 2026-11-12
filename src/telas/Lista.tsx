@@ -4,6 +4,8 @@ import {
   LADOS, parecidoNaTurma, resumoPagamentos, subiuDe, sugestoes, todosOsJogadores, type JogadorDaTurma, definirGoleiros, contaNaLista, incluirConta, ligarConta, passarParaALinha, passarParaOGol, quemFoiEmbora, voltouParaALista,
 } from '../logic'
 import { useListaDaPelada } from '../store/listaDaPelada'
+import { useFotosDasContas } from '../store/denuncias'
+import { fotoSemFundo } from '../utils/foto'
 import { primeiroNome, useDadosDoJogador } from '../store/carta'
 import { useConta } from '../store/conta'
 import { useJogadoresDaTurma } from '../store/turmas'
@@ -34,16 +36,21 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
   const somenteLeitura = useSomenteLeitura()
   // o organizador se inclui na pelada com a conta (a carta dele conta), sem precisar abrir o próprio link
   const { perfil } = useConta()
-  const { apelido } = useDadosDoJogador()
+  const { apelido, salvar: salvarDadosDoJogador } = useDadosDoJogador()
   const minhaConta = perfil && !perfil.anonimo ? perfil.uid : null
-  const meuNome = maiusculas(apelido ?? primeiroNome(perfil?.nome) ?? '') || 'EU'
   const [meIncluindo, setMeIncluindo] = useState(false)
+  // sem apelido nem nome na conta (entrou com e-mail): pergunta como quer aparecer, em vez de entrar como "EU"
+  const nomeDaConta = maiusculas(apelido ?? primeiroNome(perfil?.nome) ?? '').trim()
+  const [nomeDigitado, setNomeDigitado] = useState('')
+  const meuNome = nomeDaConta || maiusculas(nomeDigitado).trim()
   const euNaLista = !!minhaConta && contaNaLista(estado, minhaConta)
   /** Já tem alguém com o meu nome, sem conta (digitado antes): pergunta se sou eu. */
   const meuNomeSemConta = todosOsJogadores(estado).find((jogador) => !jogador.conta && normalizarNome(jogador.nome) === normalizarNome(meuNome))
   const meIncluir = (noGol: boolean, souEuJaNaLista: boolean) => {
-    if (!minhaConta) return
+    if (!minhaConta || !meuNome) return
     setMeIncluindo(false)
+    // o nome digitado vira o apelido da conta (aparece igual nas próximas peladas e na carta)
+    if (!nomeDaConta) void salvarDadosDoJogador({ apelido: meuNome }).catch(() => null)
     if (souEuJaNaLista && meuNomeSemConta && !noGol) aplicar((e) => ligarConta(e, meuNomeSemConta.id, minhaConta))
     else aplicar((e) => incluirConta(e, minhaConta, meuNome, noGol))
   }
@@ -61,6 +68,8 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
   const turma = useJogadoresDaTurma(somenteLeitura ? null : estado.config.turma)
   const naLista = todosOsJogadores(estado)
   const sugeridos = sugestoes(turma, nome, naLista)
+  // quem tem conta aparece com a foto (sem fundo) na sugestão: fica mais fácil saber quem é
+  const fotosDasSugestoes = useFotosDasContas(sugeridos.flatMap((jogador) => (jogador.conta ? [jogador.conta] : [])))
   // link da pelada: quem confirmou e ainda não chegou (o organizador toca em quem chegou)
   const link = useListaDaPelada(pelada, !somenteLeitura)
   const { confirmados } = link
@@ -96,11 +105,13 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
     setNome('')
   }
   /** Entra na fila com o id da turma (assim é a mesma pessoa de uma pelada para a outra). */
-  const entrar = (j: { id: string; nome: string }) => {
+  const entrar = (j: { id: string; nome: string; conta?: string }) => {
     // tocou na sugestão da turma, mas alguém com esse nome saiu da lista hoje: pode ser ele voltando
     const saiu = quemFoiEmbora(estado, j.nome)
     if (saiu) return voltouOuPergunta(saiu, saiu.id === j.id)
-    aplicar((e) => adicionarJogador(e, { id: j.id, nome: j.nome }))
+    // com conta (já jogou ligado a ela): entra ligado, e os números vão para a carta dele
+    if (j.conta && contaNaLista(estado, j.conta)) { setRepetido(j.nome); return }
+    aplicar((e) => adicionarJogador(e, { id: j.id, nome: j.nome, ...(j.conta && { conta: j.conta }) }))
     setNome('')
   }
   const adicionar = (ev: FormEvent) => {
@@ -186,8 +197,9 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
       {!somenteLeitura && sugeridos.length > 0 && (
         <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '8px 12px 0', scrollbarWidth: 'none' }} aria-label="Sugestões da turma">
           {sugeridos.map((j) => (
-            <button key={j.id} className="chip" style={{ flex: 'none', textTransform: 'none', background: '#fff' }} onClick={() => { entrar(j); campo.current?.focus() }}>
-              {j.nome} <span className="mut" style={{ fontSize: 12 }}>· {j.peladas}</span>
+            <button key={j.id} className="chip" style={{ flex: 'none', textTransform: 'none', background: '#fff', gap: 6, paddingLeft: j.conta && fotosDasSugestoes[j.conta] ? 4 : undefined }} onClick={() => { entrar(j); campo.current?.focus() }}>
+              {j.conta && fotosDasSugestoes[j.conta] && <img className={'foto-na-sugestao' + (fotoSemFundo(fotosDasSugestoes[j.conta]) ? ' solta' : '')} src={fotosDasSugestoes[j.conta]} alt="" />}
+              {j.nome}
             </button>
           ))}
         </div>
@@ -210,12 +222,18 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
           <section className="panel" style={{ color: 'var(--navy)', width: '100%', maxWidth: 360 }} onClick={(ev) => ev.stopPropagation()}>
             <div className="ph">Você vai jogar?</div>
             <div className="pb" style={{ display: 'grid', gap: 10 }}>
+              {!nomeDaConta && (
+                <label style={{ display: 'grid', gap: 4 }}>
+                  <span style={{ fontWeight: 600 }}>Como você quer aparecer na lista?</span>
+                  <input className="inp" autoFocus maxLength={20} placeholder="Ex.: RAFA" value={nomeDigitado} onChange={(evento) => setNomeDigitado(maiusculas(evento.target.value))} />
+                </label>
+              )}
               {meuNomeSemConta
                 ? <span style={{ fontWeight: 600, lineHeight: 1.35 }}>Já tem um <b>{meuNomeSemConta.nome}</b> na lista. É você? Assim os jogos dele vão para a sua carta.</span>
-                : <span style={{ fontWeight: 600, lineHeight: 1.35 }}>Você entra como <b>{meuNome}</b>, ligado à sua conta: os seus jogos vão para a sua carta.</span>}
+                : meuNome && <span style={{ fontWeight: 600, lineHeight: 1.35 }}>Você entra como <b>{meuNome}</b>, ligado à sua conta: os seus jogos vão para a sua carta.</span>}
               <div className="opcoes-lado-a-lado">
-                <button className="btn sm" onClick={() => meIncluir(false, true)}>{meuNomeSemConta ? 'Sou eu' : 'Na linha'}</button>
-                <button className="btn sm w" onClick={() => meIncluir(!meuNomeSemConta, false)}>{meuNomeSemConta ? 'Não, outro' : 'No gol'}</button>
+                <button className="btn sm" disabled={!meuNome} onClick={() => meIncluir(false, true)}>{meuNomeSemConta ? 'Sou eu' : 'Na linha'}</button>
+                <button className="btn sm w" disabled={!meuNome} onClick={() => meIncluir(!meuNomeSemConta, false)}>{meuNomeSemConta ? 'Não, outro' : 'No gol'}</button>
               </div>
               <button className="lnk" style={{ justifySelf: 'center' }} onClick={() => setMeIncluindo(false)}>Fechar</button>
             </div>
@@ -396,6 +414,10 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
                   <Icone nome="saiu" tamanho={20} /> Foi embora
                 </button>
               </div>
+              {/* entrou pelo link e foi engano: volta para os Confirmados (só antes da primeira partida) */}
+              {opcoes.tipo === 'jogador' && estado.vieramDoLink?.[opcoes.id] && !estado.emCampo && estado.historico.length === 0 && (
+                <button className="btn w sm" onClick={() => { setOpcoes(null); link.voltarParaConfirmados(opcoes.id) }}>↩ Voltar para os confirmados</button>
+              )}
               <button className="lnk" style={{ justifySelf: 'center' }} onClick={() => setOpcoes(null)}>Fechar</button>
             </div>
           </section>

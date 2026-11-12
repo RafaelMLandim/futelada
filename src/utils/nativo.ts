@@ -6,6 +6,9 @@ import { Capacitor } from '@capacitor/core'
 /** Rodando como app de loja (Android/iPhone)? */
 export const nativo = () => Capacitor.isNativePlatform()
 
+/** Rodando como app de loja no iPhone? (lá aparece o "Entrar com a Apple", que a Apple exige) */
+export const noIphone = () => Capacitor.getPlatform() === 'ios'
+
 /** Endereço do site: no app, o endereço interno ("localhost") não serve para mandar no grupo. */
 export const enderecoDoSite = () => (nativo() ? 'https://dois-ou-dez.web.app' : location.origin)
 

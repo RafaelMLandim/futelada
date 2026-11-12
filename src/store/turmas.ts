@@ -45,7 +45,8 @@ export function useJogadoresDaTurma(turma: string | null): JogadorDaTurma[] {
 export async function registrarNaTurma(estado: Estado, data: number) {
   const turma = estado.config.turma
   if (!turma) return
-  const jogadores = jogaramNaPelada(estado).map(({ id, nome }) => ({ id, nome }))
+  // quem jogou ligado à conta fica com ela na turma: na próxima pelada, a sugestão já entra ligada (pontua na carta)
+  const jogadores = jogaramNaPelada(estado).map(({ id, nome, conta }) => ({ id, nome, ...(conta && { conta }) }))
   if (jogadores.length) await (await obterNuvem())?.registrarPeladaNaTurma(turma, jogadores, data)
 }
 

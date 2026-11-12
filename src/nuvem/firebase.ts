@@ -3,11 +3,11 @@
 
 import { initializeApp } from 'firebase/app'
 import {
-  EmailAuthProvider, GoogleAuthProvider, connectAuthEmulator, createUserWithEmailAndPassword, deleteUser, getAuth, getRedirectResult, linkWithCredential, linkWithRedirect, onIdTokenChanged,
+  EmailAuthProvider, GoogleAuthProvider, OAuthProvider, connectAuthEmulator, createUserWithEmailAndPassword, deleteUser, getAuth, getRedirectResult, linkWithCredential, linkWithRedirect, onIdTokenChanged,
   reauthenticateWithCredential, reauthenticateWithPopup, sendPasswordResetEmail, signInAnonymously, updateProfile, signInWithCredential, signInWithEmailAndPassword, signInWithRedirect, signOut, type User,
 } from 'firebase/auth'
 import {
-  addDoc, collection, connectFirestoreEmulator, deleteDoc, deleteField, doc, getDoc, getDocs, increment, initializeFirestore, onSnapshot, orderBy, persistentLocalCache, query,
+  addDoc, collection, connectFirestoreEmulator, deleteDoc, deleteField, doc, getDoc, getDocs, increment, initializeFirestore, memoryLocalCache, onSnapshot, orderBy, persistentLocalCache, query,
   persistentMultipleTabManager, setDoc, updateDoc, where, writeBatch, type DocumentReference,
 } from 'firebase/firestore'
 import type { DadosNuvem, Operacao } from '../logic/torneio'
@@ -19,6 +19,7 @@ import { CONTADORES_ZERADOS, PLANO_VAZIO, type Contadores, type DadosDoPlano, ty
 import type { PeladaDaCarta } from '../logic/carta'
 import type { JogadorDaTurma } from '../logic/turma'
 import type { AvisoPagamento, CobrancaNuvem, ConfirmadoNaLista, Lancamento, ListaDaPelada, MesarioNoCampo, Nuvem, PeladaCompartilhada, PeladaNoHistorico, Perfil, Turma } from './tipos'
+import type { Caixinha } from '../logic/caixinha'
 
 export const configFirebase = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -42,6 +43,30 @@ async function tokenDoCelular(): Promise<{ token: string } | 'fechou'> {
   }
 }
 
+/** Resposta do "Entrar com a Apple" (só no iPhone). O nome só vem no primeiro login com a Apple. */
+type RespostaDaApple = { token: string; nonce: string; nome: string | null; codigoDeAutorizacao: string | null }
+
+/**
+ * Login com a Apple pela tela do próprio iPhone. Com `tambemNoCelular`, entra também no Firebase do celular:
+ * só assim dá para cancelar a autorização na Apple ao excluir a conta (a Apple exige).
+ */
+async function tokenDaApple(tambemNoCelular = false): Promise<RespostaDaApple | 'fechou'> {
+  const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication')
+  try {
+    const resposta = await FirebaseAuthentication.signInWithApple({ skipNativeAuth: !tambemNoCelular })
+    const credencial = resposta.credential
+    if (!credencial?.idToken || !credencial.nonce) return 'fechou'
+    return { token: credencial.idToken, nonce: credencial.nonce, nome: resposta.user?.displayName ?? null, codigoDeAutorizacao: credencial.authorizationCode ?? null }
+  } catch (erro) {
+    // fechou a tela da Apple sem entrar (erro 1001 da Apple)
+    if (/cancel|1001/i.test(String((erro as Error).message))) return 'fechou'
+    throw erro
+  }
+}
+
+/** Credencial do Firebase a partir da resposta da Apple. */
+const credencialDaApple = (resposta: RespostaDaApple) => new OAuthProvider('apple.com').credential({ idToken: resposta.token, rawNonce: resposta.nonce })
+
 /**
  * Só no desenvolvimento: abrir o app com ?emulador liga os emuladores do Firebase neste navegador
  * (login e banco de mentira, com as regras de verdade; ?emulador=0 desliga). Rodar: npm run emuladores
@@ -63,7 +88,10 @@ const puro = <T,>(v: T): T => JSON.parse(JSON.stringify(v))
 
 export function criarNuvemFirebase(): Nuvem {
   const app = initializeApp(configFirebase)
-  const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) })
+  // Quem só abriu um link do grupo (lista, pagar, acompanhar) não precisa guardar nada no aparelho: sem o cache no
+  // armazenamento do navegador, que é o que falha no iPhone (aba privada, navegador de dentro do WhatsApp/Instagram)
+  const paginaDoLink = !nativo() && /[?&](lista|pagar|ver|controle)=/.test(location.search)
+  const db = initializeFirestore(app, { localCache: paginaDoLink ? memoryLocalCache() : persistentLocalCache({ tabManager: persistentMultipleTabManager() }) })
   const auth = getAuth(app)
   if (usarEmulador()) {
     connectAuthEmulator(auth, `http://${location.hostname}:9099`, { disableWarnings: true })
@@ -92,13 +120,16 @@ export function criarNuvemFirebase(): Nuvem {
   const perfil = (u: User): Perfil => {
     // quem era anônimo e virou conta Google tem o nome e a foto só nos dados do Google
     const google = u.providerData.find((p) => p.providerId === 'google.com')
+    const apple = u.providerData.find((p) => p.providerId === 'apple.com')
     return {
-      uid: u.uid, nome: u.displayName ?? google?.displayName ?? null, email: u.email ?? google?.email ?? null,
+      uid: u.uid, nome: u.displayName ?? google?.displayName ?? apple?.displayName ?? null, email: u.email ?? google?.email ?? apple?.email ?? null,
       foto: u.photoURL ?? google?.photoURL ?? null, anonimo: u.isAnonymous,
-      comSenha: !google && u.providerData.some((p) => p.providerId === 'password'),
+      comSenha: !google && !apple && u.providerData.some((p) => p.providerId === 'password'),
+      comApple: !google && !!apple,
     }
   }
   const caixa = (dono: string) => collection(db, 'usuarios', dono, 'caixa')
+  const caixinhas = (dono: string) => collection(db, 'usuarios', dono, 'caixinhas')
   const historico = (dono: string) => collection(db, 'usuarios', dono, 'peladas')
   const turmas = (dono: string) => collection(db, 'usuarios', dono, 'turmas')
   const peladasDaCarta = (dono: string) => collection(db, 'cartas', dono, 'peladas')
@@ -121,6 +152,19 @@ export function criarNuvemFirebase(): Nuvem {
         (s) => aoMudar(s.docs.map((d) => ({ ...(d.data() as object), id: d.id }) as T)), (e) => aoErro?.(e))
     })
     return () => { pararAuth(); parar() }
+  }
+
+  /** Entra com a conta do Google ou da Apple, mantendo o que já era deste celular. */
+  async function entrarComCredencial(credencial: ReturnType<typeof GoogleAuthProvider.credential>) {
+    const atual = auth.currentUser
+    if (!atual?.isAnonymous) { await signInWithCredential(auth, credencial); return }
+    try {
+      await linkWithCredential(atual, credencial) // o anônimo vira a conta: mesmo uid, nada se perde
+    } catch (e) {
+      // essa conta já existe (entrou em outro celular): troca para ela
+      if ((e as { code?: string }).code === 'auth/credential-already-in-use') await signInWithCredential(auth, credencial)
+      else throw e
+    }
   }
 
   /** Apaga em lotes (um lote do Firestore aceita até 500). */
@@ -324,6 +368,10 @@ export function criarNuvemFirebase(): Nuvem {
       await logado
       await updateDoc(doc(confirmados(codigo), id), { naFila: true })
     },
+    async voltarParaConfirmados(codigo, id) {
+      await logado
+      await updateDoc(doc(confirmados(codigo), id), { naFila: false })
+    },
     async apagarLista(codigo) {
       await logado
       for (const documento of (await getDocs(confirmados(codigo))).docs) await deleteDoc(documento.ref)
@@ -347,14 +395,18 @@ export function criarNuvemFirebase(): Nuvem {
         await (atual?.isAnonymous ? linkWithRedirect(atual, google) : signInWithRedirect(auth, google))
         return
       }
-      const credencial = GoogleAuthProvider.credential(r.token)
-      if (!atual?.isAnonymous) { await signInWithCredential(auth, credencial); return }
-      try {
-        await linkWithCredential(atual, credencial) // o anônimo vira a conta Google: mesmo uid, nada se perde
-      } catch (e) {
-        // essa conta Google já existe (entrou em outro celular): troca para ela
-        if ((e as { code?: string }).code === 'auth/credential-already-in-use') await signInWithCredential(auth, credencial)
-        else throw e
+      await entrarComCredencial(GoogleAuthProvider.credential(r.token))
+    },
+    async entrarComApple() {
+      await logado
+      const resposta = await tokenDaApple()
+      if (resposta === 'fechou') return
+      await entrarComCredencial(credencialDaApple(resposta))
+      // a Apple só manda o nome no primeiro login: guarda na conta (sem ele, o app pergunta como a pessoa quer aparecer)
+      const usuario = auth.currentUser
+      if (usuario && !usuario.displayName && resposta.nome) {
+        await updateProfile(usuario, { displayName: resposta.nome })
+        await usuario.getIdToken(true) // avisa a tela do nome novo
       }
     },
     async entrarComEmail(email, senha) {
@@ -423,6 +475,14 @@ export function criarNuvemFirebase(): Nuvem {
       const dono = await uid()
       await deleteDoc(doc(caixa(dono), id))
     },
+    ouvirCaixinhas(aoMudar, aoErro) {
+      return ouvirDoPerfil<Caixinha>(caixinhas, aoMudar, aoErro)
+    },
+    async salvarCaixinha(caixinha) {
+      const dono = await uid()
+      const { id, ...dados } = caixinha
+      await setDoc(doc(caixinhas(dono), id), puro(dados))
+    },
     ouvirHistorico(aoMudar, aoErro) {
       return ouvirDoPerfil<PeladaNoHistorico>(historico, aoMudar, aoErro)
     },
@@ -467,7 +527,7 @@ export function criarNuvemFirebase(): Nuvem {
       const dono = await uid()
       const lote = writeBatch(db)
       for (const j of jogadores) {
-        lote.set(doc(jogadoresDaTurma(dono, turma), j.id), { nome: j.nome, peladas: increment(1), ultimaPelada: data }, { merge: true })
+        lote.set(doc(jogadoresDaTurma(dono, turma), j.id), { nome: j.nome, peladas: increment(1), ultimaPelada: data, ...(j.conta && { conta: j.conta }) }, { merge: true })
       }
       void lote.commit().catch((e) => console.error('Não deu para atualizar a turma', e))
     },
@@ -541,8 +601,15 @@ export function criarNuvemFirebase(): Nuvem {
       const u = auth.currentUser
       if (!u || u.isAnonymous) return
       // o Google só deixa apagar a conta com login recente: confirma a conta antes de apagar qualquer dado
+      let codigoDaApple: string | null = null
       if (senha !== undefined) await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email ?? '', senha))
-      else if (Date.now() - Date.parse(u.metadata.lastSignInTime ?? '') > 4 * 60_000) {
+      else if (perfil(u).comApple) {
+        // a Apple sempre confirma a conta: o código que ela devolve serve para cancelar a autorização no fim
+        const resposta = await tokenDaApple(true)
+        if (resposta === 'fechou') throw new Error('cancelou')
+        await reauthenticateWithCredential(u, credencialDaApple(resposta))
+        codigoDaApple = resposta.codigoDeAutorizacao
+      } else if (Date.now() - Date.parse(u.metadata.lastSignInTime ?? '') > 4 * 60_000) {
         const r = nativo() ? await tokenDoCelular() : await entrarComUmToque()
         if (r === 'fechou') throw new Error('cancelou')
         if (r === 'indisponivel') await reauthenticateWithPopup(u, new GoogleAuthProvider())
@@ -550,7 +617,7 @@ export function criarNuvemFirebase(): Nuvem {
       }
       const dono = u.uid
       const docs = async (q: Parameters<typeof getDocs>[0]) => (await getDocs(q)).docs.map((d) => d.ref as DocumentReference)
-      const refs: DocumentReference[] = [...await docs(caixa(dono)), ...await docs(historico(dono)), doc(db, 'perfis', dono)]
+      const refs: DocumentReference[] = [...await docs(caixa(dono)), ...await docs(caixinhas(dono)), ...await docs(historico(dono)), doc(db, 'perfis', dono)]
       for (const t of await docs(turmas(dono))) refs.push(...await docs(jogadoresDaTurma(dono, t.id)), t)
       for (const t of await docs(query(collection(db, 'torneios'), where('nuvem.organizador', '==', dono)))) {
         for (const sub of [partidas(t.id), resultados(t.id), campos(t.id)]) refs.push(...await docs(sub))
@@ -560,6 +627,10 @@ export function criarNuvemFirebase(): Nuvem {
       for (const lista of await docs(query(collection(db, 'listas'), where('organizador', '==', dono)))) refs.push(...await docs(confirmados(lista.id)), lista)
       await apagarTudo(refs)
       // os contadores de uso (sem nome nem e-mail) e o plano comprado ficam (PLANO.md, seção 14)
+      if (codigoDaApple) {
+        // tira o Dois ou Dez da lista de apps que usam a conta da Apple (a Apple exige); se falhar, a exclusão continua
+        await import('@capacitor-firebase/authentication').then(({ FirebaseAuthentication }) => FirebaseAuthentication.revokeAccessToken({ token: codigoDaApple })).catch(() => null)
+      }
       await deleteUser(u)
       if (nativo()) await import('@capacitor-firebase/authentication').then(({ FirebaseAuthentication }) => FirebaseAuthentication.signOut()).catch(() => null)
       await signInAnonymously(auth)

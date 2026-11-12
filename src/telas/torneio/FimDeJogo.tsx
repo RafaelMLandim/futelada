@@ -61,7 +61,7 @@ export function FimDeJogo({ hook, jogoId, times, onFechar, onEncerrado, onAcresc
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {LADOS.map((l) => (
             <div key={l} style={{ border: `3px solid ${times[l].cor}`, borderRadius: 6, padding: 8 }}>
-              <div className="row num" style={{ gap: 6, fontSize: 16 }}><Camisa cor={times[l].cor} tamanho={18} />{times[l].nome}</div>
+              <div className="row num" style={{ gap: 6, fontSize: 16 }}><Camisa cor={times[l].cor} uniforme={times[l].uniforme} tamanho={18} />{times[l].nome}</div>
               <div className="row" style={{ gap: 4, flexWrap: 'wrap', marginTop: 6 }} aria-label={`Cobranças do ${times[l].nome}`}>
                 {penaltis.cobrancas.filter((c) => c.lado === l).map((c, i) => (
                   <span key={i} title={c.nome ?? ''} style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid var(--borda)', background: c.gol ? 'var(--verde)' : 'var(--vermelho)' }} />

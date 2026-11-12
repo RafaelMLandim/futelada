@@ -12,7 +12,7 @@ import { EscolherAcrescimos } from '../../components/EscolherAcrescimos'
 import {
   acrescimosNaPartida, cancelarPartida, cartaoNaPartida, comecarIntervalo, cronoDaPartida, fimDoTempoDaPartida, decorridoNoPeriodo, duracaoDoPeriodo, nomeDoPeriodo,
   passeNaPartida, periodoDaPartida, placarDecisivo, proximoTempo, expulsosNaPartida, goleiroNaPartida, golNaPartida, golVazioPorExpulsao, irParaOGol, jogoPorId, partidaDoJogo, removerGolDaPartida,
-  substituirNaPartida, timesDoJogo, ultimoPeriodo,
+  substituirNaPartida, timesDoJogo, ultimoPeriodo, saiuDoJogo, removerCartaoDaPartida, substituicaoParaDesfazer, desfazerSubstituicao, siglaDoTime,
 } from '../../logic/torneio'
 import type { TorneioHook } from '../../store/torneio'
 import type { CorCartao, Jogador, Lado } from '../../types/pelada'
@@ -177,6 +177,23 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
     titulo: 'Abandonar o jogo?', mensagem: 'O jogo volta para a lista sem resultado. Gols e cartões deste jogo serão descartados.',
     botao: 'Abandonar', perigo: true, aoConfirmar: () => { hook.aplicar((x) => cancelarPartida(x, jogoId)); onTerminou() },
   })
+  const desfazerTroca = (lado: Lado) => {
+    const troca = substituicaoParaDesfazer(p, lado)
+    if (!troca) return
+    confirmar({
+      titulo: 'Desfazer a substituição?',
+      mensagem: `${jogador(times[lado], troca.entraId).nome} volta para o banco e ${jogador(times[lado], troca.saiId).nome} volta para o jogo. A substituição deixa de contar.`,
+      botao: 'Desfazer', aoConfirmar: () => { setEscolha(null); hook.aplicar((x) => desfazerSubstituicao(x, jogoId, lado)) },
+    })
+  }
+  const tirarCartao = (indice: number) => {
+    setEscolha(null)
+    hook.aplicar((x) => removerCartaoDaPartida(x, jogoId, indice))
+  }
+  /** Quem está no banco pode entrar? Sem reentrada (regra do torneio), quem já jogou e saiu não volta. */
+  const podeVoltar = (lado: Lado, id: string) => regras.reentrada !== false || !saiuDoJogo(p.escalacao, lado, id)
+  // "desfazer" só quando quem saiu não pode voltar: com a volta permitida, é só substituir de novo
+  const podeDesfazer = (lado: Lado) => regras.reentrada === false && !!substituicaoParaDesfazer(p, lado)
   const limite = regras.maxSubstituicoes
   const podeSubstituir = (lado: Lado) => limite === null || p.escalacao.substituicoes[lado] < limite
 
@@ -185,9 +202,13 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
     return (
       <div key={lado} style={lado === 'A' ? { borderRight: '2px solid #e3e8d6' } : undefined}>
         <div className="num" style={{ padding: '6px 10px', background: time.cor, color: textoSobre(time.cor), textTransform: 'uppercase' }}>
-          <div style={{ fontSize: 17, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{time.nome}</div>
-          <div style={{ fontSize: 12, letterSpacing: 1, opacity: .85 }}>
+          <div style={{ fontSize: 17, lineHeight: 1.05, overflowWrap: 'anywhere' }}>{time.nome}</div>
+          <div className="row" style={{ fontSize: 12, letterSpacing: 1, opacity: .85, gap: 6 }}>
             Subst. {p.escalacao.substituicoes[lado]}{limite !== null ? `/${limite}` : ''}
+            {editavel && podeDesfazer(lado) && (
+              <button className="lnk" style={{ color: 'inherit', padding: 0, fontSize: 12, letterSpacing: 1, textDecoration: 'underline' }}
+                onClick={() => desfazerTroca(lado)}>desfazer</button>
+            )}
           </div>
         </div>
         {/* o goleiro é um jogador em campo como os outros; gol vazio (suspenso ou expulso): escolher quem vai */}
@@ -217,6 +238,14 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
         )}
         {p.escalacao.banco[lado].map((id) => {
           const j = jogador(time, id)
+          // sem reentrada: quem saiu fica no banco sem poder voltar
+          if (!podeVoltar(lado, id)) {
+            return (
+              <div key={id} className="tr" style={{ minHeight: 36, fontSize: 13, color: 'var(--mut)' }}>
+                <span className="no" style={{ background: '#9aa4ae' }}>R</span><span className="nome">{j.nome}</span><span className="tag">saiu</span>
+              </div>
+            )
+          }
           return (
             <button key={id} className="tr linha-jogador" style={{ minHeight: 36, fontSize: 13, color: 'var(--mut)' }} disabled={!editavel}
               aria-label={`Colocar ${j.nome} em campo`} onClick={() => setEscolha({ tipo: 'entrar', lado, jogador: j })}>
@@ -238,7 +267,7 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
     <div className="scr" key={p.jogoId}>
       <Barra titulo={`${times.A.nome} x ${times.B.nome}`} sub={`${nomeDoJogo(t, jogo)}${regras.campos > 1 ? ` · Campo ${p.campo}` : ''}`} />
       <div className="conteudo" style={{ gap: 10 }}>
-        <PlacarLed lados={{ A: { titulo: times.A.nome, cor: times.A.cor }, B: { titulo: times.B.nome, cor: times.B.cor } }}
+        <PlacarLed lados={{ A: { titulo: times.A.nome, cor: times.A.cor, uniforme: times.A.uniforme }, B: { titulo: times.B.nome, cor: times.B.cor, uniforme: times.B.uniforme } }}
           placar={p.placar} tempoMin={duracao} gols={regras.gols} decorrido={decorrido} rodando={p.crono.rodando} fim={fim || fimDoTempo}
           acrescimoMin={p.crono.acrescimoMin} periodo={noIntervalo ? 'Intervalo' : periodo || undefined}
           textoFim={fimDoTempo ? `FIM DO ${periodo.toUpperCase()}` : undefined} />
@@ -285,8 +314,10 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
         )}
         {editavel && <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8 }}>
           {LADOS.map((lado) => (
-            <button key={lado} className="btn w sm" style={{ textTransform: 'none' }} onClick={() => setEscolha({ tipo: 'gol', lado })}>
-              <Camisa cor={times[lado].cor} tamanho={20} /> Gol
+            <button key={lado} className="btn w sm" style={{ textTransform: 'none', minWidth: 0 }} onClick={() => setEscolha({ tipo: 'gol', lado })}>
+              <Camisa cor={times[lado].cor} uniforme={times[lado].uniforme} tamanho={20} />
+              {/* a sigla do time no botão: com cores parecidas (a cor pode repetir), é ela que não deixa errar o lado */}
+              <span style={{ whiteSpace: 'nowrap' }}>Gol {siglaDoTime(times[lado])}</span>
             </button>
           ))}
           <button className="ib" style={{ width: 46, height: 46, boxShadow: '0 3px 0 var(--borda)', background: p.crono.rodando ? '#fff' : 'var(--amarelo)' }}
@@ -350,10 +381,24 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
             {opcao('Cartão vermelho · expulso', <Cartao cor="vermelho" tamanho={20} />, () => darCartao(lado, j, 'vermelho'))}
             {opcao(`Cartão azul · ${regras.minutosAzul} min fora`, <Cartao cor="azul" tamanho={20} />, () => darCartao(lado, j, 'azul'))}
             {!fora && goleiros[lado]?.id !== j.id && opcao('Ir para o gol · vira o goleiro', <span style={{ fontSize: 20 }}>🧤</span>, () => irAoGol(lado, j.id))}
+            {/* cartão dado por engano: tira (o 2º amarelo leva junto o vermelho dele; sem o vermelho, volta ao jogo) */}
+            {p.cartoes.map((cartao, indice) => {
+              if (cartao.jogadorId !== j.id || cartao.porDoisAmarelos) return null
+              // com dois amarelos, só aparece "tirar o 2º" (tirar qualquer um dos dois dá no mesmo)
+              const temDoisAmarelos = p.cartoes.some((outro) => outro.porDoisAmarelos && outro.jogadorId === j.id)
+              const gerouVermelho = p.cartoes[indice + 1]?.porDoisAmarelos && p.cartoes[indice + 1].jogadorId === j.id
+              if (cartao.cor === 'amarelo' && temDoisAmarelos && !gerouVermelho) return null
+              const rotulo = cartao.cor === 'amarelo'
+                ? (gerouVermelho ? 'Tirar o 2º amarelo · volta ao jogo' : 'Tirar o cartão amarelo')
+                : cartao.cor === 'vermelho' ? 'Tirar o vermelho · volta ao jogo' : 'Tirar o cartão azul'
+              return <span key={indice} style={{ display: 'contents' }}>{opcao(rotulo, <Cartao cor={cartao.cor} tamanho={20} />, () => tirarCartao(indice))}</span>
+            })}
+            {podeDesfazer(lado) && substituicaoParaDesfazer(p, lado)?.entraId === j.id && opcao(`Desfazer a substituição · volta ${jogador(times[lado], substituicaoParaDesfazer(p, lado)!.saiId).nome}`,
+              <Icone nome="desfazer" />, () => desfazerTroca(lado))}
             {fora
               ? <div className="mut" style={{ gridColumn: '1 / -1' }}>Expulso não pode ser substituído.</div>
-              : p.escalacao.banco[lado].length === 0
-                ? <div className="mut" style={{ gridColumn: '1 / -1' }}>Sem reservas no banco.</div>
+              : !p.escalacao.banco[lado].some((id) => podeVoltar(lado, id))
+                ? <div className="mut" style={{ gridColumn: '1 / -1' }}>Sem reservas no banco que possam entrar.</div>
                 : podeSubstituir(lado)
                   ? opcao('Substituir', <Icone nome="times" />, () => setEscolha({ tipo: 'sair', lado, jogador: j }), 'btn sm')
                   : <div className="mut" style={{ gridColumn: '1 / -1' }}>Limite de substituições atingido.</div>}
@@ -363,7 +408,7 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
 
       {escolha?.tipo === 'sair' && (
         <Escolher titulo={`Sai ${escolha.jogador.nome}`} pergunta="Quem entra?" cor={times[escolha.lado].cor} onFechar={() => setEscolha(null)}>
-          {p.escalacao.banco[escolha.lado].map((id) => {
+          {p.escalacao.banco[escolha.lado].filter((id) => podeVoltar(escolha.lado, id)).map((id) => {
             const j = jogador(times[escolha.lado], id)
             return <button key={id} className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }} onClick={() => trocar(escolha.lado, escolha.jogador.id, id)}>{j.nome}</button>
           })}
@@ -400,8 +445,8 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
             {rotulo(porExpulsao ? 'Da linha · o goleiro foi expulso, o time fica com um a menos' : 'Da linha')}
             {p.escalacao.emCampo[lado].filter((id) => !expulsos.has(id)).map(botao)}
             {/* goleiro suspenso: o reserva entra no gol sem contar substituição; expulso, ninguém entra no lugar */}
-            {!porExpulsao && p.escalacao.banco[lado].length > 0 && rotulo('Do banco')}
-            {!porExpulsao && p.escalacao.banco[lado].map(botao)}
+            {!porExpulsao && p.escalacao.banco[lado].some((id) => podeVoltar(lado, id)) && rotulo('Do banco')}
+            {!porExpulsao && p.escalacao.banco[lado].filter((id) => podeVoltar(lado, id)).map(botao)}
           </Escolher>
         )
       })()}

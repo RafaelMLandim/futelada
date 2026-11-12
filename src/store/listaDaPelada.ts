@@ -2,7 +2,7 @@
 // organizador toca em quem chegou para pôr na fila. O link nunca mexe na fila sozinho.
 
 import { useCallback, useEffect, useState } from 'react'
-import { adicionarJogador, chegouGoleiro, contaNaLista, ligarConta, nomeSemRepetir, novoJogador, todosOsJogadores } from '../logic'
+import { adicionarJogador, chegouGoleiro, contaNaLista, ligarConta, nomeSemRepetir, novoJogador, removerJogador, todosOsJogadores } from '../logic'
 import { novoCodigo } from '../logic/torneio'
 import { obterNuvem } from '../nuvem'
 import type { ConfirmadoNaLista } from '../nuvem/tipos'
@@ -61,7 +61,9 @@ export function useListaDaPelada(pelada: Pelada, ativa: boolean) {
     aplicar((estado) => {
       if (jaEsta(estado)) return estado
       const nome = nomeSemRepetir(maiusculas(comoAparece ?? confirmado.nome), todosOsJogadores(estado).map((jogador) => jogador.nome))
-      return adicionarJogador(estado, { ...novoJogador(nome), ...(confirmado.comConta && { conta: confirmado.id }) })
+      const jogador = { ...novoJogador(nome), ...(confirmado.comConta && { conta: confirmado.id }) }
+      // guarda de onde veio: se foi engano, volta para os Confirmados (antes da primeira partida)
+      return { ...adicionarJogador(estado, jogador), vieramDoLink: { ...estado.vieramDoLink, [jogador.id]: confirmado.id } }
     })
     marcarNaFila(confirmado.id)
   }, [aplicar, marcarNaFila])
@@ -72,5 +74,18 @@ export function useListaDaPelada(pelada: Pelada, ativa: boolean) {
     marcarNaFila(confirmado.id)
   }, [aplicar, marcarNaFila])
 
-  return { codigo, confirmados, criarLink, chegou, mesmaPessoa }
+  /** Tocou em "Chegou" por engano: sai da fila e volta para os Confirmados (no link, a pessoa volta a "confirmado"). */
+  const voltarParaConfirmados = useCallback((jogadorId: string) => {
+    const confirmadoId = app.estado.vieramDoLink?.[jogadorId]
+    if (!confirmadoId) return
+    aplicar((estado) => {
+      const { [jogadorId]: _saiu, ...resto } = estado.vieramDoLink ?? {}
+      const semEle = removerJogador(estado, jogadorId)
+      // não é "foi embora": não guarda para o "Voltou?"
+      return { ...semEle, foramEmbora: (semEle.foramEmbora ?? []).filter((jogador) => jogador.id !== jogadorId), vieramDoLink: resto }
+    })
+    if (codigo) void obterNuvem().then((nuvem) => nuvem?.voltarParaConfirmados(codigo, confirmadoId)).catch(() => null)
+  }, [aplicar, app.estado.vieramDoLink, codigo])
+
+  return { codigo, confirmados, criarLink, chegou, mesmaPessoa, voltarParaConfirmados }
 }

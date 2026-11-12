@@ -27,19 +27,31 @@ export function EntrarNaLista({ codigo }: { codigo: string }) {
   const [erro, setErro] = useState<string | null>(null)
   const [chamadaFechada, setChamadaFechada] = useState(false)
   const [noGol, setNoGol] = useState(false) // vai como goleiro fixo
+  // erro ao ler a lista (não é "link não encontrado"): mostra o código para dar para saber o motivo
+  const [erroAoAbrir, setErroAoAbrir] = useState<string | null>(null)
+  const [tentativa, setTentativa] = useState(0)
 
   useEffect(() => {
     let parar = () => {}
     let vivo = true
-    void obterNuvem().then(async (nuvem) => {
+    let tentouDeNovo = false
+    const falhou = (erro: unknown) => {
+      if (!vivo) return
+      parar()
+      // tenta mais uma vez sozinho antes de mostrar o erro
+      if (!tentouDeNovo) { tentouDeNovo = true; window.setTimeout(abrir, 1500); return }
+      setErroAoAbrir((erro as { code?: string })?.code ?? String((erro as Error)?.message ?? erro))
+    }
+    const abrir = () => void obterNuvem().then(async (nuvem) => {
       if (!nuvem) return setLista(null)
       const id = await nuvem.usuario()
       if (!vivo) return
       setEu(id)
-      parar = nuvem.ouvirLista(codigo, (dados, lista) => { setLista(dados); setConfirmados(lista) }, () => setLista(null))
-    })
+      parar = nuvem.ouvirLista(codigo, (dados, lista) => { setErroAoAbrir(null); setLista(dados); setConfirmados(lista) }, falhou)
+    }).catch(falhou)
+    abrir()
     return () => { vivo = false; parar() }
-  }, [codigo, conta.perfil?.uid])
+  }, [codigo, conta.perfil?.uid, tentativa])
 
   const confirmar = async (quem: string, comConta: boolean) => {
     setErro(null)
@@ -64,9 +76,20 @@ export function EntrarNaLista({ codigo }: { codigo: string }) {
     <div className="scr" style={{ height: 'var(--altura-tela)' }}>
       <Barra titulo="Lista da pelada" sub={lista ? lista.data : ''} />
       <div className="conteudo">
-        {lista === undefined && <div className="vazio">Carregando…</div>}
-        {lista === null && <div className="vazio">Link não encontrado. Peça um novo para quem organiza a pelada.</div>}
-        {lista && (
+        {erroAoAbrir ? (
+          <div className="panel pb" style={{ display: 'grid', gap: 10, textAlign: 'center', color: 'var(--navy)' }}>
+            <b>Não deu para abrir a lista agora.</b>
+            <span className="mut">Confira a internet. Se abriu pelo WhatsApp ou Instagram, tente abrir no Safari ou no Chrome.</span>
+            <button className="btn" onClick={() => { setErroAoAbrir(null); setLista(undefined); setTentativa((numero) => numero + 1) }}>Tentar de novo</button>
+            <span className="mut" style={{ fontSize: 12 }}>Código do erro: {erroAoAbrir}</span>
+          </div>
+        ) : (
+          <>
+            {lista === undefined && <div className="vazio">Carregando…</div>}
+            {lista === null && <div className="vazio">Link não encontrado. Peça um novo para quem organiza a pelada.</div>}
+          </>
+        )}
+        {lista && !erroAoAbrir && (
           <>
             {euNaLista?.naFila ? (
               <section className="panel pb" style={{ display: 'grid', gap: 8, textAlign: 'center', color: 'var(--navy)' }}>

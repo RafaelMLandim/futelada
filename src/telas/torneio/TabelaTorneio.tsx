@@ -64,7 +64,7 @@ function Classificacao({ torneio, titulo, linhas, destaque, legenda }: {
         return (
           <div key={l.time} className="tr" style={{ gap: 4, fontSize: 14 }}>
             <span className={'no' + (i < destaque ? ' g' : '')}>{i + 1}</span>
-            <span className="row" style={{ gap: 6, flex: 1, minWidth: 0 }}><Camisa cor={time.cor} tamanho={18} /><span className="nome" title={time.nome}>{time.nome}</span></span>
+            <span className="row" style={{ gap: 6, flex: 1, minWidth: 0 }}><Camisa cor={time.cor} uniforme={time.uniforme} tamanho={18} /><span className="nome" title={time.nome}>{time.nome}</span></span>
             <span style={{ ...COL, fontWeight: 800 }}>{l.pontos}</span>
             <span style={COL}>{l.jogos}</span><span style={COL}>{l.vitorias}</span>
             <span style={COL}>{l.empates}</span><span style={COL}>{l.derrotas}</span>
@@ -130,7 +130,7 @@ export function Confronto({ torneio, jogo }: { torneio: Torneio; jogo: JogoTorne
     const pen = r?.penaltis ? r.penaltis[i] : null
     return (
       <div className="row" style={{ gap: 6, padding: '5px 8px', fontSize: 13, fontWeight: ganhou === lado ? 800 : 600, color: o.time ? 'var(--navy)' : 'var(--mut)', opacity: ganhou && ganhou !== lado ? 0.6 : 1 }}>
-        <Camisa cor={o.time?.cor ?? SEM_COLETE} tamanho={16} />
+        <Camisa cor={o.time?.cor ?? SEM_COLETE} uniforme={o.time?.uniforme} tamanho={16} />
         <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.nome}</span>
         {ida && <span className="num" style={{ fontSize: 13, color: 'var(--mut)', minWidth: 14, textAlign: 'center' }}>{golsIda ?? '–'}</span>}
         {ida && <span className="num" style={{ fontSize: 13, color: 'var(--mut)', minWidth: 14, textAlign: 'center' }}>{golsVolta ?? '–'}</span>}
@@ -164,7 +164,7 @@ function Estatisticas({ torneio }: { torneio: Torneio }) {
         {artilheiros.map((a, i) => (
           <div key={a.id} className="tr">
             <span className={'no' + (i === 0 ? ' g' : '')}>{i + 1}</span>
-            <Camisa cor={time(a.time)?.cor ?? SEM_COLETE} tamanho={18} />
+            <Camisa cor={time(a.time)?.cor ?? SEM_COLETE} uniforme={time(a.time)?.uniforme} tamanho={18} />
             <span className="nome">{a.nome} <span className="mut">· {time(a.time)?.nome}</span></span>
             <span className="num" style={{ fontSize: 22 }}>{a.gols}</span>
           </div>
@@ -178,7 +178,7 @@ function Estatisticas({ torneio }: { torneio: Torneio }) {
           {garcons.map((garcom, posicao) => (
             <div key={garcom.id} className="tr">
               <span className={'no' + (posicao === 0 ? ' g' : '')}>{posicao + 1}</span>
-              <Camisa cor={time(garcom.time)?.cor ?? SEM_COLETE} tamanho={18} />
+              <Camisa cor={time(garcom.time)?.cor ?? SEM_COLETE} uniforme={time(garcom.time)?.uniforme} tamanho={18} />
               <span className="nome">{garcom.nome} <span className="mut">· {time(garcom.time)?.nome}</span></span>
               <span className="num" style={{ fontSize: 22 }}>{garcom.assistencias}</span>
             </div>
@@ -196,7 +196,7 @@ function Estatisticas({ torneio }: { torneio: Torneio }) {
           {goleiros.map((g, i) => (
             <div key={g.nome} className="tr">
               <span className={'no' + (i === 0 ? ' g' : '')}>{i + 1}</span>
-              <span className="nome row" style={{ gap: 6 }}><Camisa cor={time(g.time)?.cor ?? SEM_COLETE} tamanho={18} />{g.nome}</span>
+              <span className="nome row" style={{ gap: 6 }}><Camisa cor={time(g.time)?.cor ?? SEM_COLETE} uniforme={time(g.time)?.uniforme} tamanho={18} />{g.nome}</span>
               <span style={COL}>{g.jogos}</span><span style={COL}>{g.sofridos}</span>
               <span style={{ ...COL, width: 44 }}>{g.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</span>
             </div>
@@ -209,7 +209,7 @@ function Estatisticas({ torneio }: { torneio: Torneio }) {
         {cartoes.length === 0 && <div className="pb mut">Nenhum cartão no torneio.</div>}
         {cartoes.map((c) => (
           <div key={c.id} className="tr" style={{ gap: 8 }}>
-            <Camisa cor={time(c.time)?.cor ?? SEM_COLETE} tamanho={18} />
+            <Camisa cor={time(c.time)?.cor ?? SEM_COLETE} uniforme={time(c.time)?.uniforme} tamanho={18} />
             <span className="nome">{c.nome}</span>
             {c.suspenso && <span className="tag t-warn">Suspenso</span>}
             {(['amarelo', 'vermelho', 'azul'] as const).map((cor) => {

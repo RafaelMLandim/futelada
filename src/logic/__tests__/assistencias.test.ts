@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { comecar, configPadrao, definirAutorDoGol, garcons, gol, passe, peladaParaGuardar, removerGol, vitoria } from '..'
+import { comecar, configPadrao, definirAutorDoGol, garcons, gol, passe, peladaParaGuardar, removerGol, fecharPartidaEmAndamento, vitoria } from '..'
 import { relatorioDoAno } from '../relatorio'
 import { descreverMudanca } from '../../store/desfazer'
 import { LISTA, sessao } from './utils'
@@ -82,6 +82,31 @@ describe('assistências', () => {
     expect(r.garcom).toMatchObject({ nome: 'Carlos', assistencias: 3 })
     const semPasse = relatorioDoAno([peladaParaGuardar(umaPelada(0), dia(1), 'x')], [], 2026)
     expect(semPasse.garcom).toBeNull()
+  })
+
+  it('ao encerrar, a partida em andamento termina com o placar de agora e conta em tudo', () => {
+    let estado = comecar(sessao(LISTA))
+    const [joao, carlos] = estado.emCampo!.A.jogadores
+    const [rafael] = estado.emCampo!.B.jogadores
+    estado = passe(gol(estado, 'A', joao), 0, carlos)
+    estado = vitoria(estado, 'A') // 1ª partida terminada
+    const timeDeFora = estado.emCampo!.B.jogadores.map((jogador) => jogador.id)
+    estado = passe(gol(estado, 'A', joao), 0, carlos) // 2ª em andamento: 1 x 0 para o A
+    const encerrada = fecharPartidaEmAndamento(estado, true)
+    expect(encerrada.historico).toHaveLength(2)
+    expect(encerrada.historico[1]).toMatchObject({ numero: 2, placar: [1, 0], resultado: 'A' })
+    expect(encerrada.emCampo).toBeNull()
+    expect(garcons(encerrada)).toMatchObject([{ nome: 'Carlos', assistencias: 2 }])
+    expect(garcons(peladaParaGuardar(encerrada, 0, 'x').estado)).toEqual(garcons(encerrada)) // igual ao histórico
+    expect(encerrada.historico[1].timeB.jogadores.map((jogador) => jogador.id)).toEqual(timeDeFora)
+    // placar igual: empate para os dois
+    const empatada = fecharPartidaEmAndamento(gol(estado, 'B', rafael), true)
+    expect(empatada.historico[1]).toMatchObject({ placar: [1, 1], resultado: 'empate' })
+    // nem começou (sem gol e cronômetro zerado): fica de fora
+    const naoComecou = vitoria(estado, 'A')
+    expect(fecharPartidaEmAndamento(naoComecou, false).historico).toHaveLength(naoComecou.historico.length)
+    // 0 x 0 com o cronômetro andando: empate
+    expect(fecharPartidaEmAndamento(naoComecou, true).historico.at(-1)).toMatchObject({ placar: [0, 0], resultado: 'empate' })
   })
 
   it('o "Desfazer" do passe diz que é o passe (não quem fez o gol)', () => {

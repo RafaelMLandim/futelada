@@ -31,12 +31,16 @@ export function iniciarEscalacao(torneio: Torneio, jogo: JogoTorneio): Escalacao
   return esc
 }
 
-/** Por que a substituição não pode ser feita (null = pode). */
+/** Quem já jogou e saiu (está no banco depois de ter entrado em campo). Sem reentrada, não volta mais. */
+export const saiuDoJogo = (esc: Escalacao, lado: Lado, id: string) => esc.banco[lado].includes(id) && esc.jogaram[lado].includes(id)
+
+/** Por que a substituição não pode ser feita (null = pode). `reentrada` false: quem saiu não volta. */
 export function impedimentoDaSubstituicao(
-  esc: Escalacao, lado: Lado, saiId: string, entraId: string, max: number | null, expulsos: Set<string>,
+  esc: Escalacao, lado: Lado, saiId: string, entraId: string, max: number | null, expulsos: Set<string>, reentrada = true,
 ): string | null {
   if (!esc.emCampo[lado].includes(saiId)) return 'Quem sai precisa estar em campo'
   if (!esc.banco[lado].includes(entraId)) return 'Quem entra precisa estar no banco'
+  if (!reentrada && saiuDoJogo(esc, lado, entraId)) return 'Quem saiu não pode voltar ao jogo'
   if (expulsos.has(saiId)) return 'Expulso não pode ser substituído'
   if (max !== null && esc.substituicoes[lado] >= max) return `Limite de ${max} substituições atingido`
   return null
@@ -44,9 +48,9 @@ export function impedimentoDaSubstituicao(
 
 /** Substituição: quem sai vai para o banco (continua no time); quem entra vai para o lugar dele. */
 export function substituir(
-  esc: Escalacao, lado: Lado, saiId: string, entraId: string, max: number | null = null, expulsos = new Set<string>(),
+  esc: Escalacao, lado: Lado, saiId: string, entraId: string, max: number | null = null, expulsos = new Set<string>(), reentrada = true,
 ): Escalacao {
-  const erro = impedimentoDaSubstituicao(esc, lado, saiId, entraId, max, expulsos)
+  const erro = impedimentoDaSubstituicao(esc, lado, saiId, entraId, max, expulsos, reentrada)
   if (erro) throw new Error(erro)
   return {
     ...esc,

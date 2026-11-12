@@ -1,0 +1,47 @@
+# Gera o app do iPhone na nuvem (Mac do Codemagic) e manda para o TestFlight / App Store Connect.
+# Não precisa de Mac em casa. Ver ios/LEIA-ME.md.
+#
+# No painel do Codemagic (uma vez):
+# - Integração "App Store Connect" com a chave de API (App Store Connect → Usuários e acesso → Chaves), com o nome abaixo.
+# - Grupo de variáveis "dois_ou_dez" com as VITE_* do .env.local (VITE_FIREBASE_*, VITE_GOOGLE_CLIENT_ID, VITE_REVENUECAT_IOS).
+# - A assinatura (certificado e perfil de distribuição) o próprio Codemagic cria pela chave de API.
+
+workflows:
+  iphone-testflight:
+    name: iPhone · TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Dois ou Dez
+    environment:
+      groups:
+        - dois_ou_dez
+      node: 22
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: app.doisoudez
+      vars:
+        APP_STORE_APPLE_ID: "" # número do app no App Store Connect (Informações do app → Apple ID), preencher quando o app existir
+    scripts:
+      - name: Instalar as dependências
+        script: npm ci
+      - name: Gerar o site e copiar para o projeto do iPhone
+        script: |
+          npx vite build
+          npx cap sync ios
+      - name: Usar os perfis de assinatura
+        script: xcode-project use-profiles
+      - name: Número da versão (um a mais que o último do TestFlight)
+        script: |
+          ULTIMO=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0)
+          cd ios/App && agvtool new-version -all $((ULTIMO + 1))
+      - name: Gerar o app (.ipa)
+        script: |
+          xcode-project build-ipa --project "ios/App/App.xcodeproj" --scheme "App"
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

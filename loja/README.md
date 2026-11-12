@@ -112,3 +112,52 @@ PLANO.md, seção 14.4).
 - Permissões novas no manifesto: POST_NOTIFICATIONS, SCHEDULE_EXACT_ALARM, VIBRATE.
 - Textos da página da loja enviados para revisão depois da aprovação da 1.0.11 (sem ícones; abre com "funciona sem internet, sem anúncios, preço justo"). Declaração de recursos de IA: "Não rotular recursos".
 - Site publicado junto (`index-IFxfgO1W.js`).
+
+## Versão 1.0.16 (código 17) — 11/11/2026, enviada para revisão no teste fechado
+
+- Torneio: editor do uniforme com a camisa grande e setas (o desenho desliza na troca) e botões "Cor principal" e
+  "Cor secundária" pintados com a cor; a cor principal pode repetir entre os times.
+- Sigla de 3 letras do time (automática ou escrita no cadastro) nos botões de gol ("Gol RUB").
+- Tirar cartão dado por engano (o 2º amarelo leva o vermelho junto); regra "Quem saiu pode voltar" (desligada: quem saiu
+  não volta e aparece o "desfazer" da última substituição).
+- O organizador corrige o resultado de jogo encerrado (gols, cartões, pênaltis); depois que o jogo seguinte começa, só o placar trava.
+- Regras do Firestore publicadas: o mesário só cria o resultado ao encerrar o jogo do campo dele; mudar ou apagar é do organizador.
+- Capacitor alinhado na 8.5.2 (core, android, ios). Projeto iOS criado (ainda sem conta da Apple; ver `ios/LEIA-ME.md`).
+- Site publicado no mesmo dia (`index-JBgUxVOY.js`).
+
+## Versão 1.0.15 (código 16) — 11/11/2026, publicada no teste fechado no mesmo dia
+
+- Campo novo na Seleção da pelada e no Time do ano (estilo "Time da semana" do Sofascore): campo inteiro na imagem,
+  área rasa com meia-lua e marca do pênalti, círculo central achatado, goleiro dentro da área.
+- Formação com prioridade para o 4-3-3 (10 = 4-3-3, 9 = 4-3-2, 8 = 3-3-2, 7 = 3-2-2, 6 = 3-3, 5 = 3-2, 4 = 2-2).
+- Site publicado no mesmo dia (`index-Dc52z77v.js`).
+
+## Versão 1.0.14 (código 15) — 10/11/2026, publicada no teste fechado no mesmo dia
+
+- Encerrar com partida em andamento: ela termina com o placar do momento (vitória de quem está na frente; igual, empate)
+  e conta em tudo (histórico, tabela, seleção, cartas). Só fica de fora a que nem começou (sem gol e cronômetro zerado).
+  O "Encerrar a pelada?" avisa como ela vai contar.
+- Seleção gerada pelo histórico usa a data da pelada (antes saía a data de hoje).
+- Corrigido em produção a pelada de 09/11 (partida 17, 1 x 2, encerrada em andamento): entrou no histórico e nas cartas.
+- Site publicado no mesmo dia (`index-v115v7bq.js`).
+
+## Versão 1.0.13 (código 14) — 10/11/2026, publicada no teste fechado no mesmo dia
+
+- Faixa de bateria fraca na pelada (15% ou menos, fora da tomada) pedindo para passar o controle; o botão de compartilhar pisca.
+- Dicas novas para a foto do perfil e aviso "Preparando sua foto" enquanto o app tira o fundo.
+- Site publicado no mesmo dia (`index-D9e0ulaY.js`).
+
+## Versão 1.0.12 (código 13) — 10/11/2026, aprovada no teste fechado no mesmo dia
+
+- Caixinhas no caixa (link e QR do Pix, "Já paguei" com confirmação, entrada automática), caixa separado por turma,
+  bloqueio do campo pago antes de encerrar, tabela da pelada no Histórico, assistência de quem estava no gol,
+  voltar para os confirmados, link da lista mais estável no iPhone, sugestão com conta e foto, "Me incluir" pedindo o nome,
+  avatar padrão na seleção, uniforme personalizado no torneio.
+- Site e regras do banco publicados no mesmo dia (`index-BXMclRV0.js`).
+
+## Acesso à produção — recusado em 08/11/2026 (16:42)
+
+- "Seu app precisa de mais testes": mais 14 dias de teste fechado com pelo menos 12 testadores, contados da análise.
+  Em 10/11 a Console mostrava "12 testadores estão participando continuamente há 2 dias". Pedir de novo a partir de ~22/11.
+- Motivos que a Google cita: menos de 12 testadores ou pouca interação. Pedir aos testadores que usem nas peladas e mandem
+  feedback pela Play Store; no novo pedido, resumir o retorno dos testes com exemplos do que mudou.

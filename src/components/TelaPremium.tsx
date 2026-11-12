@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { JOGADORES_DE_UMA_PELADA, PELADAS_GRATIS, porJogadorPorMes, PRO_ANUAL_POR_MES, PRO_MENSAL, TIMES_DO_TORNEIO_GRATIS, ULTIMATE_MENSAL } from '../logic/plano'
-import { assinaturaAtiva, comprar, ENDERECO_NA_LOJA, ofertas, podeComprarAqui, type Oferta, type Produto } from '../store/compras'
+import { assinaturaAtiva, comprar, ENDERECO_NA_LOJA, nomeDaLoja, ofertas, podeComprarAqui, type Oferta, type Produto } from '../store/compras'
 import { usePlano } from '../store/plano'
 import { reais } from '../utils/formatar'
 import { abrirLink } from '../utils/nativo'
@@ -64,7 +64,7 @@ export function TelaPremium({ motivo, onFechar, jogadores }: { motivo: MotivoPre
 
   async function continuar(opcao: Opcao) {
     if (!plano.cobrancaAtiva) return setSituacao({ tipo: 'aviso', texto: 'Durante o lançamento, está tudo liberado. Aproveite!' })
-    if (!podeComprarAqui()) return setSituacao({ tipo: 'aviso', texto: 'A compra é feita pelo app do Dois ou Dez, na Google Play.' })
+    if (!podeComprarAqui()) return setSituacao({ tipo: 'aviso', texto: `A compra é feita pelo app do Dois ou Dez, na ${nomeDaLoja()}.` })
     const oferta = precos[PRODUTO_DA_OPCAO[opcao]]
     if (!oferta) return setSituacao({ tipo: 'aviso', texto: 'Não deu para falar com a loja agora. Confira a internet e tente de novo.' })
     setSituacao({ tipo: 'comprando', opcao })
@@ -140,7 +140,7 @@ export function TelaPremium({ motivo, onFechar, jogadores }: { motivo: MotivoPre
               {plano.cobrancaAtiva && !podeComprarAqui() && <> <button className="lnk" onClick={() => void abrirLink(ENDERECO_NA_LOJA)}>Baixar o app</button></>}
             </div>
           )}
-          <div className="planos-rodape">O pagamento é feito na Google Play: o app não vê o seu cartão.</div>
+          <div className="planos-rodape">O pagamento é feito na {nomeDaLoja()}: o app não vê o seu cartão.</div>
           <button className="btn w sm" onClick={onFechar}>{situacao.tipo === 'comprou' ? 'Fechar' : 'Agora não'}</button>
         </div>
       </section>

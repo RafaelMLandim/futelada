@@ -6,8 +6,8 @@ export const DOZE_MESES = 365 * DIA
 export const PRODUTOS = { assinatura: 'pelada_premium', dozeMeses: 'premium_12_meses', torneio: 'torneio_avulso', ultimate: 'ultimate' }
 
 const VAZIO = { assinaturaAte: null, renova: false, avulsoAte: null, creditosTorneio: 0, ultimateAte: null, ultimateRenova: false }
-/** No Play, a assinatura vem como "pelada_premium:mensal" (produto:plano base). */
-const produtoDo = (id = '') => id.split(':')[0]
+/** No Play, a assinatura vem como "pelada_premium:mensal" (produto:plano base); na App Store, "pelada_premium.mensal". */
+const produtoDo = (id = '') => id.split(/[:.]/)[0]
 const maior = (a, b) => (a == null ? b : b == null ? a : Math.max(a, b))
 
 /**

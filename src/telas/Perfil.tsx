@@ -114,7 +114,15 @@ export function Perfil() {
     setAjustando(arquivo)
   }
   /** Depois de enquadrar: tira o fundo e salva. */
+  // "Usar foto": daqui até a foto aparecer (tirar o fundo e salvar) leva alguns segundos; a janela de espera
+  // aparece na hora, e um segundo toque não começa outro recorte
+  const [preparandoFoto, setPreparandoFoto] = useState(false)
   const usarFoto = async (arquivo: Blob) => {
+    if (preparandoFoto) return
+    setPreparandoFoto(true)
+    try { await prepararESalvar(arquivo) } finally { setPreparandoFoto(false) }
+  }
+  const prepararESalvar = async (arquivo: Blob) => {
     setAjustando(null)
     setErro(null)
     setComFundo(false)
@@ -164,8 +172,15 @@ export function Perfil() {
               </div>
             </>
           )}
-        {recortando && <div className="mut" style={{ textAlign: 'center', color: '#fff' }}>Tirando o fundo da foto…</div>}
-        {salvando && <div className="mut" style={{ textAlign: 'center', color: '#fff' }}>Salvando a foto…</div>}
+        {(preparandoFoto || recortando || salvando) && (
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Preparando sua foto">
+            <section className="panel pb" style={{ display: 'grid', gap: 12, justifyItems: 'center', textAlign: 'center', color: 'var(--navy)', width: '100%', maxWidth: 300 }}>
+              <span className="carregando" aria-hidden="true" />
+              <b className="num" style={{ fontSize: 22 }}>{salvando ? 'Salvando a foto…' : 'Preparando sua foto'}</b>
+              {!salvando && <span className="mut">Tirando o fundo · leva alguns segundos</span>}
+            </section>
+          </div>
+        )}
         {fotoRemovida && !foto && (
           <div className="panel pb" style={{ display: 'grid', gap: 8, color: 'var(--navy)' }}>
             <b>Sua foto foi removida</b>
@@ -216,13 +231,13 @@ export function Perfil() {
           <section className="panel" style={{ color: 'var(--navy)', width: '100%', maxWidth: 360 }} onClick={(ev) => ev.stopPropagation()}>
             <div className="ph">Sua foto na carta</div>
             <div className="pb" style={{ display: 'grid', gap: 10 }}>
-              <span style={{ fontWeight: 600, lineHeight: 1.35 }}>Na carta você aparece sem fundo: o app tira o fundo sozinho. Para ficar bom:</span>
+              <span style={{ fontWeight: 600, lineHeight: 1.35 }}>O app tira o fundo da foto e deixa só você. Selecione uma foto em que:</span>
               <ul className="dicas-da-foto">
-                {['De perto, do peito para cima', 'Só você na foto, de frente', 'Fundo liso, como uma parede', 'Com boa luz no rosto'].map((dica) => (
+                {['Você esteja sozinho', 'O fundo seja simples, como uma parede branca', 'A iluminação seja boa, para ficar legal'].map((dica) => (
                   <li key={dica}><Icone nome="certo" tamanho={18} /> {dica}</li>
                 ))}
               </ul>
-              <span className="mut" style={{ lineHeight: 1.35 }}>Já tem uma foto sem fundo, em PNG ou WebP? Ela entra do jeito que está.</span>
+              <span className="mut" style={{ lineHeight: 1.35 }}>Já tem uma foto sem fundo? Ela entra do jeito que está.</span>
               <button className="btn" onClick={() => { setDicaDaFoto(false); seletor.current?.click() }}><Icone nome="camera" tamanho={20} /> Escolher foto</button>
               <button className="lnk" style={{ justifySelf: 'center' }} onClick={() => setDicaDaFoto(false)}>Fechar</button>
             </div>

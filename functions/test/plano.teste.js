@@ -70,3 +70,12 @@ test('do Pro para o Ultimate: o Pro deixa de renovar e o Ultimate passa a valer'
   assert.equal(p.premiumAte, agora + 50 * DIA)
   assert.equal(p.assinatura, true)
 })
+
+test('App Store: "pelada_premium.mensal" e "ultimate.mensal" valem como os da Play', () => {
+  const ate = agora + 30 * DIA
+  let p = aplicarEvento(undefined, ev('INITIAL_PURCHASE', 'pelada_premium.mensal', { expiration_at_ms: ate }), agora)
+  assert.equal(p.premiumAte, ate)
+  assert.equal(p.assinatura, true)
+  p = aplicarEvento(undefined, ev('INITIAL_PURCHASE', 'ultimate.mensal', { expiration_at_ms: ate }), agora)
+  assert.equal(p.ultimateAte, ate)
+})

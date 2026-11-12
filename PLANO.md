@@ -155,7 +155,14 @@ fila [M, N, A, B, C, D] → blocos **[M, N, A, B]** e **[C, D]**.
     perspectiva com fundo de estádio; cada jogador é uma peça (camisa sem número, plaquinha do
     nome; a bolinha aparece só no artilheiro, se ele está na seleção) e o goleiro menos vazado fica no gol (sem goleiro fixo, a
     peça do gol aparece só com o "G", sem nome). As peças se ajustam
-    ao tamanho do time (testado com 4, 5 e 10 na linha).
+    ao tamanho do time (testado de 2 a 10 na linha, com e sem foto).
+  - **Campo (10/11, no estilo do "Time da semana" do Sofascore):** perspectiva leve, o campo inteiro na imagem
+    (laterais e linha de fundo), linhas brancas fortes com as medidas reais (área 40,3 × 16,5 m, pequena área,
+    meia-lua e marca do pênalti; meio círculo central achatado no alto). O goleiro fica dentro da área, na
+    frente do gol; com goleiro fixo, sobe só o necessário para a plaquinha do nome caber.
+  - **Formação com o 4-3-3 como prioridade** (defesa-meio-ataque): 10 = 4-3-3, 9 = 4-3-2, 8 = 3-3-2,
+    7 = 3-2-2, 6 = 3-3, 5 = 3-2, 4 = 2-2, 2 e 3 = uma fileira; mais de 10: 3 no ataque e o resto dividido.
+    Quem tem mais vitórias fica no ataque (fileira de cima). Vale também para o Time do ano.
   - Embaixo do campo, na mesma imagem, a **Chuteira de Ouro** (artilheiro e gols) e a **Luva de
     Ouro** (goleiro menos vazado e gols sofridos): troféus dourados desenhados no app, em pedestal.
 - **Artilheiro: sai um só.** Desempate: mais gols → **menos jogos** (melhor média) → **mais
@@ -176,6 +183,10 @@ fila [M, N, A, B, C, D] → blocos **[M, N, A, B]** e **[C, D]**.
 - Dá para cadastrar **vários goleiros fixos**; aparecem como **(G)**.
 - **Encerrar a pelada** apaga a lista, os goleiros, os times e a tabela do dia; as outras
   configurações (tempo, gols, coletes, sons...) continuam para a próxima.
+  Se tem **partida em andamento**, ela termina com o placar do momento (quem está na frente vence, o outro perde;
+  igual, empate para os dois) e conta em tudo: histórico, tabela, seleção (a imagem do encerramento sai igual à do
+  histórico), cartas e turma. Só fica de fora a que nem começou (sem gol e cronômetro zerado). O "Encerrar a pelada?"
+  avisa: "A partida em andamento (Vermelho 1 x 2 Azul) termina agora e conta como vitória do Azul."
 - **Um em cada gol.** Quando um time perde, o goleiro **fica em campo** e defende
   o time que entra. O vencedor pode **trocar** de goleiro com o outro gol.
 - **Só um goleiro:** ele fica com o time que continua em campo; o outro gol fica
@@ -376,7 +387,8 @@ src/
 - **Cada time tem nome e cor**, escolhidos na criação (o app sugere "Time 1", "Time 2"…
   e cores diferentes; dá para trocar). Todas as mensagens usam o nome do time:
   "**Galácticos venceu**", "Pênaltis: **Galácticos** 4 x 3 **Real Várzea**".
-- **30 cores** para os times (cada time uma, sem repetir), então o torneio aceita até 30 times.
+- **30 cores** para os times. Desde 11/11/2026 a cor pode repetir entre os times (o uniforme e o nome diferenciam); o time novo
+  já vem com a cor menos usada. Os botões de gol do jogo mostram "Gol {nome do time}". Só no torneio (a pelada usa os coletes).
 - **Reservas:** cada time tem titulares (os da linha) e reservas.
 - **Substituição durante o jogo:** "Substituir" → escolhe quem sai (em campo) → escolhe quem
   entra (reserva). Quem sai **não é removido do time**: só vai para o banco de reservas e
@@ -396,7 +408,7 @@ src/
 2. **Regras do torneio** (configuráveis): turno único ou ida e volta, nº de grupos e
    quantos passam, disputa de 3º lugar, nº de cobranças de pênalti, limite de substituições.
 3. **Times:** cadastra cada time (nome, cor, goleiro, jogadores em ordem: titulares e reservas) →
-   "Fechar time" → próximo. Cores não se repetem. Dá para editar depois.
+   "Fechar time" → próximo. Dá para editar depois.
 4. **Sorteio:** grupos / chave / ordem dos jogos, com "sortear de novo" antes de confirmar.
 5. **Tabela de jogos:** o app gera todos os jogos da fase (ordem pensada para ninguém
    jogar duas seguidas, quando possível).
@@ -497,7 +509,23 @@ src/
 - **Gols sofridos e "goleiro menos vazado"** usam quem estava no gol na hora.
 - **Torneios antigos**, que guardavam `goleiro: "NOME"` fora da lista, são convertidos ao abrir: o nome vira um jogador do time com o id `<time>-goleiro`. Cada celular converte do mesmo jeito.
 - **Sem "marcar o gol depois".** No torneio o gol é sempre dado ao jogador na hora.
-- **Sem desfazer.** O torneio é acompanhado por vários celulares pela nuvem, e um resultado encerrado muda a tabela, a classificação e a chave. Para corrigir um gol durante o jogo, usa-se "remover gol".
+- **Sem "desfazer" geral** (vários celulares acompanham pela nuvem). As correções são pontuais (11/11/2026, `logic/torneio/correcoes.ts`):
+  - **Gol:** tocar no gol no resumo do jogo remove.
+  - **Cartão:** nas ações do jogador, "Tirar o cartão…". O 2º amarelo e o vermelho que ele gerou saem juntos; sem o vermelho, o jogador volta ao jogo.
+  - **Regra "Quem saiu pode voltar"** (`regras.reentrada`, padrão ligado = como hoje; sem o campo, pode): desligada, quem jogou e saiu
+    fica no banco marcado "saiu" e não entra mais (nem no gol vazio), como num campeonato.
+  - **Substituição:** só com a volta proibida (com ela permitida, corrige-se substituindo de novo). "desfazer" no cabeçalho do time
+    (ou nas ações de quem entrou) desfaz a última do time: quem saiu volta ao mesmo lugar,
+    quem entrou volta ao banco, a substituição deixa de contar (e de contar como "jogou", se era a 1ª vez dele); o goleiro volta ao gol.
+    Só enquanto quem entrou está em campo e quem saiu está no banco (`substituicoesFeitas` na partida).
+  - **Resultado encerrado:** só o organizador, pelo lápis do jogo na lista de jogos: tira/acrescenta gols (o placar sai dos gols), tira
+    cartões e, no mata-mata empatado, os pênaltis. Se um jogo que depende dele já começou (o seguinte da chave ou o 3º lugar, a volta da
+    ida, ou o mata-mata, para jogos dos grupos), o **placar e os pênaltis travam**, mas quem fez os gols e os cartões ainda se corrigem
+    (`placarTravado`). Tabela, artilharia, suspensões, chave e campeão são recalculados. O gol acrescentado fica sem minuto e sem passe.
+  - **Regras do Firestore:** o mesário só **cria** o resultado ao encerrar o jogo que está no campo dele; mudar ou apagar um resultado
+    (corrigir, reabrir) é só do organizador. Testado em `testes-regras/isolamento.mjs`.
+- **Sigla do time** (3 letras, como no Brasileirão), no cadastro ao lado do nome; vazia, sai do nome (`siglaAutomatica`: "Vermelho FC" → VER,
+  "Time 3" → T3). Aparece nos botões de gol ("Gol RUB") e na correção do resultado.
 
 ### 9.6 O que reaproveita da pelada
 | Já temos | No torneio |
@@ -654,6 +682,10 @@ no ar para quem não instalar.
 - **Ícone e abertura:** gerados da logo (`assets/` → `npx @capacitor/assets generate --android`).
 - **Próximos:** apito com o celular bloqueado (notificação agendada com som), chave de assinatura
   da loja (a de teste não serve para publicar) e conta na Play Store (US$ 25).
+- **iPhone (App Store):** projeto em `ios/` (11/11/2026), só iPhone, `npm run ios` atualiza. No iPhone, o login
+  tem **Entrar com a Apple** em primeiro (a Apple exige quando há login do Google); ao excluir a conta, confirma
+  com a Apple e cancela a autorização. Compras: chave `VITE_REVENUECAT_IOS` e códigos com ponto
+  (`pelada_premium.mensal`…), que o servidor aceita junto com os da Play. Passos que faltam: `ios/LEIA-ME.md`.
 
 ## 11. Melhorias para comercializar (depois)
 
@@ -1077,3 +1109,50 @@ conta ou digita o nome), a mesma pessoa aparecendo duas vezes (entrou com a cont
   Código: `src/utils/cronometroNoCelular.ts` + `android/.../CronometroPlugin.java`, `NotificacaoDaPartida.java`, `ApitoDoFim.java`.
   Permissões: notificações (pedida no primeiro play, Android 13+) e alarme exato (Android 12+; sem ela o apito pode atrasar um pouco).
   O navegador não deixa nada disso: no site continua só o relógio na tela.
+
+## 19. Caixinhas do caixa (10/11/2026)
+
+- **O que é:** dinheiro separado por motivo ("Bola nova", "Coletes", "Churrasco"), dentro do Caixa. Cada caixinha tem nome,
+  motivo (aparece no link), valor total (a meta) e a turma. O valor é **dividido por todos os jogadores da turma** (os não
+  arquivados), arredondado para cima no centavo, como o campo pago.
+- **Pagamento:** o mesmo do campo pago. Link para o grupo (`?pagar=CÓDIGO`, com o nome e o motivo da caixinha), QR e Pix copia e
+  cola (o nome da caixinha vai como identificador no extrato), a pessoa toca no nome e em "Já paguei" (fica amarelo) e o
+  organizador confirma tocando no nome (verde). Tocar de novo desfaz.
+- **Caixa:** cada pagamento confirmado entra sozinho no caixa como uma entrada marcada com a caixinha e o jogador
+  ("Bola nova · DANIEL"); desfeito, a entrada sai. "Usar o dinheiro (saída)" lança uma saída da caixinha. Barra da meta:
+  "R$ 90 de R$ 150 · 9 de 15 pagaram"; o saldo da caixinha aparece quando houve saída.
+- **Encerrar caixinha:** some da lista; o que entrou continua no caixa.
+- **Código:** `logic/caixinha.ts` (contas e testes), `store/caixinhas.ts`, `telas/Caixinhas.tsx`; nuvem em
+  `usuarios/{uid}/caixinhas` e a cobrança em `cobrancas/{código}` (campos novos `titulo` e `descricao`). Excluir a conta apaga as caixinhas.
+- **Campo pago (10/11):** com o campo pago ligado, a pelada só encerra depois de lançar no caixa ("Lance o campo no caixa ·
+  Feche a conta do campo antes de encerrar a pelada", com o que entrou, o campo e o resultado, e o botão "Lançar no caixa e encerrar").
+
+### Lista: link e sugestões (10/11/2026)
+- **Voltar para os confirmados:** quem entrou pelo link e foi posto na fila por engano tem, nos três pontinhos, "↩ Voltar para os
+  confirmados" (só antes da primeira partida). Sai da fila sem virar "foi embora" e volta aos Confirmados; no link, volta para
+  "Você está na lista!". `estado.vieramDoLink` guarda jogador → quem confirmou; a regra deixa o organizador mudar `naFila` para os dois lados.
+- **Sugestão com a conta:** a turma passa a guardar a conta de quem jogou ligado a ela (`JogadorDaTurma.conta`). Escolhida a
+  sugestão, o jogador entra ligado à conta e os números vão para a carta. Vale a partir da próxima pelada em que ele jogar com a conta.
+- **Foto na sugestão:** quem tem conta e foto aparece com a foto (sem fundo) no chip da sugestão.
+- **iPhone ("Link não encontrado"):** as páginas de quem abre um link (lista, pagar, acompanhar) não usam mais o cache no
+  armazenamento do navegador (`memoryLocalCache`), que falha no Safari em aba privada e nos navegadores de dentro do WhatsApp/Instagram.
+  Erro de leitura não aparece mais como "Link não encontrado": tenta de novo sozinho e, se falhar, mostra "Não deu para abrir" com
+  "Tentar de novo" e o código do erro.
+
+### Uniforme do time no torneio (10/11/2026)
+- No cadastro do time ("Uniforme"): a cor do time + um de 15 modelos (lisa, listras horizontais, listras verticais simétricas,
+  faixa horizontal, faixa diagonal, diagonal invertida, meio a meio, faixa vertical, mangas, faixa em V, metade em cima, xadrez,
+  duas faixas, ombros, duas faixas verticais) + a segunda cor. As duas cores são livres (podem repetir entre os times).
+- Editor (11/11/2026): camisa grande com ‹ › (ou arrastar), o desenho do modelo desliza para fora enquanto o novo entra;
+  botões "Cor principal" e "Cor secundária" pintados com a cor escolhida, que abrem a paleta logo abaixo.
+- A camisa com o modelo aparece em todo o torneio: times, jogos, placar, escalações, tabela e fim de jogo (`Camisa` com `uniforme`).
+  Os coletes da pelada continuam lisos.
+
+### Bateria fraca: passar o controle (10/11/2026)
+- Durante a pelada, com a bateria em 15% ou menos e fora da tomada: faixa vermelha logo abaixo da barra azul do título, em
+  maiúsculas, com o texto correndo ("Bateria fraca: passe o controle da pelada para alguém antes que seja tarde!!! · Clique no
+  ícone [desenho do botão de compartilhar]"), e o botão de compartilhar do topo piscando.
+  A faixa não é clicável (decidido em 10/11): o toque é no botão de cima. Sem janela de aviso. Some ao carregar ou passar de 15%.
+  `utils/bateria.ts`: no app, `Device.getBatteryInfo` (Android e iPhone); no navegador, só o Chrome informa a bateria.
+- Fotos do perfil: dicas novas ("Selecione uma foto em que: você esteja sozinho; o fundo seja simples, como uma parede
+  branca; a iluminação seja boa") e, ao tocar em "Usar foto", o botão trava e abre "Preparando sua foto" até a foto aparecer.

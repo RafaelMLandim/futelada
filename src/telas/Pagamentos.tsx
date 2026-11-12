@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import { Icone } from '../components/Icone'
 import { QrCode } from '../components/QrCode'
-import { lancamentosDaPelada, pagantes, resumoPagamentos } from '../logic'
+import { pagantes, resumoPagamentos } from '../logic'
 import type { useCobranca } from '../store/cobranca'
 import { montarCobranca } from '../store/cobranca'
-import { useCaixa, useConta } from '../store/conta'
+import { useConta } from '../store/conta'
+import { useLancarNoCaixa } from '../store/lancarNoCaixa'
 import type { Pelada } from '../store/usePelada'
 import { reais } from '../utils/formatar'
 import { compartilharTexto } from '../utils/nativo'
 
 /** Agora (ms) e o dia ("06/10") para os lançamentos do caixa. */
-const agoraEDia = (): [number, string] => [Date.now(), new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })]
 
 /**
  * Campo pago, tela do organizador: QR Pix com o valor, link para o grupo e quem já pagou.
@@ -24,12 +24,10 @@ export function Pagamentos({ pelada, cobranca, onFechar }: { pelada: Pelada; cob
   const [aviso, setAviso] = useState<string | null>(null)
   const semPix = !pagamento.chavePix.trim() || !pagamento.recebedor.trim()
   const conta = useConta()
-  const caixa = useCaixa()
-  // fecha a conta do dia no caixa: entra o que pagaram, sai o campo (uma vez por pelada)
+  const noCaixa = useLancarNoCaixa(pelada)
   const lancarNoCaixa = async () => {
-    await caixa.lancar(lancamentosDaPelada(resumo, ...agoraEDia(), pelada.app.estado.config.turma))
-    pelada.aplicar((e) => ({ ...e, caixaLancado: true }))
-    setAviso(`Lançado no caixa: ${resumo.sobra >= 0 ? '+' : ''}${reais(resumo.sobra)}`)
+    const sobra = await noCaixa.lancar()
+    setAviso(`Lançado no caixa: ${sobra >= 0 ? '+' : ''}${reais(sobra)}`)
   }
 
   const copiar = async () => {

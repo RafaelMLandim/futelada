@@ -1,8 +1,9 @@
 import type { Lado, Placar } from '../types/pelada'
 import { formatarTempo } from '../utils/formatar'
 import { Camisa } from './Camisa'
+import type { Uniforme } from '../types/torneio'
 
-export type LadoDoPlacar = { titulo: string; sub?: string; cor: string }
+export type LadoDoPlacar = { titulo: string; sub?: string; cor: string; uniforme?: Uniforme }
 
 // Painel do placar (pelada e torneio): tempo, times e gols.
 export function PlacarLed({ lados, placar, tempoMin, gols, decorrido, rodando, fim, acrescimoMin, periodo, textoFim = 'FIM DE JOGO!' }: {
@@ -53,7 +54,7 @@ function TimeNoPlacar({ lado }: { lado: LadoDoPlacar }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 0 }}>
       <span className="num" style={{ fontSize: 22, color: '#fff', textTransform: 'uppercase', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lado.titulo}</span>
-      <Camisa cor={lado.cor} tamanho={36} contorno="#fff" />
+      <Camisa cor={lado.cor} uniforme={lado.uniforme} tamanho={36} contorno="#fff" />
       {lado.sub && <span className="num" style={{ fontSize: 15, color: '#c9d4e3', textTransform: 'uppercase', letterSpacing: 1 }}>{lado.sub}</span>}
     </div>
   )

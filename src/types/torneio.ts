@@ -23,6 +23,7 @@ export type RegrasTorneio = {
   finalUnica: boolean // com ida e volta: a final é em jogo único (como na Libertadores)
   cobrancasPenalti: number // cobranças normais antes das alternadas
   maxSubstituicoes: number | null // por time, por jogo (null = ilimitadas)
+  reentrada?: boolean // quem saiu pode voltar ao jogo (como na pelada); false = quem saiu não entra mais (sem o campo: pode)
   campos: number // quantos jogos podem acontecer ao mesmo tempo
   grupoPorCampo: boolean // grupos: cada grupo joga sempre no mesmo campo
   chaveCopa: boolean // grupos: chave em dois lados como na Copa (1º e 2º do mesmo grupo só se encontram na final)
@@ -39,10 +40,18 @@ export type JogadorDoTime = Jogador & { goleiro?: boolean }
  * Time do torneio: o goleiro (marcado com `goleiro`) e os jogadores de linha. Dos jogadores de linha,
  * os primeiros `linha` são os titulares; os demais, reservas.
  */
+/** Modelos de uniforme do torneio (duas cores: a do time e a segunda, das listras e faixas). */
+export const MODELOS_DE_UNIFORME = ['lisa', 'horizontais', 'verticais', 'faixaHorizontal', 'diagonal', 'diagonalInvertida', 'meioAMeio', 'faixaVertical',
+  'mangas', 'faixaEmV', 'metadeEmCima', 'xadrez', 'duasFaixas', 'ombros', 'duasFaixasVerticais'] as const
+export type ModeloDeUniforme = (typeof MODELOS_DE_UNIFORME)[number]
+export type Uniforme = { modelo: ModeloDeUniforme; segunda: string }
+
 export type TimeTorneio = {
   id: string
   nome: string
+  sigla?: string // 3 letras, como no Brasileirão ("FLA"); sem: sai do nome (siglaDoTime)
   cor: string
+  uniforme?: Uniforme // sem: camisa lisa, só com a cor
   jogadores: JogadorDoTime[]
   fechado: boolean // "Fechar time": acabaram os jogadores dele
 }
@@ -106,7 +115,12 @@ export type PartidaTorneio = {
   intervaloAte?: number | null // no intervalo: hora em que acaba
   // quem está no gol de cada lado: o id de um jogador em campo (null = gol vazio: goleiro suspenso ou expulso)
   goleiros?: Record<Lado, string | null>
+  // substituições feitas no jogo, na ordem (para desfazer a última). primeiraVez: quem entrou ainda não tinha jogado;
+  // goleiroAntes: quem estava no gol antes (quem saiu era o goleiro e quem entrou virou o goleiro)
+  substituicoesFeitas?: SubstituicaoFeita[]
 }
+
+export type SubstituicaoFeita = { lado: Lado; saiId: string; entraId: string; primeiraVez: boolean; goleiroAntes: string | null }
 
 export type Torneio = {
   id: string

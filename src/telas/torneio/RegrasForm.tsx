@@ -164,6 +164,9 @@ export function RegrasForm({ regras, mudar, travado = false, minCampos = 1 }: {
           <Chave rotulo="Limitar substituições" ligada={r.maxSubstituicoes !== null}
             alternar={() => mudar({ maxSubstituicoes: r.maxSubstituicoes === null ? 3 : null })} />
         </Linha>
+        <Linha titulo="Quem saiu pode voltar" detalhe={r.reentrada !== false ? 'Como na pelada: quem saiu pode entrar de novo' : 'Como num campeonato: quem saiu não entra mais no jogo'}>
+          <Chave rotulo="Quem saiu pode voltar" ligada={r.reentrada !== false} alternar={() => mudar({ reentrada: r.reentrada === false })} />
+        </Linha>
         {r.maxSubstituicoes !== null && (
           <Linha titulo="Máximo de substituições">
             <Passo rotulo="substituições" valor={r.maxSubstituicoes} menos={() => mudar({ maxSubstituicoes: limitar(r.maxSubstituicoes! - 1, 1, 20) })} mais={() => mudar({ maxSubstituicoes: limitar(r.maxSubstituicoes! + 1, 1, 20) })} />

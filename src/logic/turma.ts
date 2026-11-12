@@ -11,6 +11,7 @@ export type JogadorDaTurma = {
   peladas: number // presença (peladas em que jogou)
   ultimaPelada: number // data da última (ms)
   arquivado?: boolean // parou de vir: não aparece nas sugestões (o histórico fica)
+  conta?: string // já jogou ligado à conta: escolhido nas sugestões, entra ligado a ela (os números vão para a carta)
 }
 
 /** Diferença de no máximo uma letra (trocada, a mais ou a menos)? */

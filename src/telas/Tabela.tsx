@@ -6,7 +6,7 @@ import { useContext, useState } from 'react'
 import { VoltarAoInicio } from '../components/navegacao'
 import { artilharia, cartoesDoDia, garcons, goleiroDaSelecao, goleirosMenosVazados, placarDosColetes, vitoriasPorJogador } from '../logic'
 import { useConta } from '../store/conta'
-import { guardarPeladaEncerrada } from '../store/encerramento'
+import { cronometroComecou, guardarPeladaEncerrada, peladaEncerrada } from '../store/encerramento'
 import type { Pelada } from '../store/usePelada'
 import type { Partida } from '../types/pelada'
 import { corDoTimeDaPelada, textoSobre } from '../utils/cores'
@@ -19,6 +19,10 @@ import { useFotosDasContas } from '../store/denuncias'
 import { FotoDoJogador } from '../components/FotoDoJogador'
 import { contasDaPelada, jogadorGoleiro } from '../logic'
 import { compartilharImagem, imagemDoResumo, nomeDoArquivo } from '../utils/resumoDaPelada'
+import type { useCobranca } from '../store/cobranca'
+import { Pagamentos } from './Pagamentos'
+import { useLancarNoCaixa } from '../store/lancarNoCaixa'
+import { reais } from '../utils/formatar'
 
 type Linha = { numero: number; j: number; v: number; e: number; d: number }
 
@@ -37,8 +41,11 @@ function classificacao(historico: Partida[]): Linha[] {
   return [...mapa.values()].sort((x, y) => y.v - x.v || y.e - x.e || x.d - y.d || x.numero - y.numero)
 }
 
-/** Tabela do dia. `data`: o dia da pelada (pelada compartilhada vista depois; sem ela, hoje). */
-export function Tabela({ pelada, data }: { pelada: Pelada; data?: string }) {
+/**
+ * Tabela do dia. `data`: o dia da pelada (pelada compartilhada vista depois; sem ela, hoje). `cobranca`: o campo pago
+ * do dono (para abrir o "Lançar no caixa" antes de encerrar).
+ */
+export function Tabela({ pelada, data, cobranca }: { pelada: Pelada; data?: string; cobranca?: ReturnType<typeof useCobranca> }) {
   const { app } = pelada
   const confirmar = useConfirmar()
   const conta = useConta()
@@ -49,7 +56,7 @@ export function Tabela({ pelada, data }: { pelada: Pelada; data?: string }) {
   // Ao encerrar, quem entrou com o Google guarda a pelada no histórico; depois volta para o início
   const voltarAoInicio = useContext(VoltarAoInicio)
   const encerrar = () => {
-    if (!ajudando && conta.logado && estado.historico.length > 0) guardarPeladaEncerrada(estado)
+    if (!ajudando && conta.logado) guardarPeladaEncerrada(peladaEncerrada(estado, app.crono))
     pelada.encerrar()
     voltarAoInicio?.()
   }
@@ -72,11 +79,21 @@ export function Tabela({ pelada, data }: { pelada: Pelada; data?: string }) {
   const [gerando, setGerando] = useState(false)
   const compartilhar = async (): Promise<boolean> => {
     setGerando(true)
-    const ok = await fotosDaPelada(estado).then((fotos) => imagemDoResumo(estado, fotos)).then((img) => compartilharImagem(img, nomeDoArquivo('selecao'))).catch(() => false)
+    // como fica no histórico: a partida em andamento termina com o placar de agora e entra na conta
+    const encerrada = peladaEncerrada(estado, app.crono)
+    const ok = await fotosDaPelada(encerrada).then((fotos) => imagemDoResumo(encerrada, fotos)).then((img) => compartilharImagem(img, nomeDoArquivo('selecao'))).catch(() => false)
     setGerando(false)
     return ok
   }
   const [encerrando, setEncerrando] = useState(false)
+  // a partida em andamento termina com o placar de agora e conta em tudo (vitória de quem está na frente ou empate)
+  const partidaQueVaiFechar = (() => {
+    if (!estado.emCampo || (estado.gols.length === 0 && !cronometroComecou(app.crono))) return null
+    const [golsA, golsB] = estado.placar
+    const { A, B } = estado.config.coletes
+    const resultado = golsA === golsB ? 'empate' : `vitória do ${golsA > golsB ? A.nome : B.nome}`
+    return `A partida em andamento (${A.nome} ${golsA} x ${golsB} ${B.nome}) termina agora e conta como ${resultado}.`
+  })()
   // partida aberta nos resultados (gols dela, para marcar quem fez depois)
   const [partidaAberta, setPartidaAberta] = useState<number | null>(null)
   const aberta = historico.find((p) => p.numero === partidaAberta)
@@ -84,8 +101,27 @@ export function Tabela({ pelada, data }: { pelada: Pelada; data?: string }) {
   const coletes = [estado.config.coletes.A, estado.config.coletes.B]
   const corDoTime = (numero: number) => corDoTimeDaPelada(numero, coletes)
 
+  // Campo pago ligado: só encerra depois de lançar no caixa (entra o que pagaram e sai o campo); senão o caixa fica errado
+  const faltaLancarNoCaixa = estado.config.pagamento.ativo && !estado.caixaLancado && conta.logado && !ajudando
+  const [lancarAntes, setLancarAntes] = useState(false)
+  const noCaixa = useLancarNoCaixa(pelada)
+  const [lancando, setLancando] = useState(false)
+  // lança e segue para o encerramento de sempre (compartilhar ou encerrar)
+  const lancarEEncerrar = async () => {
+    setLancando(true)
+    await noCaixa.lancar().catch(() => null)
+    setLancando(false)
+    setLancarAntes(false)
+    if (historico.length > 0) setEncerrando(true)
+    else encerrarDeVez()
+  }
+  const [campoPagoAberto, setCampoPagoAberto] = useState(false)
   // Encerrar apaga tudo: primeiro oferece compartilhar o resumo
-  const fimDaPelada = () => (historico.length > 0 ? setEncerrando(true) : encerrarDeVez())
+  const fimDaPelada = () => {
+    if (faltaLancarNoCaixa) return setLancarAntes(true)
+    if (historico.length > 0) setEncerrando(true)
+    else encerrarDeVez()
+  }
   const encerrarDeVez = () => {
     confirmar({
       titulo: 'Encerrar a pelada?', mensagem: 'A lista, os goleiros, os times e a tabela de hoje serão apagados.',
@@ -190,7 +226,7 @@ export function Tabela({ pelada, data }: { pelada: Pelada; data?: string }) {
           {vitorias.length === 0
             ? <div className="pb mut">Os números aparecem quando a primeira partida terminar.</div>
             : <div className="tr" style={{ minHeight: 30, fontSize: 12, color: 'var(--mut)', letterSpacing: .8, background: '#e3e8d6' }}>
-                <span style={{ width: 24 }} />{comFotos && <span className="foto-do-jogador vazia" />}<span className="nome">JOGADOR</span>
+                <span style={{ width: 24 }} />{comFotos && <span className="foto-do-jogador espaco" aria-hidden="true" />}<span className="nome">JOGADOR</span>
                 <span style={col}>J</span><span style={col}>V</span>
               </div>}
           {goleiroNaSelecao && (
@@ -285,6 +321,9 @@ export function Tabela({ pelada, data }: { pelada: Pelada; data?: string }) {
               <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>
                 Depois de encerrar, a lista, os times e a tabela de hoje somem. Quer compartilhar o resumo antes?
               </div>
+              {partidaQueVaiFechar && (
+                <div className="mut" style={{ color: 'var(--navy)', fontWeight: 700 }}>⚽ {partidaQueVaiFechar}</div>
+              )}
               {ajudando
                 ? <div className="mut" style={{ color: 'var(--verde)', fontWeight: 700 }}>✓ Os resultados vão para o histórico de {ajudando.nomeDoDono ?? 'quem criou a pelada'}.</div>
                 : conta.logado
@@ -304,6 +343,29 @@ export function Tabela({ pelada, data }: { pelada: Pelada; data?: string }) {
           </section>
         </div>
       )}
+      {lancarAntes && (
+        <div className="modal" role="dialog" aria-modal="true" aria-label="Lance o campo no caixa" onClick={() => setLancarAntes(false)}>
+          <section className="panel" onClick={(evento) => evento.stopPropagation()}>
+            <div className="ph">Lance o campo no caixa</div>
+            <div className="pb" style={{ display: 'grid', gap: 8 }}>
+              <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600, lineHeight: 1.4 }}>
+                Feche a conta do campo antes de encerrar a pelada.
+              </div>
+              <div style={{ display: 'grid', gap: 2, fontWeight: 600, color: 'var(--navy)' }}>
+                <div>Entrou: <b style={{ color: 'var(--verde)' }}>{reais(noCaixa.resumo.arrecadado)}</b> ({noCaixa.resumo.pagos} de {noCaixa.resumo.pessoas} pagaram)</div>
+                <div>Campo: <b style={{ color: 'var(--vermelho)' }}>{reais(noCaixa.resumo.campo)}</b></div>
+                <div>Caixa: <b>{noCaixa.resumo.sobra >= 0 ? '+' : ''}{reais(noCaixa.resumo.sobra)}</b></div>
+              </div>
+              <button className="btn" disabled={lancando} onClick={() => void lancarEEncerrar()}>{lancando ? 'Lançando…' : 'Lançar no caixa e encerrar'}</button>
+              {cobranca && (
+                <button className="btn w sm" onClick={() => { setLancarAntes(false); setCampoPagoAberto(true) }}>Conferir quem pagou</button>
+              )}
+              <button className="btn w sm" onClick={() => setLancarAntes(false)}>Voltar</button>
+            </div>
+          </section>
+        </div>
+      )}
+      {campoPagoAberto && cobranca && <Pagamentos pelada={pelada} cobranca={cobranca} onFechar={() => setCampoPagoAberto(false)} />}
     </div>
   )
 }

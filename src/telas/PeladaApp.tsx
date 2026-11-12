@@ -1,5 +1,5 @@
 import { useContext, useEffect, useState } from 'react'
-import { VoltarAoInicio } from '../components/navegacao'
+import { FaixaDaBateria, VoltarAoInicio } from '../components/navegacao'
 import { nuvemDisponivel, obterNuvem } from '../nuvem'
 import type { PeladaCompartilhada } from '../nuvem/tipos'
 import { Compartilhamento, useCompartilhamento } from '../store/compartilhamento'
@@ -8,7 +8,7 @@ import { useTurmas } from '../store/turmas'
 import { Barra } from '../components/Barra'
 import { QualPeladaHoje } from '../components/QualPeladaHoje'
 import { dataHoje } from '../utils/formatar'
-import { guardarPeladaEncerrada } from '../store/encerramento'
+import { guardarPeladaEncerrada, peladaEncerrada } from '../store/encerramento'
 import { completarEstado } from '../store/migracao'
 import { Faixa, PeladaAoVivo } from './PeladaAoVivo'
 import { PeladaEncerrada } from './PeladaEncerrada'
@@ -22,6 +22,7 @@ import { Config } from './Config'
 import { Jogo } from './jogo/Jogo'
 import { Lista } from './Lista'
 import { Tabela } from './Tabela'
+import { useBateriaFraca } from '../utils/bateria'
 
 type Aba = 'lista' | 'jogo' | 'tabela' | 'ajustes'
 
@@ -43,6 +44,7 @@ export function PeladaApp() {
   const [turmaCriadaAgora, setTurmaCriadaAgora] = useState<string | null>(null) // a nuvem demora um instante para listar
   if (app.iniciada && turmaEscolhida) setTurmaEscolhida(false) // a próxima pelada escolhe de novo
   const [aba, setAba] = useState<Aba>(emJogo ? 'jogo' : 'lista')
+  const bateriaFraca = useBateriaFraca() // 15% ou menos e fora da tomada: faixa vermelha para passar o controle
 
   // Quem ajudou encerrou a pelada: o celular do dono guarda sozinho no histórico dele (só ele grava na
   // própria conta) e fecha a pelada; fica o resultado final na tela até ele fechar.
@@ -50,8 +52,8 @@ export function PeladaApp() {
   const { naNuvem, controlando } = compartilhamento
   useEffect(() => {
     if (!naNuvem?.encerrada || controlando) return
-    const final = completarEstado(naNuvem.app.estado)
-    if (conta.logado && final.historico.length > 0) guardarPeladaEncerrada(final)
+    const final = peladaEncerrada(completarEstado(naNuvem.app.estado), naNuvem.app.crono)
+    if (conta.logado) guardarPeladaEncerrada(final)
     setEncerradaPorOutro(naNuvem) // eslint-disable-line react-hooks/set-state-in-effect
     pelada.encerrar()
   }, [naNuvem, controlando]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -133,11 +135,13 @@ export function PeladaApp() {
 
   return (
     <Compartilhamento.Provider value={nuvemDisponivel() ? compartilhamento : null}>
+    {/* bateria fraca: a Barra mostra a faixa vermelha embaixo dela */}
+    <FaixaDaBateria.Provider value={nuvemDisponivel() && bateriaFraca}>
     <div style={{ display: 'flex', flexDirection: 'column', height: 'var(--altura-tela)' }}>
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {aba === 'lista' && <Lista pelada={pelada} cobranca={cobranca} onApitar={() => setAba('jogo')} />}
         {aba === 'jogo' && <Jogo pelada={pelada} onLista={() => setAba('lista')} />}
-        {aba === 'tabela' && <Tabela pelada={pelada} />}
+        {aba === 'tabela' && <Tabela pelada={pelada} cobranca={cobranca} />}
         {aba === 'ajustes' && <Config pelada={pelada} onCancelar={cancelar} />}
       </div>
       <nav className="nav" aria-label="Navegação">
@@ -149,6 +153,7 @@ export function PeladaApp() {
         ))}
       </nav>
     </div>
+    </FaixaDaBateria.Provider>
     </Compartilhamento.Provider>
   )
 }

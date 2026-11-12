@@ -3,7 +3,8 @@
 import type { ResumoPagamentos } from './pagamento'
 
 // turma: de qual pelada é o dinheiro (sem turma = lançamentos antigos ou de pelada sem turma)
-export type MovimentoDoCaixa = { tipo: 'entrada' | 'saida'; valor: number; descricao: string; data: number; turma?: string | null }
+// caixinha: de qual caixinha é o dinheiro ("Bola nova"); jogador: quem pagou (entrada de caixinha)
+export type MovimentoDoCaixa = { tipo: 'entrada' | 'saida'; valor: number; descricao: string; data: number; turma?: string | null; caixinha?: string; jogador?: string }
 
 /** O que mostrar no caixa: todas as turmas, só os lançamentos sem turma ou uma turma. */
 export const TODAS_AS_TURMAS = 'todas'

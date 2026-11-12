@@ -16,6 +16,7 @@ export function AjustarFoto({ arquivo, aoUsar, aoCancelar }: { arquivo: Blob; ao
   const [zoom, setZoom] = useState(1)
   const [deslocamento, setDeslocamento] = useState<Posicao>({ x: 0, y: 0 })
   const [erro, setErro] = useState(false)
+  const [gerando, setGerando] = useState(false) // já tocou em "Usar foto": não deixa tocar de novo
   const moldura = useRef<HTMLDivElement>(null)
   const imagem = useRef<HTMLImageElement>(null)
   const dedos = useRef(new Map<number, Posicao>())
@@ -83,7 +84,8 @@ export function AjustarFoto({ arquivo, aoUsar, aoCancelar }: { arquivo: Blob; ao
   const aoRolar = (evento: WheelEvent<HTMLDivElement>) => mudarZoom(zoom * (evento.deltaY < 0 ? 1.1 : 1 / 1.1))
 
   const usar = () => {
-    if (!tamanho || !imagem.current) return
+    if (!tamanho || !imagem.current || gerando) return
+    setGerando(true)
     // o pedaço da foto original que está no quadrado
     const esquerda = (lado - largura) / 2 + deslocamento.x
     const topo = (lado - altura) / 2 + deslocamento.y
@@ -95,7 +97,7 @@ export function AjustarFoto({ arquivo, aoUsar, aoCancelar }: { arquivo: Blob; ao
     const desenho = tela.getContext('2d')!
     desenho.imageSmoothingQuality = 'high'
     desenho.drawImage(imagem.current, -esquerda / escala, -topo / escala, pedaco, pedaco, 0, 0, saida, saida)
-    tela.toBlob((foto) => (foto ? aoUsar(foto) : setErro(true)), 'image/png')
+    tela.toBlob((foto) => { if (foto) aoUsar(foto); else { setErro(true); setGerando(false) } }, 'image/png')
   }
 
   return (
@@ -128,7 +130,7 @@ export function AjustarFoto({ arquivo, aoUsar, aoCancelar }: { arquivo: Blob; ao
           {erro && <div style={{ color: 'var(--vermelho)', fontWeight: 600 }}>Não deu para abrir essa imagem. Escolha outra.</div>}
           <div className="opcoes-lado-a-lado">
             <button className="btn w sm" onClick={aoCancelar}>Cancelar</button>
-            <button className="btn sm" disabled={!tamanho || erro} onClick={usar}>Usar foto</button>
+            <button className="btn sm" disabled={!tamanho || erro || gerando} onClick={usar}>{gerando ? 'Preparando…' : 'Usar foto'}</button>
           </div>
         </div>
       </section>

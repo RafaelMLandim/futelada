@@ -7,7 +7,7 @@ import { alternarCrono, cronoZerado, darAcrescimos, pararNoFim } from '../cronom
 import { cartoesAoDar } from '../cartoes'
 import { outro } from '../lado'
 import { goleiroDoTime } from './criar'
-import { iniciarEscalacao, substituir } from './escalacao'
+import { iniciarEscalacao, saiuDoJogo, substituir } from './escalacao'
 import { jogoPorId, jogosDisponiveis, registrarResultado, timesDoJogo } from './jogos'
 import { duracaoDoPeriodo, rotuloDoPeriodo } from './periodos'
 
@@ -164,6 +164,7 @@ export function irParaOGol(t: Torneio, jogoId: string, lado: Lado, jogadorId: st
     if (p.escalacao.emCampo[lado].includes(jogadorId)) return { ...p, goleiros }
     if (!p.escalacao.banco[lado].includes(jogadorId)) throw new Error('Quem vai para o gol precisa estar em campo ou no banco')
     if (goleiroNaPartida(t, p, lado) || golVazioPorExpulsao(p, lado)) throw new Error('Do banco, só entra no gol vazio (com goleiro, é substituição)')
+    if (t.regras.reentrada === false && saiuDoJogo(p.escalacao, lado, jogadorId)) throw new Error('Quem saiu não pode voltar ao jogo')
     const { escalacao } = p
     return {
       ...p,
@@ -229,10 +230,13 @@ export function expulsosNaPartida(p: PartidaTorneio): Set<string> {
 
 export function substituirNaPartida(t: Torneio, jogoId: string, lado: Lado, saiId: string, entraId: string): Torneio {
   return comPartida(t, jogoId, (p) => {
-    const escalacao = substituir(p.escalacao, lado, saiId, entraId, t.regras.maxSubstituicoes, expulsosNaPartida(p))
+    const escalacao = substituir(p.escalacao, lado, saiId, entraId, t.regras.maxSubstituicoes, expulsosNaPartida(p), t.regras.reentrada !== false)
+    // guarda a troca (para dar para desfazer a última)
+    const feita = { lado, saiId, entraId, primeiraVez: !p.escalacao.jogaram[lado].includes(entraId), goleiroAntes: p.goleiros?.[lado] ?? null }
+    const substituicoesFeitas = [...(p.substituicoesFeitas ?? []), feita]
     // saiu quem estava no gol: quem entra vira o goleiro
-    if (p.goleiros?.[lado] !== saiId) return { ...p, escalacao }
-    return { ...p, escalacao, goleiros: { A: p.goleiros.A, B: p.goleiros.B, [lado]: entraId } }
+    if (p.goleiros?.[lado] !== saiId) return { ...p, escalacao, substituicoesFeitas }
+    return { ...p, escalacao, substituicoesFeitas, goleiros: { A: p.goleiros.A, B: p.goleiros.B, [lado]: entraId } }
   })
 }
 

@@ -52,7 +52,7 @@ export function Times({ hook, onSorteio }: { hook: TorneioHook; onSorteio: () =>
           <section key={time.id} className="panel">
             <div className="ph" style={{ background: time.cor, color: textoSobre(time.cor) }}>
               <span className="row num" style={{ gap: 8, fontSize: 20 }}>
-                <Camisa cor={time.cor} tamanho={24} contorno={textoSobre(time.cor)} />{time.nome}
+                <Camisa cor={time.cor} uniforme={time.uniforme} tamanho={24} contorno={textoSobre(time.cor)} />{time.nome}
               </span>
               {!hook.souOrganizador ? null : emCampo.includes(time.id)
                 ? <span className="tag t-ok">Em campo</span>

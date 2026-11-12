@@ -19,15 +19,26 @@ export function PagarPelada({ codigo }: { codigo: string }) {
     try { return localStorage.getItem(chaveEu) } catch { return null }
   })
 
+  // erro ao ler (não é "link não encontrado"): mostra o código para dar para saber o motivo
+  const [erroAoAbrir, setErroAoAbrir] = useState<string | null>(null)
+  const [tentativa, setTentativa] = useState(0)
   useEffect(() => {
     let parar = () => {}
     let ativo = true
-    void obterNuvem().then((n) => {
+    let tentouDeNovo = false
+    const falhou = (erro: unknown) => {
+      if (!ativo) return
+      parar()
+      if (!tentouDeNovo) { tentouDeNovo = true; window.setTimeout(abrir, 1500); return }
+      setErroAoAbrir((erro as { code?: string })?.code ?? String((erro as Error)?.message ?? erro))
+    }
+    const abrir = () => void obterNuvem().then((n) => {
       if (!n) return setCobranca(null)
-      if (ativo) parar = n.ouvirCobranca(codigo, (c, a) => { setCobranca(c); setAvisos(a) }, () => setCobranca(null))
-    })
+      if (ativo) parar = n.ouvirCobranca(codigo, (c, a) => { setErroAoAbrir(null); setCobranca(c); setAvisos(a) }, falhou)
+    }).catch(falhou)
+    abrir()
     return () => { ativo = false; parar() }
-  }, [codigo])
+  }, [codigo, tentativa])
 
   const copiar = async () => {
     if (!cobranca) return
@@ -51,16 +62,26 @@ export function PagarPelada({ codigo }: { codigo: string }) {
 
   return (
     <div className="scr" style={{ height: 'var(--altura-tela)' }}>
-      <Barra titulo="Pagar a pelada" sub={cobranca?.data ?? ''} />
+      {/* caixinha ("Bola nova"): o nome dela no topo e o motivo embaixo do valor */}
+      <Barra titulo={cobranca?.titulo ?? 'Pagar a pelada'} sub={cobranca?.titulo ? 'Caixinha da pelada' : (cobranca?.data ?? '')} />
       <div className="conteudo">
-        {cobranca === undefined && <div className="vazio">Carregando…</div>}
-        {cobranca === null && <div className="vazio">Link não encontrado. Peça o link de novo para o organizador.</div>}
-        {cobranca && (
+        {erroAoAbrir && (
+          <div className="panel pb" style={{ display: 'grid', gap: 10, textAlign: 'center', color: 'var(--navy)' }}>
+            <b>Não deu para abrir agora.</b>
+            <span className="mut">Confira a internet. Se abriu pelo WhatsApp ou Instagram, tente abrir no Safari ou no Chrome.</span>
+            <button className="btn" onClick={() => { setErroAoAbrir(null); setCobranca(undefined); setTentativa((numero) => numero + 1) }}>Tentar de novo</button>
+            <span className="mut" style={{ fontSize: 12 }}>Código do erro: {erroAoAbrir}</span>
+          </div>
+        )}
+        {!erroAoAbrir && cobranca === undefined && <div className="vazio">Carregando…</div>}
+        {!erroAoAbrir && cobranca === null && <div className="vazio">Link não encontrado. Peça o link de novo para o organizador.</div>}
+        {cobranca && !erroAoAbrir && (
           <>
             <section className="panel">
               <div className="pb" style={{ display: 'grid', gap: 10, justifyItems: 'center', textAlign: 'center' }}>
                 <div className="num" style={{ fontSize: 44 }}>{reais(cobranca.valor)}</div>
                 <div className="mut" style={{ marginTop: -8 }}>por pessoa · Pix para {cobranca.recebedor}</div>
+                {cobranca.descricao && <div style={{ fontWeight: 600, color: 'var(--navy)' }}>{cobranca.descricao}</div>}
                 <QrCode texto={cobranca.pix} tamanho={230} />
                 <button className="btn" onClick={copiar}>Copiar Pix copia e cola</button>
                 <div className="mut" style={{ fontSize: 12 }}>Abra o app do seu banco, escolha Pix e leia o QR ou cole o código.</div>

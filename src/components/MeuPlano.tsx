@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AVISO_DE_VENCIMENTO, PELADAS_GRATIS, TIMES_DO_TORNEIO_GRATIS } from '../logic/plano'
-import { podeComprarAqui, restaurarCompras } from '../store/compras'
+import { nomeDaLoja, podeComprarAqui, restaurarCompras } from '../store/compras'
 import { usePlano } from '../store/plano'
 import { abrirLink } from '../utils/nativo'
 import { TelaPremium } from './TelaPremium'
@@ -15,7 +15,7 @@ export function MeuPlano({ onFechar }: { onFechar: () => void }) {
   const [restaurando, setRestaurando] = useState(false)
 
   async function restaurar() {
-    if (!podeComprarAqui()) return setAviso('As compras ficam na Google Play: abra o app do Dois ou Dez no celular para restaurar.')
+    if (!podeComprarAqui()) return setAviso(`As compras ficam na ${nomeDaLoja()}: abra o app do Dois ou Dez no celular para restaurar.`)
     setRestaurando(true)
     try {
       await restaurarCompras()

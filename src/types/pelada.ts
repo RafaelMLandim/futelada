@@ -117,6 +117,7 @@ export type Estado = {
   proximoNumero: number // número do próximo time novo (só nasce quando chega gente)
   pagamentos: Record<string, Pagamento> // campo pago: quem avisou/pagou (por id do jogador)
   listaDaPelada?: string | null // código do link da lista na nuvem (null = ainda não criou)
+  vieramDoLink?: Record<string, string> // jogador (id) que entrou pelo link → quem confirmou (para voltar aos Confirmados)
   foramEmbora?: Jogador[] // quem saiu da lista hoje (se voltar, volta como o mesmo jogador, com a conta)
   contasDosGoleiros?: Record<string, string> // goleiro fixo (nome) → conta de quem entrou pelo link como goleiro
   cobranca: string | null // código do link de pagamento na nuvem (null = ainda não compartilhado)

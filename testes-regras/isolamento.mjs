@@ -165,7 +165,7 @@ describe('torneio compartilhado', () => {
     await assertFails(deleteDoc(doc(carla(), `${TORNEIO}/partidas/j2`)))
   })
 
-  test('a mesária encerra o jogo do campo dela (resultado + tira o jogo em andamento) e reabre', async () => {
+  test('a mesária encerra o jogo do campo dela (resultado + tira o jogo em andamento), mas não reabre nem muda depois', async () => {
     await criarTorneioDaAna()
     await carlaPegaOCampo1()
     const mesaria = carla()
@@ -174,10 +174,21 @@ describe('torneio compartilhado', () => {
     encerrar.set(doc(mesaria, `${TORNEIO}/resultados/j1`), { placar: { A: 2, B: 1 } })
     encerrar.delete(doc(mesaria, `${TORNEIO}/partidas/j1`))
     await assertSucceeds(encerrar.commit())
+    // reabrir (apagar o resultado e voltar o jogo para o campo) e corrigir depois são só da organizadora
     const reabrir = writeBatch(mesaria)
     reabrir.delete(doc(mesaria, `${TORNEIO}/resultados/j1`))
     reabrir.set(doc(mesaria, `${TORNEIO}/partidas/j1`), partida(1))
-    await assertSucceeds(reabrir.commit())
+    await assertFails(reabrir.commit())
+    await assertFails(updateDoc(doc(mesaria, `${TORNEIO}/resultados/j1`), { placar: { A: 0, B: 5 } }))
+    // nem recriando o jogo no campo dela para gravar outro resultado por cima
+    await assertSucceeds(setDoc(doc(mesaria, `${TORNEIO}/partidas/j1`), partida(1)))
+    await assertFails(setDoc(doc(mesaria, `${TORNEIO}/resultados/j1`), { placar: { A: 0, B: 5 } }))
+  })
+
+  test('a organizadora corrige o resultado de um jogo já encerrado', async () => {
+    await criarTorneioDaAna()
+    await servidor((db) => setDoc(doc(db, `${TORNEIO}/resultados/j1`), { placar: { A: 1, B: 0 } }))
+    await assertSucceeds(updateDoc(doc(ana(), `${TORNEIO}/resultados/j1`), { placar: { A: 2, B: 0 } }))
   })
 
   test('mesária que soltou o campo não marca mais', async () => {
