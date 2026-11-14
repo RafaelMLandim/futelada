@@ -240,7 +240,7 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
           </section>
         </div>
       )}
-      {avisoDoLink && <div className="mut" style={{ margin: '6px 12px 0', color: '#fff', fontWeight: 600 }}>{avisoDoLink}</div>}
+      {avisoDoLink && <div role="status" className="mut" style={{ margin: '6px 12px 0', color: '#fff', fontWeight: 600 }}>{avisoDoLink}</div>}
       {/* campo pago: quantos já pagaram; abre QR Pix, link para o grupo e a lista de pagamentos */}
       {!somenteLeitura && estado.config.pagamento.ativo && (() => {
         const r = resumoPagamentos(estado)
@@ -367,7 +367,7 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
                   <Camisa cor={colete?.cor ?? SEM_COLETE} contorno="#fff" />
                   <span>
                     Time {numero}
-                    <span style={{ display: 'block', fontSize: 12, color: '#c9d4e3', letterSpacing: 1 }}>
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--texto-no-escuro)', letterSpacing: 1 }}>
                       {colete ? colete.nome : proximo ? 'Próximo' : `${posicaoNaFila + 1}º da fila`}
                     </span>
                   </span>

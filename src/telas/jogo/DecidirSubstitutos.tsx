@@ -27,7 +27,7 @@ export function DecidirSubstitutos({ pendentes, onConfirmar, onCancelar }: {
             </button>
           )
           return (
-            <div key={s.id} className="pb" style={{ display: 'grid', gap: 8, borderBottom: '2px solid #e3e8d6' }}>
+            <div key={s.id} className="pb" style={{ display: 'grid', gap: 8, borderBottom: '2px solid var(--divisoria)' }}>
               <div className="row" style={{ gap: 8, fontWeight: 600, lineHeight: 1.4 }}>
                 <Troca tamanho={22} />
                 <span><b>{s.nome}</b> entrou no lugar de <b>{m.jogador.nome}</b> (machucado) e o time em que ele entrou saiu de campo. E agora?</span>

@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth'
 import {
   addDoc, collection, connectFirestoreEmulator, deleteDoc, deleteField, doc, getDoc, getDocs, increment, initializeFirestore, memoryLocalCache, onSnapshot, orderBy, persistentLocalCache, query,
-  persistentMultipleTabManager, setDoc, updateDoc, where, writeBatch, type DocumentReference,
+  limit, persistentMultipleTabManager, setDoc, updateDoc, where, writeBatch, type DocumentReference,
 } from 'firebase/firestore'
 import type { DadosNuvem, Operacao } from '../logic/torneio'
 import type { PartidaTorneio, ResultadoJogo } from '../types/torneio'
@@ -18,7 +18,7 @@ import { entrarComUmToque, prepararUmToque } from './umToque'
 import { CONTADORES_ZERADOS, PLANO_VAZIO, type Contadores, type DadosDoPlano, type Plano } from '../logic/plano'
 import type { PeladaDaCarta } from '../logic/carta'
 import type { JogadorDaTurma } from '../logic/turma'
-import type { AvisoPagamento, CobrancaNuvem, ConfirmadoNaLista, Lancamento, ListaDaPelada, MesarioNoCampo, Nuvem, PeladaCompartilhada, PeladaNoHistorico, Perfil, Turma } from './tipos'
+import type { AvisoPagamento, CobrancaNuvem, ConfirmadoNaLista, Lancamento, ListaDaPelada, MesarioNoCampo, Nuvem, PeladaCompartilhada, PeladaNoHistorico, Perfil, TelaDoTelao, Turma } from './tipos'
 import type { Caixinha } from '../logic/caixinha'
 
 export const configFirebase = {
@@ -85,6 +85,10 @@ function usarEmulador(): boolean {
 
 /** O Firestore não aceita `undefined`: converte para JSON puro. */
 const puro = <T,>(v: T): T => JSON.parse(JSON.stringify(v))
+
+/** Código da tela do telão: 6 letras e números fáceis de ler de longe (sem 0/O, 1/I/L). */
+const LETRAS_DA_TELA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+const codigoDaTela = () => Array.from(crypto.getRandomValues(new Uint32Array(6)), (numero) => LETRAS_DA_TELA[numero % LETRAS_DA_TELA.length]).join('')
 
 export function criarNuvemFirebase(): Nuvem {
   const app = initializeApp(configFirebase)
@@ -183,6 +187,8 @@ export function criarNuvemFirebase(): Nuvem {
   const cobranca = (codigo: string) => doc(db, 'cobrancas', codigo)
   const avisos = (codigo: string) => collection(db, 'cobrancas', codigo, 'avisos')
   const peladaCompartilhada = (codigo: string) => doc(db, 'peladas', codigo)
+  const telas = collection(db, 'telas')
+  const novaTela = () => ({ codigo: codigoDaTela(), criadaEm: Date.now() })
 
   return {
     nome: 'firebase',
@@ -315,6 +321,28 @@ export function criarNuvemFirebase(): Nuvem {
         if ((erro as { code?: string }).code === 'permission-denied') return false
         throw erro
       }
+    },
+    // ---- telão ----
+    ouvirTela(aoMudar, aoErro) {
+      let parar = () => {}
+      let vivo = true
+      uid().then(async (meuUid) => {
+        const ref = doc(telas, meuUid)
+        if (!(await getDoc(ref)).exists()) await setDoc(ref, novaTela())
+        if (!vivo) return
+        parar = onSnapshot(ref, (s) => { if (s.exists()) aoMudar(s.data() as TelaDoTelao) }, (erro) => aoErro?.(erro))
+      }).catch((erro) => aoErro?.(erro))
+      return () => { vivo = false; parar() }
+    },
+    async novoCodigoDaTela() {
+      await setDoc(doc(telas, await uid()), novaTela())
+    },
+    async parearTela(codigoDaTela, codigoDoTorneio, campo, nomeDoTorneio) {
+      await logado
+      const achadas = await getDocs(query(telas, where('codigo', '==', codigoDaTela.trim().toUpperCase()), limit(1)))
+      if (achadas.empty) return false
+      await updateDoc(achadas.docs[0].ref, { torneio: codigoDoTorneio, campo, nomeDoTorneio, pareadaEm: Date.now() })
+      return true
     },
     ouvirPeladaCompartilhada(codigo, aoMudar, aoErro) {
       let parar = () => {}

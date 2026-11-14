@@ -148,15 +148,23 @@ service cloud.firestore {
     // Torneio: só quem entrou com o Google (conta anônima não lê nem marca jogos)
     match /torneios/{codigo} {
       function comConta() { return request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
-      function organizador() { return get(/databases/$(database)/documents/torneios/$(codigo)).data.nuvem.organizador; }
+      // getAfter: vale também quando o torneio é criado no mesmo envio que os jogos em andamento
+      // (compartilhar um torneio que já começou)
+      function organizador() { return getAfter(/databases/$(database)/documents/torneios/$(codigo)).data.nuvem.organizador; }
       function souOrganizador() { return organizador() == request.auth.uid; }
       // mesário: quem travou aquele campo
       function mesarioDo(campo) {
         return exists(/databases/$(database)/documents/torneios/$(codigo)/campos/$(string(campo)))
           && get(/databases/$(database)/documents/torneios/$(codigo)/campos/$(string(campo))).data.uid == request.auth.uid;
       }
+      // telão (TV, sem conta): lê o torneio que a organizadora pareou com aquela tela (só ler, nunca gravar)
+      function telaDoTorneio() {
+        return request.auth != null
+          && exists(/databases/$(database)/documents/telas/$(request.auth.uid))
+          && get(/databases/$(database)/documents/telas/$(request.auth.uid)).data.get('torneio', '') == codigo;
+      }
       // get = quem tem o código; list só os próprios (excluir a conta), ninguém lista os dos outros
-      allow get: if comConta();
+      allow get: if comConta() || telaDoTorneio();
       allow list: if comConta() && resource.data.nuvem.organizador == request.auth.uid;
       allow create: if comConta() && request.resource.data.nuvem.organizador == request.auth.uid;
       allow update, delete: if comConta() && resource.data.nuvem.organizador == request.auth.uid;
@@ -171,7 +179,7 @@ service cloud.firestore {
 
       // Jogos em andamento: o organizador marca todos; o mesário só os do campo dele
       match /partidas/{jogo} {
-        allow read: if comConta();
+        allow read: if comConta() || telaDoTorneio();
         allow create: if comConta() && (souOrganizador() || mesarioDo(request.resource.data.campo));
         allow update: if comConta() && (souOrganizador() || (mesarioDo(resource.data.campo) && mesarioDo(request.resource.data.campo)));
         allow delete: if comConta() && (souOrganizador() || mesarioDo(resource.data.campo));
@@ -181,10 +189,32 @@ service cloud.firestore {
       match /resultados/{jogo} {
         function partida() { return /databases/$(database)/documents/torneios/$(codigo)/partidas/$(jogo); }
         function jogoNoMeuCampo() { return exists(partida()) && mesarioDo(get(partida()).data.campo); }
-        allow read: if comConta();
+        allow read: if comConta() || telaDoTorneio();
         allow create: if comConta() && (souOrganizador() || jogoNoMeuCampo());
         allow update, delete: if comConta() && souOrganizador();
       }
+    }
+
+    // Telão (PLANO.md, seção 20): a TV entra anônima e cria a tela dela (id = uid) com um código; a organizadora
+    // digita o código no celular e grava qual torneio e qual campo a tela mostra. Só a organizadora daquele
+    // torneio pareia; a tela só troca o próprio código (o que desfaz o pareamento).
+    match /telas/{uid} {
+      function comConta() { return request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
+      function organizadoraDoTorneio(codigo) {
+        return get(/databases/$(database)/documents/torneios/$(codigo)).data.nuvem.organizador == request.auth.uid;
+      }
+      allow get: if request.auth != null && (request.auth.uid == uid || comConta());
+      // achar a tela pelo código (uma por vez)
+      allow list: if comConta() && request.query.limit <= 1;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['codigo', 'criadaEm']) && request.resource.data.codigo is string;
+      allow update: if request.auth != null && (
+        (request.auth.uid == uid && request.resource.data.keys().hasOnly(['codigo', 'criadaEm']) && request.resource.data.codigo is string)
+        || (comConta()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['torneio', 'campo', 'nomeDoTorneio', 'pareadaEm'])
+            && request.resource.data.campo is int && request.resource.data.campo >= 1
+            && organizadoraDoTorneio(request.resource.data.torneio)));
+      allow delete: if request.auth != null && request.auth.uid == uid;
     }
   }
 }

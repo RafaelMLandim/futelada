@@ -72,7 +72,7 @@ export function QualPeladaHoje({ atual = null, podeRemover = false, aoEscolher, 
           <input className="inp" autoFocus maxLength={40} placeholder="Ex.: PELADA DE TERÇA" value={nome}
             onChange={(evento) => { setNova(maiusculas(evento.target.value)); setAviso(null) }} />
         </label>
-        {aviso && <div style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{aviso}</div>}
+        {aviso && <div role="status" style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{aviso}</div>}
         {turmas.length === 0 && <div className="mut">Joga em mais de um grupo? Cada um vira uma turma. Dá para criar outra depois.</div>}
         <button className="btn" type="submit" disabled={!nome.trim() || criando}>{criando ? 'Criando…' : 'Criar e continuar'}</button>
         {turmas.length > 0 && <button className="lnk" type="button" style={{ justifySelf: 'center' }} onClick={() => { setNova(null); setAviso(null) }}>Voltar para as turmas</button>}

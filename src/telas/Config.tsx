@@ -64,7 +64,7 @@ export function Config({ pelada, onPronto, onCancelar }: { pelada: Pelada; onPro
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }}>
               {PRESETS.map(([nome, n]) => (
-                <button key={n} className={'chip' + (cfg.linha === n ? ' on' : '')} onClick={() => linha(n)}>{nome} {n}</button>
+                <button key={n} className={'chip' + (cfg.linha === n ? ' on' : '')} style={{ whiteSpace: 'nowrap', padding: '0 4px' }} onClick={() => linha(n)}>{nome} {n}</button>
               ))}
             </div>
             <div className="mut">
@@ -77,7 +77,7 @@ export function Config({ pelada, onPronto, onCancelar }: { pelada: Pelada; onPro
         <section className="panel">
           <div className="ph">Coletes<span className="sub">escolha as cores</span></div>
           {LADOS.map((lado) => (
-            <div key={lado} className="pb" style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: lado === 'B' ? '2px solid #e3e8d6' : undefined }}>
+            <div key={lado} className="pb" style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: lado === 'B' ? '2px solid var(--divisoria)' : undefined }}>
               <div className="row num" style={{ fontSize: 18, textTransform: 'uppercase', gap: 8 }}>
                 <Camisa cor={cfg.coletes[lado].cor} />{cfg.coletes[lado].nome}
               </div>

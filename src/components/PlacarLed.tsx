@@ -17,21 +17,21 @@ export function PlacarLed({ lados, placar, tempoMin, gols, decorrido, rodando, f
   return (
     <section className="led" style={{ padding: '12px 12px 14px' }}>
       {/* três colunas: o do meio fica no centro do placar, mesmo com os textos dos lados de larguras diferentes */}
-      <div className="num" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 8, color: '#c9d4e3', fontWeight: 700, letterSpacing: 1, fontSize: 15 }}>
+      <div className="num" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 8, color: 'var(--texto-no-escuro)', fontWeight: 700, letterSpacing: 1, fontSize: 15 }}>
         <span>{tempoMin} MIN</span>
         {fim
           ? <span className="alerta" style={{ color: 'var(--amarelo)', fontSize: 18 }}>{textoFim}</span>
-          : <span style={{ color: rodando ? 'var(--amarelo)' : '#c9d4e3' }}>{rodando ? '● AO VIVO' : 'PAUSADO'}</span>}
+          : <span style={{ color: rodando ? 'var(--amarelo)' : 'var(--texto-no-escuro)' }}>{rodando ? '● AO VIVO' : 'PAUSADO'}</span>}
         <span style={{ textAlign: 'right' }}>{gols === null ? 'SÓ TEMPO' : `${gols} GOLS`}</span>
       </div>
       {periodo && (
         <div className="num" style={{ textAlign: 'center', fontSize: 16, letterSpacing: 1, color: '#fff', textTransform: 'uppercase', marginTop: 6 }}>{periodo}</div>
       )}
-      <div className="num" style={{ textAlign: 'center', fontSize: 44, marginTop: periodo ? 0 : 6, color: decorrido >= totalMs ? 'var(--vermelho)' : 'var(--amarelo)' }}>
+      <div className="num relogio" style={{ textAlign: 'center', fontSize: 44, marginTop: periodo ? 0 : 6, color: decorrido >= totalMs ? 'var(--vermelho)' : 'var(--amarelo)' }}>
         {formatarTempo(Math.min(decorrido, totalMs))}
       </div>
       {(acrescimoMin || decorrido - totalMs >= 1000) && (
-        <div className="num" style={{ textAlign: 'center', fontSize: 18, color: '#ffb39e', marginTop: 2 }} aria-label="Acréscimos">
+        <div className="num relogio" style={{ textAlign: 'center', fontSize: 18, color: '#ffb39e', marginTop: 2 }} aria-label="Acréscimos">
           +{formatarTempo(Math.min(Math.max(0, decorrido - totalMs), (acrescimoMin ?? Infinity) * 60_000))}
           <span style={{ fontSize: 12, letterSpacing: 1 }}>{acrescimoMin ? ` DE +${acrescimoMin} MIN` : ''} ACRÉSCIMOS</span>
         </div>
@@ -57,7 +57,7 @@ function TimeNoPlacar({ lado }: { lado: LadoDoPlacar }) {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 0 }}>
       <span className="num" style={{ fontSize: 22, color: '#fff', textTransform: 'uppercase', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lado.titulo}</span>
       <Camisa cor={lado.cor} uniforme={lado.uniforme} tamanho={36} contorno="#fff" />
-      {lado.sub && <span className="num" style={{ fontSize: 15, color: '#c9d4e3', textTransform: 'uppercase', letterSpacing: 1 }}>{lado.sub}</span>}
+      {lado.sub && <span className="num" style={{ fontSize: 15, color: 'var(--texto-no-escuro)', textTransform: 'uppercase', letterSpacing: 1 }}>{lado.sub}</span>}
     </div>
   )
 }

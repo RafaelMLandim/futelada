@@ -72,12 +72,12 @@ export function Pagamentos({ pelada, cobranca, onFechar }: { pelada: Pelada; cob
                   Lançar no caixa · entrou {reais(resumo.arrecadado)}, campo {reais(resumo.campo)}
                 </button>
           )}
-          {aviso && <div className="mut" style={{ textAlign: 'center', color: 'var(--navy)', fontWeight: 700 }}>{aviso}</div>}
+          {aviso && <div role="status" className="mut" style={{ textAlign: 'center', color: 'var(--navy)', fontWeight: 700 }}>{aviso}</div>}
           <div className="mut" style={{ fontSize: 12 }}>Toque no nome para marcar como pago (ou desfazer). Amarelo: avisou que pagou, confira no banco.</div>
           <div style={{ display: 'grid', gap: 4 }}>
             {pagantes(estado).map((j) => {
               const status = estado.pagamentos[j.id]?.status
-              const cor = status === 'pago' ? 'var(--verde)' : status === 'avisou' ? 'var(--amarelo)' : '#e3e8d6'
+              const cor = status === 'pago' ? 'var(--verde)' : status === 'avisou' ? 'var(--amarelo)' : 'var(--divisoria)'
               return (
                 <button key={j.id} className="tr" style={{ width: '100%', border: 0, font: 'inherit', color: 'var(--navy)', textAlign: 'left', cursor: 'pointer', borderLeft: `8px solid ${cor}` }}
                   aria-label={`Pagamento de ${j.nome}`} onClick={() => cobranca.marcar(j, status === 'pago' ? null : 'pago')}>

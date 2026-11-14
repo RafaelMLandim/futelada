@@ -140,7 +140,7 @@ export function Perfil() {
         <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
           <span style={{ color: '#fff', fontWeight: 700, fontSize: 15, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {rotulo}
-            {cartas.length > 1 && <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#c9d4e3' }}>{indiceAtual + 1} de {cartas.length} · deslize para ver as outras</span>}
+            {cartas.length > 1 && <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--texto-no-escuro)' }}>{indiceAtual + 1} de {cartas.length} · deslize para ver as outras</span>}
           </span>
           <span className="row" style={{ gap: 8, flex: 'none' }}>
             <button className="ib" style={{ width: 38, height: 38 }} aria-label="Editar a carta" disabled={salvando || recortando} onClick={() => setEditando(true)}><Icone nome="editar" tamanho={20} /></button>
@@ -187,7 +187,7 @@ export function Perfil() {
             <span className="mut" style={{ lineHeight: 1.35 }}>Outros jogadores denunciaram a foto ou o apelido, e eles saíram do app. Você pode escolher outra foto no lápis da carta.</span>
           </div>
         )}
-        {erro && <div className="panel pb mut" style={{ textAlign: 'center', color: 'var(--vermelho)', fontWeight: 600 }}>{erro}</div>}
+        {erro && <div role="status" className="panel pb mut" style={{ textAlign: 'center', color: 'var(--vermelho)', fontWeight: 600 }}>{erro}</div>}
         {comFundo && !salvando && (
           <div className="panel pb" style={{ display: 'grid', gap: 8, color: 'var(--navy)' }}>
             <b>Não deu para tirar o fundo dessa foto</b>

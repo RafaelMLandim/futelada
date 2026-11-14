@@ -94,7 +94,7 @@ function Relatorio({ peladas, ano, turma }: { peladas: PeladaNoHistorico[]; ano:
   }
   const destaque = (titulo: string, nome: string | undefined, detalhe: string) => (
     <div className="panel" style={{ padding: '10px 12px', display: 'grid', gap: 2, alignContent: 'start' }}>
-      <div className="mut" style={{ fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', fontWeight: 700 }}>{titulo}</div>
+      <div className="mut" style={{ fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', fontWeight: 700 }}>{titulo}</div>
       <div className="num" style={{ fontSize: 22, color: 'var(--navy)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nome ?? '—'}</div>
       <div className="mut">{nome ? detalhe : 'Ainda não tem'}</div>
     </div>
@@ -113,7 +113,7 @@ function Relatorio({ peladas, ano, turma }: { peladas: PeladaNoHistorico[]; ano:
         <div className="ph">Time do ano<span className="sub">presença · gols</span></div>
         {r.timeDoAno.length === 0 && <div className="pb mut">O Time do ano aparece com as peladas encerradas.</div>}
         {r.timeDoAno.map((j, i) => (
-          <div key={j.id} className="tr" style={{ borderTop: i ? '1px solid #e3e8d6' : 0 }}>
+          <div key={j.id} className="tr" style={{ borderTop: i ? '1px solid var(--divisoria)' : 0 }}>
             <span className="num" style={{ width: 22, fontSize: 18 }}>{i + 1}</span>
             <FotoDoJogador foto={j.conta ? fotos[j.conta] : undefined} conta={j.conta} nome={j.nome} comEspaco={comFotos} />
             <span className="nome" style={{ flex: 1 }}>{j.nome}{r.artilheiro?.id === j.id && ' ⚽'}</span>
@@ -122,7 +122,7 @@ function Relatorio({ peladas, ano, turma }: { peladas: PeladaNoHistorico[]; ano:
           </div>
         ))}
         {r.goleiroDoAno && (
-          <div className="tr" style={{ borderTop: '1px solid #e3e8d6' }}>
+          <div className="tr" style={{ borderTop: '1px solid var(--divisoria)' }}>
             <span className="no g">G</span>
             <span className="nome" style={{ flex: 1 }}>{r.goleiroDoAno.nome}</span>
             <span className="mut">goleiro do ano</span>
@@ -145,7 +145,7 @@ function Relatorio({ peladas, ano, turma }: { peladas: PeladaNoHistorico[]; ano:
           <span style={col}>PEL</span><span style={col}>J</span><span style={col}>V</span>
         </div>
         {r.jogadores.map((j, i) => (
-          <div key={j.id} className="tr" style={{ borderTop: '1px solid #e3e8d6' }}>
+          <div key={j.id} className="tr" style={{ borderTop: '1px solid var(--divisoria)' }}>
             <span className="num" style={{ width: 22, fontSize: 18 }}>{i + 1}</span>
             <FotoDoJogador foto={j.conta ? fotos[j.conta] : undefined} conta={j.conta} nome={j.nome} comEspaco={comFotos} />
             <span className="nome" style={{ flex: 1 }}>{j.nome}</span>
@@ -159,7 +159,7 @@ function Relatorio({ peladas, ano, turma }: { peladas: PeladaNoHistorico[]; ano:
         <section className="panel">
           <div className="ph">Artilharia<span className="sub">⚽ gols · 👑 artilheiro do dia</span></div>
           {[...r.jogadores].filter((j) => j.gols > 0).sort((a, b) => b.gols - a.gols || b.artilheiroDoDia - a.artilheiroDoDia || a.peladas - b.peladas).map((j, i) => (
-            <div key={j.id} className="tr" style={{ borderTop: i ? '1px solid #e3e8d6' : 0 }}>
+            <div key={j.id} className="tr" style={{ borderTop: i ? '1px solid var(--divisoria)' : 0 }}>
               <span className="num" style={{ width: 22, fontSize: 18 }}>{i + 1}</span>
               <span className="nome" style={{ flex: 1 }}>{j.nome}</span>
               {j.artilheiroDoDia > 0 && <span className="mut">👑 {j.artilheiroDoDia}</span>}
@@ -173,7 +173,7 @@ function Relatorio({ peladas, ano, turma }: { peladas: PeladaNoHistorico[]; ano:
         <section className="panel">
           <div className="ph">Goleiros<span className="sub">gols sofridos por jogo</span></div>
           {r.goleiros.map((g, i) => (
-            <div key={g.nome} className="tr" style={{ borderTop: i ? '1px solid #e3e8d6' : 0 }}>
+            <div key={g.nome} className="tr" style={{ borderTop: i ? '1px solid var(--divisoria)' : 0 }}>
               <span className="num" style={{ width: 22, fontSize: 18 }}>{i + 1}</span>
               <span className="nome" style={{ flex: 1 }}>{g.nome}</span>
               <span className="mut">{qtd(g.peladas, 'pelada', 'peladas')} · {qtd(g.jogos, 'jogo', 'jogos')}</span>
@@ -195,7 +195,7 @@ function ListaDePeladas({ peladas, onAbrir }: { peladas: PeladaNoHistorico[]; on
         const artilheiro = artilharia(p.estado)[0]
         return (
           <button key={p.id} className="tr" onClick={() => onAbrir(p)}
-            style={{ width: '100%', border: 0, borderTop: i ? '1px solid #e3e8d6' : 0, background: 'transparent', font: 'inherit', color: 'var(--navy)', textAlign: 'left', cursor: 'pointer', minHeight: 54 }}>
+            style={{ width: '100%', border: 0, borderTop: i ? '1px solid var(--divisoria)' : 0, background: 'transparent', font: 'inherit', color: 'var(--navy)', textAlign: 'left', cursor: 'pointer', minHeight: 54 }}>
             <span style={{ flex: 1, display: 'grid', gap: 2 }}>
               <span style={{ fontWeight: 800 }}>{p.dia}</span>
               <span className="mut">{partidas} {partidas === 1 ? 'partida' : 'partidas'}{artilheiro ? ` · ⚽ ${artilheiro.nome} (${artilheiro.gols})` : ''}</span>
@@ -252,7 +252,7 @@ function PeladaAberta({ pelada, onFechar }: { pelada: PeladaNoHistorico; onFecha
             </table>
           )}
           {estado.historico.map((p) => (
-            <div key={p.numero} className="tr" style={{ borderTop: '1px solid #e3e8d6' }}>
+            <div key={p.numero} className="tr" style={{ borderTop: '1px solid var(--divisoria)' }}>
               <span className="mut" style={{ width: 26 }}>{p.numero}º</span>
               <span style={{ flex: 1, textAlign: 'right', fontWeight: p.resultado === 'A' ? 800 : 600 }}>Time {p.timeA.numero}</span>
               <span className="num" style={{ fontSize: 20, width: 56, textAlign: 'center' }}>{p.placar[0]} x {p.placar[1]}</span>

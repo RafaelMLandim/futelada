@@ -202,7 +202,7 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou, seletor
   const coluna = (lado: Lado) => {
     const time = times[lado]
     return (
-      <div key={lado} style={lado === 'A' ? { borderRight: '2px solid #e3e8d6' } : undefined}>
+      <div key={lado} style={lado === 'A' ? { borderRight: '2px solid var(--divisoria)' } : undefined}>
         <div className="num" style={{ padding: '6px 10px', background: time.cor, color: textoSobre(time.cor), textTransform: 'uppercase' }}>
           <div style={{ fontSize: 17, lineHeight: 1.05, overflowWrap: 'anywhere' }}>{time.nome}</div>
           <div className="row" style={{ fontSize: 12, letterSpacing: 1, opacity: .85, gap: 6 }}>
@@ -236,7 +236,7 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou, seletor
           )
         })}
         {(p.escalacao.banco[lado].length > 0 || p.escalacao.suspensos[lado].length > 0) && (
-          <div className="tr" style={{ minHeight: 26, fontSize: 11, letterSpacing: 1, color: 'var(--mut)', background: '#e3e8d6' }}>BANCO</div>
+          <div className="tr" style={{ minHeight: 26, fontSize: 12, letterSpacing: 1, color: 'var(--mut)', background: 'var(--divisoria)' }}>BANCO</div>
         )}
         {p.escalacao.banco[lado].map((id) => {
           const j = jogador(time, id)
@@ -288,7 +288,7 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou, seletor
         {noIntervalo && (
           <section className="panel pb" style={{ display: 'grid', gap: 8, textAlign: 'center' }}>
             <div className="mut" style={{ color: 'var(--navy)', fontWeight: 700, letterSpacing: 1 }}>INTERVALO</div>
-            <div className={'num' + (restanteIntervalo === 0 ? ' alerta' : '')} style={{ fontSize: 40, color: restanteIntervalo === 0 ? 'var(--vermelho)' : 'var(--navy)' }}>
+            <div className={'num relogio' + (restanteIntervalo === 0 ? ' alerta' : '')} style={{ fontSize: 40, color: restanteIntervalo === 0 ? 'var(--vermelho)' : 'var(--navy)' }}>
               {formatarTempo(restanteIntervalo)}
             </div>
             {editavel && <button className="btn" onClick={comecarProximo}><Icone nome="play" /> Começar o {proximo}</button>}
@@ -302,9 +302,9 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou, seletor
           if (!ida || !ag) return null
           return (
             <div className="panel row" style={{ justifyContent: 'space-around', padding: '8px 10px', textAlign: 'center' }}>
-              <div><div className="mut" style={{ fontSize: 11, letterSpacing: 1 }}>IDA</div>
+              <div><div className="mut" style={{ fontSize: 12, letterSpacing: 1 }}>IDA</div>
                 <div className="num" style={{ fontSize: 20 }}>{times.B.nome} {ida.placar[0]} x {ida.placar[1]} {times.A.nome}</div></div>
-              <div><div className="mut" style={{ fontSize: 11, letterSpacing: 1 }}>AGREGADO</div>
+              <div><div className="mut" style={{ fontSize: 12, letterSpacing: 1 }}>AGREGADO</div>
                 <div className="num" style={{ fontSize: 26, color: ag[0] === ag[1] ? 'var(--navy)' : 'var(--verde)' }}>{ag[0]} x {ag[1]}</div></div>
             </div>
           )

@@ -75,7 +75,7 @@ export function FimDeJogo({ hook, jogoId, times, onFechar, onEncerrado, onAcresc
         </div>
         {vencedor ? (
           <>
-            <div className="led num" style={{ textAlign: 'center', padding: 10, fontSize: 24, textTransform: 'uppercase' }}>
+            <div className="led num" style={{ textAlign: 'center', padding: 10, fontSize: 26, textTransform: 'uppercase' }}>
               {times[vencedor].nome} venceu nos pênaltis · {pa} x {pb}
             </div>
             <button className="btn" onClick={() => confirmar([pa, pb])}>Confirmar resultado</button>

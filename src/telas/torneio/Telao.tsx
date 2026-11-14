@@ -8,12 +8,15 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Camisa } from '../../components/Camisa'
 import { Icone } from '../../components/Icone'
 import {
-  artilhariaDoTorneio, campeao, classificacao, decorridoNoPeriodo, duracaoDoPeriodo, jogoPorId, nomeDoGrupo, nomeDoPeriodo, placarDosPenaltis,
+  artilhariaDoTorneio, campeao, juntar, classificacao, decorridoNoPeriodo, duracaoDoPeriodo, jogoPorId, nomeDoGrupo, nomeDoPeriodo, placarDosPenaltis,
   proximosPorCampo, quemBate, temposDaFase, timesDoJogo, ultimoPeriodo, vencedor, vencedorDosPenaltis, type LinhaDaTabela,
 } from '../../logic/torneio'
 import { tempoTotalMs } from '../../logic/cronometro'
 import type { Gol, Lado } from '../../types/pelada'
 import type { PartidaTorneio, Penaltis, TimeTorneio, Torneio } from '../../types/torneio'
+import { Logo } from '../../components/Logo'
+import { obterNuvem } from '../../nuvem'
+import type { TelaDoTelao } from '../../nuvem/tipos'
 import { completar } from '../../store/torneio'
 import { luminancia } from '../../utils/cores'
 import { formatarTempo, minutoDoGol } from '../../utils/formatar'
@@ -575,4 +578,68 @@ function lerTorneioLocal(): Torneio | null {
   } catch {
     return null
   }
+}
+
+// ---------- Telão de verdade: a TV pareada com um campo pelo celular do organizador ----------
+
+/**
+ * O que abre em dois-ou-dez.web.app/telao. Sem login: a TV entra anônima, mostra um código grande e espera
+ * o organizador digitar o código no celular (Ajustes → Telão). Depois mostra o campo escolhido, ao vivo.
+ * Se a TV desligar, ao abrir de novo ela continua no mesmo campo (a tela fica guardada na nuvem).
+ */
+export function TelaoNaTv() {
+  const [tela, setTela] = useState<TelaDoTelao | null>(null)
+  const [torneio, setTorneio] = useState<Torneio | null | undefined>(undefined)
+  const [erro, setErro] = useState(false)
+
+  useEffect(() => {
+    let parar = () => {}
+    let vivo = true
+    void obterNuvem().then((nuvem) => {
+      if (!vivo) return
+      if (!nuvem) { setErro(true); return }
+      parar = nuvem.ouvirTela(setTela, () => setErro(true))
+    })
+    return () => { vivo = false; parar() }
+  }, [])
+
+  // pareada: acompanha o torneio daquela tela (troca sozinha se o organizador mudar o campo ou o torneio)
+  const codigoDoTorneio = tela?.torneio ?? null
+  useEffect(() => {
+    setTorneio(undefined)
+    if (!codigoDoTorneio) return
+    let parar = () => {}
+    let vivo = true
+    void obterNuvem().then((nuvem) => {
+      if (!vivo || !nuvem) return
+      parar = nuvem.ouvir(codigoDoTorneio, (dados) => {
+        const junto = juntar(dados)
+        setTorneio(junto ? completar(junto) : null)
+      }, () => setTorneio(null))
+    })
+    return () => { vivo = false; parar() }
+  }, [codigoDoTorneio])
+
+  if (tela?.torneio && tela.campo && torneio) return <TelaoTorneio torneio={torneio} campo={tela.campo} />
+  return (
+    <div className="telao">
+      <main className="telao-parado telao-pareamento">
+        <Logo tamanho={120} fundo={false} />
+        {erro ? (
+          <div className="telao-aviso">Sem conexão. Confira a internet desta tela.</div>
+        ) : !tela ? (
+          <div className="telao-aviso">Preparando o telão…</div>
+        ) : tela.torneio && torneio === undefined ? (
+          <div className="telao-aviso">Abrindo {tela.nomeDoTorneio || 'o torneio'}…</div>
+        ) : (
+          <>
+            {tela.torneio && torneio === null && <div className="telao-aviso pequeno">O torneio desta tela não existe mais. Ligue de novo:</div>}
+            <div className="telao-instrucao">No celular do organizador: <b>Torneio → Ajustes → Telão</b> e digite</div>
+            <div className="telao-codigo" aria-label={`Código da tela: ${tela.codigo.split('').join(' ')}`}>{tela.codigo}</div>
+            <div className="telao-instrucao pequena">Cada campo tem o seu telão: escolha o campo na hora de ligar.</div>
+          </>
+        )}
+      </main>
+    </div>
+  )
 }

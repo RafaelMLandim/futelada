@@ -61,6 +61,12 @@ export type MesarioNoCampo = { uid: string; nome: string; foto: string | null; e
 /** Aviso de pagamento de um jogador (um documento por jogador). */
 export type AvisoPagamento = { status: StatusPagamento; nome: string; em: number }
 
+/**
+ * Tela de telão (TV, projetor, tablet): mostra um código até a organizadora parear; depois, qual torneio e
+ * qual campo ela mostra (PLANO.md, seção 20).
+ */
+export type TelaDoTelao = { codigo: string; torneio?: string; campo?: number; nomeDoTorneio?: string }
+
 /** Onde o torneio compartilhado fica guardado (Firebase ou a versão de teste). */
 export interface Nuvem {
   nome: 'firebase' | 'teste'
@@ -72,6 +78,12 @@ export interface Nuvem {
   gravar(codigo: string, ops: Operacao[]): Promise<void>
   existe(codigo: string): Promise<boolean>
   apagar(codigo: string): Promise<void>
+  /** Telão: cria a tela deste aparelho (com um código) e avisa quando ela for pareada ou trocar de campo. */
+  ouvirTela(aoMudar: (tela: TelaDoTelao) => void, aoErro?: (erro: Error) => void): () => void
+  /** Telão: troca o código desta tela (desfaz o pareamento). */
+  novoCodigoDaTela(): Promise<void>
+  /** Organizadora: liga a tela do código a um campo do torneio. false = nenhuma tela com esse código. */
+  parearTela(codigoDaTela: string, torneio: string, campo: number, nomeDoTorneio: string): Promise<boolean>
   /** Quem está em cada campo (número do campo → mesário). */
   ouvirCampos(codigo: string, aoMudar: (campos: Record<number, MesarioNoCampo>) => void): () => void
   /** Pega o campo para este mesário. false = outro mesário já está nele. */

@@ -105,11 +105,11 @@ export function RegrasForm({ regras, mudar, travado = false, minCampos = 1 }: {
         {r.formato === 'grupos' && (
           <>
             <Linha titulo="Grupos" detalhe={r.grupos === 1 ? 'Um grupo só: pontos corridos e os primeiros vão para o mata-mata' : undefined}>
-              {travado ? <span className="num" style={{ fontSize: 24 }}>{r.grupos}</span>
+              {travado ? <span className="num" style={{ fontSize: 26 }}>{r.grupos}</span>
                 : <Passo rotulo="grupos" valor={r.grupos} menos={() => mudarGrupos(r.grupos - 1)} mais={() => mudarGrupos(r.grupos + 1)} />}
             </Linha>
             <Linha titulo={r.grupos === 1 ? 'Passam para o mata-mata' : 'Passam de cada grupo'}>
-              {travado ? <span className="num" style={{ fontSize: 24 }}>{r.classificamPorGrupo}</span>
+              {travado ? <span className="num" style={{ fontSize: 26 }}>{r.classificamPorGrupo}</span>
                 : <Passo rotulo="classificados por grupo" valor={r.classificamPorGrupo} menos={() => mudar({ classificamPorGrupo: limitar(r.classificamPorGrupo - 1, minimoQuePassa, maximoQuePassa) })} mais={() => mudar({ classificamPorGrupo: limitar(r.classificamPorGrupo + 1, minimoQuePassa, maximoQuePassa) })} />}
             </Linha>
           </>

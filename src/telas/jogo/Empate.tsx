@@ -53,7 +53,7 @@ export function Empate({ pelada, onEncerrar, onFechar }: {
               : <>Não tem 2 times completos esperando: <b>a moeda decide quem sai</b>.</>}
           </span>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', borderTop: '2px solid #e3e8d6' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', borderTop: '2px solid var(--divisoria)' }}>
           {([['Cara', 'A'], ['Coroa', 'B']] as const).map(([face, l]) => (
             <div key={face} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 10, gap: 4 }}>
               <span className="tag t-y">{face}</span>

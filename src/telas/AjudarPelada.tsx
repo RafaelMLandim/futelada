@@ -39,7 +39,7 @@ export function AjudarPelada({ codigo, chave }: { codigo: string; chave: string 
       extra={(
         <div className="pb" style={{ display: 'grid', gap: 6, background: '#fff' }}>
           <button className="btn" onClick={assumir}>Assumir o controle</button>
-          {erro && <div className="mut" style={{ color: 'var(--vermelho)', fontWeight: 700, textAlign: 'center' }}>{erro}</div>}
+          {erro && <div role="status" className="mut" style={{ color: 'var(--vermelho)', fontWeight: 700, textAlign: 'center' }}>{erro}</div>}
         </div>
       )} />
   )

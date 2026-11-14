@@ -17,7 +17,8 @@ export function Barra({ titulo, sub, direita }: { titulo: ReactNode; sub?: React
     <header className="bar">
       <Logo fundo={false} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <h1 className="h1">{titulo}</h1>
+        {/* título comprido ("Caixa da pelada") um pouco menor, para não quebrar em duas linhas */}
+        <h1 className={'h1' + (typeof titulo === 'string' && titulo.length > 12 ? ' longo' : '')}>{titulo}</h1>
         {sub && <p className="bsub">{sub}</p>}
       </div>
       <div className="row" style={{ gap: 10, flex: 'none' }}>

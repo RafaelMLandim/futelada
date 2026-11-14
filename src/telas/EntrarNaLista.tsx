@@ -132,7 +132,7 @@ export function EntrarNaLista({ codigo }: { codigo: string }) {
                       <button className="btn w" type="submit" disabled={!nome.trim()}>Entrar só com o nome</button>
                     </form>
                   )}
-                  {erro && <div className="mut" style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{erro}</div>}
+                  {erro && <div role="status" className="mut" style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{erro}</div>}
                 </div>
               </section>
             )}

@@ -26,8 +26,8 @@ export function TabelaTorneio({ torneio }: { torneio: Torneio }) {
       <div className="conteudo">
         {vencedorTorneio && (
           <section className="led num" style={{ textAlign: 'center', padding: 14 }}>
-            <div style={{ fontSize: 16, color: '#c9d4e3', letterSpacing: 1 }}>CAMPEÃO</div>
-            <div className="row" style={{ justifyContent: 'center', gap: 10, fontSize: 32, textTransform: 'uppercase' }}>
+            <div style={{ fontSize: 16, color: 'var(--texto-no-escuro)', letterSpacing: 1 }}>CAMPEÃO</div>
+            <div className="row" style={{ justifyContent: 'center', gap: 10, fontSize: 30, textTransform: 'uppercase' }}>
               <Icone nome="trofeu" tamanho={30} />{timePorId(torneio, vencedorTorneio)?.nome}
             </div>
           </section>
@@ -54,10 +54,12 @@ function Classificacao({ torneio, titulo, linhas, destaque, legenda }: {
   return (
     <section className="panel">
       <div className="ph">{titulo}{legenda && <span className="sub">{legenda}</span>}</div>
-      <div className="mut" style={{ padding: '6px 10px', fontSize: 11 }}>Desempate: vitórias, saldo, menos vermelhos (CV), menos amarelos (CA).</div>
-      <div className="tr" style={{ minHeight: 30, fontSize: 12, color: 'var(--mut)', letterSpacing: .8, background: '#e3e8d6', gap: 4 }}>
+      <div className="mut" style={{ padding: '6px 10px', fontSize: 12 }}>Desempate: vitórias, saldo, menos vermelhos (CV), menos amarelos (CA).</div>
+      <div className="tr" style={{ minHeight: 30, fontSize: 12, color: 'var(--mut)', letterSpacing: .8, background: 'var(--divisoria)', gap: 4 }}>
         <span style={{ width: 24 }} /><span className="nome">TIME</span>
-        {['P', 'J', 'V', 'E', 'D', 'SG', 'CV', 'CA'].map((c) => <span key={c} style={COL}>{c}</span>)}
+        {['P', 'J', 'V', 'E', 'D', 'SG'].map((c) => <span key={c} style={COL}>{c}</span>)}
+        {/* cartões (só desempate): somem no celular estreito para o nome do time caber */}
+        {['CV', 'CA'].map((c) => <span key={c} className="coluna-larga" style={COL}>{c}</span>)}
       </div>
       {linhas.map((l, i) => {
         const time = timePorId(torneio, l.time)!
@@ -69,8 +71,8 @@ function Classificacao({ torneio, titulo, linhas, destaque, legenda }: {
             <span style={COL}>{l.jogos}</span><span style={COL}>{l.vitorias}</span>
             <span style={COL}>{l.empates}</span><span style={COL}>{l.derrotas}</span>
             <span style={COL}>{l.saldo > 0 ? `+${l.saldo}` : l.saldo}</span>
-            <span style={{ ...COL, color: l.vermelhos ? 'var(--vermelho)' : 'var(--mut)' }}>{l.vermelhos}</span>
-            <span style={{ ...COL, color: 'var(--mut)' }}>{l.amarelos}</span>
+            <span className="coluna-larga" style={{ ...COL, color: l.vermelhos ? 'var(--vermelho)' : 'var(--mut)' }}>{l.vermelhos}</span>
+            <span className="coluna-larga" style={{ ...COL, color: 'var(--mut)' }}>{l.amarelos}</span>
           </div>
         )
       })}
@@ -144,7 +146,7 @@ export function Confronto({ torneio, jogo }: { torneio: Torneio; jogo: JogoTorne
     <div style={{ background: '#fff', border: '2px solid var(--borda)', borderRadius: 5, boxShadow: '0 2px 0 var(--borda)' }}>
       {ida && <div className="mut" style={{ fontSize: 10, padding: '3px 8px 0', textAlign: 'right', letterSpacing: 0.5 }}>IDA · VOLTA · AGREGADO</div>}
       {linha('A')}
-      <div style={{ height: 1, background: '#e3e8d6' }} />
+      <div style={{ height: 1, background: 'var(--divisoria)' }} />
       {linha('B')}
     </div>
   )
@@ -189,7 +191,7 @@ function Estatisticas({ torneio }: { torneio: Torneio }) {
       {goleiros.length > 0 && (
         <section className="panel">
           <div className="ph">Goleiro menos vazado</div>
-          <div className="tr" style={{ minHeight: 30, fontSize: 12, color: 'var(--mut)', letterSpacing: .8, background: '#e3e8d6' }}>
+          <div className="tr" style={{ minHeight: 30, fontSize: 12, color: 'var(--mut)', letterSpacing: .8, background: 'var(--divisoria)' }}>
             <span style={{ width: 24 }} /><span className="nome">GOLEIRO</span>
             <span style={COL}>J</span><span style={COL}>GS</span><span style={{ ...COL, width: 44 }}>MÉDIA</span>
           </div>

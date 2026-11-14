@@ -127,7 +127,7 @@ export function AjustarFoto({ arquivo, aoUsar, aoCancelar }: { arquivo: Blob; ao
             <input type="range" min={1} max={ZOOM_MAXIMO} step={0.05} value={zoom} style={{ flex: 1 }} aria-label="Zoom da foto"
               onChange={(evento) => mudarZoom(Number(evento.target.value))} />
           </label>
-          {erro && <div style={{ color: 'var(--vermelho)', fontWeight: 600 }}>Não deu para abrir essa imagem. Escolha outra.</div>}
+          {erro && <div role="status" style={{ color: 'var(--vermelho)', fontWeight: 600 }}>Não deu para abrir essa imagem. Escolha outra.</div>}
           <div className="opcoes-lado-a-lado">
             <button className="btn w sm" onClick={aoCancelar}>Cancelar</button>
             <button className="btn sm" disabled={!tamanho || erro || gerando} onClick={usar}>{gerando ? 'Preparando…' : 'Usar foto'}</button>

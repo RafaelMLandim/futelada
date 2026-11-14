@@ -1,7 +1,7 @@
 // Isolamento entre usuários no emulador do Firestore: ninguém vê, muda ou apaga o que é de outra pessoa
 // (pelada compartilhada, torneio, campo pago e dados da conta). Rodar: npm run test:regras
 import { assertFails, assertSucceeds, initializeTestEnvironment } from '@firebase/rules-unit-testing'
-import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore'
+import { collection, deleteDoc, doc, getDoc, getDocs, limit, query, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore'
 import { readFileSync } from 'node:fs'
 import { after, before, beforeEach, describe, test } from 'node:test'
 
@@ -206,10 +206,91 @@ describe('torneio compartilhado', () => {
     await assertSucceeds(deleteDoc(doc(ana(), `${TORNEIO}/partidas/j1`)))
   })
 
+  test('compartilhar um torneio que já começou: o torneio, os jogos em andamento e os resultados sobem juntos', async () => {
+    const daAna = ana()
+    const lote = writeBatch(daAna)
+    lote.set(doc(daAna, 'torneios/JA2345'), { nome: 'Copa', nuvem: { codigo: 'JA2345', organizador: 'ana' } })
+    lote.set(doc(daAna, 'torneios/JA2345/partidas/j2'), partida(1))
+    lote.set(doc(daAna, 'torneios/JA2345/resultados/j1'), { placar: [1, 0] })
+    await assertSucceeds(lote.commit())
+    // e ninguém usa isso para criar jogos num torneio de outra pessoa
+    const doBeto = beto()
+    const loteDoBeto = writeBatch(doBeto)
+    loteDoBeto.set(doc(doBeto, 'torneios/JA2345/partidas/j3'), partida(1))
+    await assertFails(loteDoBeto.commit())
+  })
+
   test('nada fora de campos, partidas e resultados', async () => {
     await criarTorneioDaAna()
     await assertFails(setDoc(doc(ana(), `${TORNEIO}/outra/x`), { a: 1 }))
     await assertFails(setDoc(doc(beto(), `${TORNEIO}/outra/x`), { a: 1 }))
+  })
+})
+
+describe('telão (TV pareada com um campo do torneio)', () => {
+  const TORNEIO = 'torneios/TOR234'
+  // a TV entra anônima; o id da tela é o uid dela
+  const tv = () => ambiente.authenticatedContext('tv1', { firebase: { sign_in_provider: 'anonymous' } }).firestore()
+  const outraTv = () => ambiente.authenticatedContext('tv2', { firebase: { sign_in_provider: 'anonymous' } }).firestore()
+  const criarTorneioDaAna = () => servidor(async (db) => {
+    await setDoc(doc(db, TORNEIO), { nome: 'Copa', nuvem: { codigo: 'TOR234', organizador: 'ana' } })
+    await setDoc(doc(db, `${TORNEIO}/partidas/j1`), { jogoId: 'j1', campo: 1 })
+    await setDoc(doc(db, `${TORNEIO}/resultados/j0`), { placar: [1, 0] })
+  })
+  const tvCriaATela = () => assertSucceeds(setDoc(doc(tv(), 'telas/tv1'), { codigo: 'K7P2QX', criadaEm: 1 }))
+  const pareamento = { torneio: 'TOR234', campo: 2, nomeDoTorneio: 'Copa', pareadaEm: 2 }
+
+  test('a TV cria só a própria tela, só com o código', async () => {
+    await tvCriaATela()
+    await assertFails(setDoc(doc(outraTv(), 'telas/tv1'), { codigo: 'ROUBO1', criadaEm: 1 }))
+    await assertFails(setDoc(doc(tv(), 'telas/tv3'), { codigo: 'AAAAAA', criadaEm: 1 }))
+    await assertFails(setDoc(doc(outraTv(), 'telas/tv2'), { codigo: 'AAAAAA', criadaEm: 1, torneio: 'TOR234', campo: 1 }))
+  })
+
+  test('sem pareamento a TV não lê o torneio', async () => {
+    await criarTorneioDaAna()
+    await tvCriaATela()
+    await assertFails(getDoc(doc(tv(), TORNEIO)))
+    await assertFails(getDocs(collection(tv(), `${TORNEIO}/partidas`)))
+  })
+
+  test('a organizadora acha a tela pelo código e pareia; aí a TV lê o torneio, os jogos e os resultados', async () => {
+    await criarTorneioDaAna()
+    await tvCriaATela()
+    const achadas = await assertSucceeds(getDocs(query(collection(ana(), 'telas'), where('codigo', '==', 'K7P2QX'), limit(1))))
+    await assertSucceeds(updateDoc(achadas.docs[0].ref, pareamento))
+    await assertSucceeds(getDoc(doc(tv(), TORNEIO)))
+    await assertSucceeds(getDocs(collection(tv(), `${TORNEIO}/partidas`)))
+    await assertSucceeds(getDocs(collection(tv(), `${TORNEIO}/resultados`)))
+  })
+
+  test('a TV pareada só lê: não marca jogo, não grava resultado, não muda o torneio', async () => {
+    await criarTorneioDaAna()
+    await tvCriaATela()
+    await servidor((db) => updateDoc(doc(db, 'telas/tv1'), pareamento))
+    await assertFails(setDoc(doc(tv(), `${TORNEIO}/partidas/j1`), { jogoId: 'j1', campo: 1, placar: [9, 0] }))
+    await assertFails(setDoc(doc(tv(), `${TORNEIO}/resultados/j1`), { placar: [9, 0] }))
+    await assertFails(updateDoc(doc(tv(), TORNEIO), { nome: 'Hackeada' }))
+    // nem troca sozinha para outro torneio
+    await assertFails(updateDoc(doc(tv(), 'telas/tv1'), { torneio: 'OUTRO1' }))
+  })
+
+  test('outra TV, sem conta ou quem não é organizadora não pareia', async () => {
+    await criarTorneioDaAna()
+    await tvCriaATela()
+    await assertFails(updateDoc(doc(beto(), 'telas/tv1'), pareamento))
+    await assertFails(updateDoc(doc(outraTv(), 'telas/tv1'), pareamento))
+    await assertFails(updateDoc(doc(anonimo(), 'telas/tv1'), pareamento))
+    await assertFails(getDocs(query(collection(anonimo(), 'telas'), where('codigo', '==', 'K7P2QX'), limit(1))))
+    await assertFails(getDocs(collection(beto(), 'telas')))
+  })
+
+  test('a TV renova o código (desfaz o pareamento) e para de ler o torneio', async () => {
+    await criarTorneioDaAna()
+    await tvCriaATela()
+    await servidor((db) => updateDoc(doc(db, 'telas/tv1'), pareamento))
+    await assertSucceeds(setDoc(doc(tv(), 'telas/tv1'), { codigo: 'NOVO99', criadaEm: 3 }))
+    await assertFails(getDoc(doc(tv(), TORNEIO)))
   })
 })
 

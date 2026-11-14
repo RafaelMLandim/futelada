@@ -77,6 +77,10 @@ export function criarNuvemDeTeste(servidor: string): Nuvem {
       fonte.onmessage = (ev) => aoMudar(JSON.parse(ev.data) as Record<number, MesarioNoCampo>)
       return () => fonte.close()
     },
+    // telão: a nuvem de teste não tem pareamento (só o Firebase)
+    ouvirTela(aoMudar) { aoMudar({ codigo: 'TESTE1' }); return () => {} },
+    async novoCodigoDaTela() {},
+    async parearTela() { return false },
     async pegarCampo(codigo, campo) {
       const r = await fetch(url('pegar', codigo), { method: 'POST', body: JSON.stringify({ campo, uid: await this.usuario(), nome: nomeDeTeste(), foto: null }) })
       return r.ok

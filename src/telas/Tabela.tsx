@@ -147,7 +147,7 @@ export function Tabela({ pelada, data, cobranca }: { pelada: Pelada; data?: stri
                 <div className="num" style={{ fontSize: 14, textTransform: 'uppercase' }}>{c.nome}</div>
               </div>
             ))}
-            <div style={{ border: '2px solid var(--borda)', borderRadius: 5, textAlign: 'center', padding: '6px 4px', background: '#e3e8d6' }}>
+            <div style={{ border: '2px solid var(--borda)', borderRadius: 5, textAlign: 'center', padding: '6px 4px', background: 'var(--divisoria)' }}>
               <div className="num" style={{ fontSize: 34 }}>{placarColetes.empates}</div>
               <div className="num" style={{ fontSize: 14, textTransform: 'uppercase' }}>Empates</div>
             </div>
@@ -157,7 +157,7 @@ export function Tabela({ pelada, data, cobranca }: { pelada: Pelada; data?: stri
         <section className="panel">
           <div className="ph">Resultados<span className="sub">{historico.length} partidas</span></div>
           {historico.length === 0 && <div className="pb mut">Nenhuma partida terminou ainda.</div>}
-          {historico.length > 0 && <div className="mut" style={{ padding: '4px 12px', fontSize: 11 }}>{somenteLeitura ? 'Toque na partida para ver os gols.' : 'Toque na partida para ver os gols e marcar quem fez.'}</div>}
+          {historico.length > 0 && <div className="mut" style={{ padding: '4px 12px', fontSize: 12 }}>{somenteLeitura ? 'Toque na partida para ver os gols.' : 'Toque na partida para ver os gols e marcar quem fez.'}</div>}
           {historico.map((p) => ( // da partida 1 (mais antiga) até a última
             <button key={p.numero} className="tr" aria-label={`Partida ${p.numero}`} onClick={() => setPartidaAberta(p.numero)}
               style={{ minHeight: 48, width: '100%', border: 0, font: 'inherit', color: 'var(--navy)', textAlign: 'left', cursor: 'pointer' }}>
@@ -175,7 +175,7 @@ export function Tabela({ pelada, data, cobranca }: { pelada: Pelada; data?: stri
         {tabela.length > 0 && (
           <section className="panel">
             <div className="ph">Classificação do dia</div>
-            <div className="tr" style={{ minHeight: 30, fontSize: 12, color: 'var(--mut)', letterSpacing: .8, background: '#e3e8d6' }}>
+            <div className="tr" style={{ minHeight: 30, fontSize: 12, color: 'var(--mut)', letterSpacing: .8, background: 'var(--divisoria)' }}>
               <span style={{ width: 24 }} /><span style={{ width: 18 }} /><span className="nome">TIME</span>
               <span style={col}>J</span><span style={col}>V</span><span style={col}>E</span><span style={col}>D</span>
             </div>
@@ -194,7 +194,7 @@ export function Tabela({ pelada, data, cobranca }: { pelada: Pelada; data?: stri
           <div className="ph">Artilharia<span className="sub">gols</span></div>
           {artilheiros.length === 0 && <div className="pb mut">Nenhum gol com autor marcado ainda.</div>}
           {artilheiros.length > 1 && (
-            <div className="mut" style={{ padding: '4px 12px', fontSize: 11 }}>Desempate: menos jogos, mais vitórias, menos cartões, quem chegou primeiro.</div>
+            <div className="mut" style={{ padding: '4px 12px', fontSize: 12 }}>Desempate: menos jogos, mais vitórias, menos cartões, quem chegou primeiro.</div>
           )}
           {artilheiros.map((a, i) => (
             <div key={a.id} className="tr">
@@ -209,7 +209,7 @@ export function Tabela({ pelada, data, cobranca }: { pelada: Pelada; data?: stri
           <section className="panel">
             <div className="ph">Assistências<span className="sub">Troféu Garçom</span></div>
             {lideresDePasse.length === 0 && <div className="pb mut">Nenhum passe para gol marcado ainda.</div>}
-            {lideresDePasse.length > 1 && <div className="mut" style={{ padding: '4px 12px', fontSize: 11 }}>Desempate: menos jogos.</div>}
+            {lideresDePasse.length > 1 && <div className="mut" style={{ padding: '4px 12px', fontSize: 12 }}>Desempate: menos jogos.</div>}
             {lideresDePasse.map((garcom, posicao) => (
               <div key={garcom.id} className="tr">
                 <span className={'no' + (posicao === 0 ? ' g' : '')}>{posicao + 1}</span>
@@ -225,12 +225,12 @@ export function Tabela({ pelada, data, cobranca }: { pelada: Pelada; data?: stri
           <div className="ph">Seleção da pelada</div>
           {vitorias.length === 0
             ? <div className="pb mut">Os números aparecem quando a primeira partida terminar.</div>
-            : <div className="tr" style={{ minHeight: 30, fontSize: 12, color: 'var(--mut)', letterSpacing: .8, background: '#e3e8d6' }}>
+            : <div className="tr" style={{ minHeight: 30, fontSize: 12, color: 'var(--mut)', letterSpacing: .8, background: 'var(--divisoria)' }}>
                 <span style={{ width: 24 }} />{comFotos && <span className="foto-do-jogador espaco" aria-hidden="true" />}<span className="nome">JOGADOR</span>
                 <span style={col}>J</span><span style={col}>V</span>
               </div>}
           {goleiroNaSelecao && (
-            <div className="tr" style={{ background: '#fff6d0' }}>
+            <div className="tr" style={{ background: 'var(--amarelo-claro)' }}>
               <span className="no g">G</span>
               <FotoDoJogador foto={fotos[contas[jogadorGoleiro(goleiroNaSelecao.nome).id]]} conta={contas[jogadorGoleiro(goleiroNaSelecao.nome).id]} nome={goleiroNaSelecao.nome} comEspaco={comFotos} />
               <span className="nome">{goleiroNaSelecao.nome}</span>
@@ -241,7 +241,7 @@ export function Tabela({ pelada, data, cobranca }: { pelada: Pelada; data?: stri
           {vitorias.map((v, i) => {
             const naSelecao = i < estado.config.linha && v.vitorias > 0
             return (
-              <div key={v.id} className="tr" style={naSelecao ? { background: '#fff6d0' } : undefined}>
+              <div key={v.id} className="tr" style={naSelecao ? { background: 'var(--amarelo-claro)' } : undefined}>
                 <span className={'no' + (naSelecao ? ' g' : '')}>{i + 1}</span>
                 <FotoDoJogador foto={fotos[contas[v.id]]} conta={contas[v.id]} nome={v.nome} comEspaco={comFotos} />
                 <span className="nome">{v.nome}</span>
@@ -255,7 +255,7 @@ export function Tabela({ pelada, data, cobranca }: { pelada: Pelada; data?: stri
         {estado.config.goleiros.length > 0 && (
           <section className="panel">
             <div className="ph">Goleiro menos vazado<span className="sub">luva de ouro</span></div>
-            <div className="tr" style={{ minHeight: 30, fontSize: 12, color: 'var(--mut)', letterSpacing: .8, background: '#e3e8d6' }}>
+            <div className="tr" style={{ minHeight: 30, fontSize: 12, color: 'var(--mut)', letterSpacing: .8, background: 'var(--divisoria)' }}>
               <span style={{ width: 24 }} /><span className="nome">GOLEIRO</span>
               <span style={col}>J</span><span style={col}>GS</span><span style={{ ...col, width: 44 }}>MÉDIA</span>
             </div>

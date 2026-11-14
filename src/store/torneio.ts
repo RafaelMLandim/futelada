@@ -209,6 +209,12 @@ export function useTorneio() {
   /** Organizador libera um campo (ex.: o mesário foi embora sem soltar). */
   const liberarCampo = (campo: number) => { if (ativo) void nuvem.current?.soltarCampo(ativo.codigo, campo) }
 
+  /** Organizador liga uma TV (pelo código que aparece nela) a um campo: ela vira o telão daquele campo. */
+  const parearTela = async (codigoDaTela: string, campo: number): Promise<boolean> => {
+    if (!ativo || !nuvem.current) return false
+    return nuvem.current.parearTela(codigoDaTela, ativo.codigo, campo, atual.current?.nome ?? '')
+  }
+
   const souOrganizador = !torneio?.nuvem || torneio.nuvem.organizador === usuario
 
   return {
@@ -222,7 +228,7 @@ export function useTorneio() {
     meuCampo: ativo?.campo != null && (campos === null || campos[ativo.campo]?.uid === usuario) ? ativo.campo : null,
     campos: campos ?? {},
     usuario,
-    definirCampo, liberarCampo,
+    definirCampo, liberarCampo, parearTela,
   }
 }
 

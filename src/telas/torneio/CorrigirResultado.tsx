@@ -82,7 +82,7 @@ export function CorrigirResultado({ hook, jogoId, onFechar }: { hook: TorneioHoo
           </div>
 
           {travado && (
-            <div role="status" style={{ background: '#fff4cc', border: '2px solid var(--borda)', borderRadius: 6, padding: '8px 10px', fontSize: 14, fontWeight: 600, color: 'var(--navy)' }}>
+            <div role="status" style={{ background: 'var(--amarelo-claro)', border: '2px solid var(--borda)', borderRadius: 6, padding: '8px 10px', fontSize: 14, fontWeight: 600, color: 'var(--navy)' }}>
               Este resultado já decidiu um jogo que começou. Dá para corrigir quem fez os gols e os cartões,
               mas o placar tem que continuar {resultado.placar[0]} x {resultado.placar[1]}{resultado.penaltis ? ` (pênaltis ${resultado.penaltis[0]} x ${resultado.penaltis[1]})` : ''}.
             </div>

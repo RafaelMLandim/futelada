@@ -63,7 +63,7 @@ function PassouDireto({ torneio, origem, colunas }: { torneio: Torneio; origem: 
     <div style={{ width: colunas * (COL + LIGA) - LIGA, display: 'flex', alignItems: 'center', padding: '6px 0' }}>
       <div style={{ width: COL, border: '2px dashed #9aa4ae', borderRadius: 5, padding: '5px 8px', fontSize: 12, fontWeight: 700, color: 'var(--navy)', background: '#fff' }}>
         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.nome}</div>
-        <div className="mut" style={{ fontSize: 11 }}>passa por W.O.</div>
+        <div className="mut" style={{ fontSize: 12 }}>passa por W.O.</div>
       </div>
       <div style={{ flex: 1, borderTop: '2px dashed #9aa4ae' }} />
     </div>
@@ -154,10 +154,10 @@ export function ChaveCompleta({ torneio, onFechar }: { torneio: Torneio; onFecha
   const terceiro = torneio.jogos.find((j) => j.rodada === 'Disputa de 3º lugar')
   const vencedor = campeao(torneio)
   const titulo = (nome: string, chave: string) => (
-    <div key={chave} className="num" style={{ width: COL + LIGA, flex: 'none', textAlign: 'center', fontSize: 13, letterSpacing: 1, color: '#c9d4e3', textTransform: 'uppercase' }}>{nome}</div>
+    <div key={chave} className="num" style={{ width: COL + LIGA, flex: 'none', textAlign: 'center', fontSize: 13, letterSpacing: 1, color: 'var(--texto-no-escuro)', textTransform: 'uppercase' }}>{nome}</div>
   )
   const botao = (rotulo: string, conteudo: ReactNode, onClick: () => void) => (
-    <button className="ib s" aria-label={rotulo} onClick={onClick} style={{ background: 'transparent', borderColor: '#c9d4e3', color: '#fff' }}>{conteudo}</button>
+    <button className="ib s" aria-label={rotulo} onClick={onClick} style={{ background: 'transparent', borderColor: 'var(--texto-no-escuro)', color: '#fff' }}>{conteudo}</button>
   )
 
   return (
@@ -198,7 +198,7 @@ export function ChaveCompleta({ torneio, onFechar }: { torneio: Torneio; onFecha
               <Confronto torneio={torneio} jogo={final} />
               {vencedor && (
                 <div className="led num" style={{ position: 'absolute', top: 'calc(100% - 56px)', left: 0, right: 0, textAlign: 'center', padding: '6px 4px', fontSize: 18, textTransform: 'uppercase' }}>
-                  <div style={{ fontSize: 11, color: '#c9d4e3', letterSpacing: 1 }}>CAMPEÃO</div>
+                  <div style={{ fontSize: 12, color: 'var(--texto-no-escuro)', letterSpacing: 1 }}>CAMPEÃO</div>
                   {timePorId(torneio, vencedor)?.nome}
                 </div>
               )}
@@ -207,14 +207,14 @@ export function ChaveCompleta({ torneio, onFechar }: { torneio: Torneio; onFecha
           </div>
           {terceiro && (
             <div style={{ width: COL, marginTop: 8 }}>
-              <div className="num" style={{ textAlign: 'center', fontSize: 13, letterSpacing: 1, color: '#c9d4e3', marginBottom: 4 }}>DISPUTA DE 3º LUGAR</div>
+              <div className="num" style={{ textAlign: 'center', fontSize: 13, letterSpacing: 1, color: 'var(--texto-no-escuro)', marginBottom: 4 }}>DISPUTA DE 3º LUGAR</div>
               <Confronto torneio={torneio} jogo={terceiro} />
             </div>
           )}
         </div>
       </div>
       </Largura.Provider>
-      <div className="mut" style={{ flex: 'none', textAlign: 'center', color: '#c9d4e3', padding: '6px 10px calc(6px + env(safe-area-inset-bottom))', fontSize: 12 }}>
+      <div className="mut" style={{ flex: 'none', textAlign: 'center', color: 'var(--texto-no-escuro)', padding: '6px 10px calc(6px + env(safe-area-inset-bottom))', fontSize: 12 }}>
         {emPe ? 'Vire o celular para ler a chave' : 'Arraste para ver tudo · − e + mudam o tamanho'}
       </div>
     </div>

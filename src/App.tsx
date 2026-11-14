@@ -14,9 +14,10 @@ import { nuvemDisponivel } from './nuvem'
 import { useConta } from './store/conta'
 import { useTelaLigada } from './utils/telaLigada'
 import { useVoltar } from './utils/voltar'
+import { useFecharJanelaComEsc } from './utils/teclaEsc'
 import { useMusicaDeFundo } from './utils/musica'
 import { VoltarAoInicio } from './components/navegacao'
-import { TelaoLocal } from './telas/torneio/Telao'
+import { TelaoLocal, TelaoNaTv } from './telas/torneio/Telao'
 
 type Modo = 'inicio' | 'pelada' | 'torneio' | 'caixa' | 'historico' | 'perfil'
 const CHAVE_MODO = 'app:modo'
@@ -42,17 +43,20 @@ const codigoParaAcompanhar = new URLSearchParams(location.search).get('ver')
 // link para assumir o controle da pelada de outra pessoa (?controle=CÓDIGO&chave=…): pede login
 const codigoDeControle = new URLSearchParams(location.search).get('controle')
 const chaveDeControle = new URLSearchParams(location.search).get('chave') ?? ''
+// telão do torneio na TV (dois-ou-dez.web.app/telao): sem login, pareado pelo celular do organizador (PLANO.md, seção 20)
+const ehTelao = location.pathname.replace(/\/+$/, '') === '/telao'
 // protótipo do telão do torneio (?telao=local&campo=1), só no desenvolvimento
 const campoDoTelaoLocal = import.meta.env.DEV && new URLSearchParams(location.search).get('telao') === 'local'
   ? Number(new URLSearchParams(location.search).get('campo') ?? 1) || 1 : null
 
 export default function App() {
   const conta = useConta()
+  useFecharJanelaComEsc()
   const [modo, setModoEstado] = useState<Modo>(modoSalvo)
   // música de fundo nos menus (a pelada e o torneio decidem a deles); nos links de fora, silêncio
-  useMusicaDeFundo(!campoDoTelaoLocal && !codigoDePagamento && !codigoDaLista && !codigoParaAcompanhar && !codigoDeControle && (!nuvemDisponivel() || conta.logado) && modo !== 'pelada' && modo !== 'torneio')
+  useMusicaDeFundo(!ehTelao && !campoDoTelaoLocal && !codigoDePagamento && !codigoDaLista && !codigoParaAcompanhar && !codigoDeControle && (!nuvemDisponivel() || conta.logado) && modo !== 'pelada' && modo !== 'torneio')
   // na pelada e no torneio a tela não apaga (o celular não bloqueia no meio do jogo)
-  useTelaLigada(!!campoDoTelaoLocal || !!codigoParaAcompanhar || !!codigoDeControle || (!codigoDePagamento && (modo === 'pelada' || modo === 'torneio')))
+  useTelaLigada(ehTelao || !!campoDoTelaoLocal || !!codigoParaAcompanhar || !!codigoDeControle || (!codigoDePagamento && (modo === 'pelada' || modo === 'torneio')))
   const setModo = (m: Modo) => {
     setModoEstado(m)
     try {
@@ -66,6 +70,7 @@ export default function App() {
   const noApp = !codigoDePagamento && !codigoDaLista && !codigoParaAcompanhar && !codigoDeControle && (!nuvemDisponivel() || conta.logado)
   useVoltar(noApp && modo !== 'inicio', () => setModo('inicio'))
 
+  if (ehTelao) return <TelaoNaTv />
   if (campoDoTelaoLocal) return <TelaoLocal campo={campoDoTelaoLocal} />
   if (codigoDePagamento) return <PagarPelada codigo={codigoDePagamento} />
   if (codigoDaLista) return <EntrarNaLista codigo={codigoDaLista} />

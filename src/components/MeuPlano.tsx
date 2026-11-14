@@ -39,7 +39,7 @@ export function MeuPlano({ onFechar }: { onFechar: () => void }) {
             </span>
           </div>
           {!s.premium && (
-            <div aria-hidden style={{ height: 10, borderRadius: 5, background: '#e3e8d6', overflow: 'hidden' }}>
+            <div aria-hidden style={{ height: 10, borderRadius: 5, background: 'var(--divisoria)', overflow: 'hidden' }}>
               <div style={{ width: `${(usadas / PELADAS_GRATIS) * 100}%`, height: '100%', background: usadas >= PELADAS_GRATIS ? 'var(--vermelho)' : 'var(--verde)' }} />
             </div>
           )}
@@ -47,16 +47,16 @@ export function MeuPlano({ onFechar }: { onFechar: () => void }) {
             Torneios: {s.ultimate ? 'ilimitados, com o Ultimate' : s.torneioGratis ? `o 1º é grátis (até ${TIMES_DO_TORNEIO_GRATIS} times)` : s.creditosTorneio > 0 ? `${s.creditosTorneio} ${s.creditosTorneio === 1 ? 'crédito' : 'créditos'} de torneio` : mostraPlanos() ? 'Torneio avulso, R$ 34,90 cada' : 'o 1º grátis já foi usado'}
           </div>
           {s.diasParaVencer !== null && s.diasParaVencer <= AVISO_DE_VENCIMENTO && (
-            <div className="mut" style={{ background: '#fff6cf', border: '1px solid var(--amarelo)', borderRadius: 5, padding: '8px 10px', color: 'var(--navy)', fontWeight: 600 }}>
+            <div className="mut" style={{ background: 'var(--amarelo-claro)', border: '1px solid var(--amarelo)', borderRadius: 5, padding: '8px 10px', color: 'var(--navy)', fontWeight: 600 }}>
               {s.diasParaVencer === 1 ? 'Falta 1 dia' : `Faltam ${s.diasParaVencer} dias`} para o seu Pro vencer.{mostraPlanos() && ' Renove por mais 12 meses (Pix ou cartão).'}
             </div>
           )}
           {!s.cobrancaAtiva && (
-            <div className="mut" style={{ background: '#fff6cf', border: '1px solid var(--amarelo)', borderRadius: 5, padding: '8px 10px', color: 'var(--navy)' }}>
+            <div className="mut" style={{ background: 'var(--amarelo-claro)', border: '1px solid var(--amarelo)', borderRadius: 5, padding: '8px 10px', color: 'var(--navy)' }}>
               Durante o lançamento, o app está todo liberado.
             </div>
           )}
-          {aviso && <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>{aviso}</div>}
+          {aviso && <div role="status" className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>{aviso}</div>}
           {mostraPlanos() && (!s.premium || (s.diasParaVencer !== null && s.diasParaVencer <= AVISO_DE_VENCIMENTO)) && (
             <button className="btn" onClick={() => setPremium(true)}>{s.premium ? 'Renovar o Pro' : 'Conhecer os planos'}</button>
           )}

@@ -45,7 +45,8 @@ function LinhaDoGoleiro({ nome, comGoleirosFixos }: { nome: string | null; comGo
     <div className="tr" style={{ minHeight: 38, fontSize: 14, paddingRight: 4 }}>
       <span className="no g">G</span>
       {comGoleirosFixos
-        ? <span className="nome" style={{ display: 'flex' }}><select className="sel" disabled tabIndex={-1} value=""><option value="">{nome ?? 'sem goleiro'}</option></select></span>
+        // a caixinha só mostra o nome (não dá para mexer): o leitor de tela lê "Goleiro: Fulano" em vez de um campo sem nome
+        ? <span className="nome" style={{ display: 'flex' }}><span className="vh">Goleiro: {nome ?? 'sem goleiro'}</span><select className="sel" disabled tabIndex={-1} value="" aria-hidden="true"><option value="">{nome ?? 'sem goleiro'}</option></select></span>
         : <span className="nome mut">Goleiro</span>}
     </div>
   )
@@ -118,7 +119,7 @@ export function Escalacoes({ pelada, decorrido, transicao, volta, onJogador }: {
     return (
       <div key={`${lado}-${transicao?.numero ?? 0}-${volta?.id ?? 0}`}
         className={chamando(lado) ? (trocou ? 'chamando depois-da-troca' : 'chamando') : undefined}
-        style={lado === 'A' ? { borderRight: '2px solid #e3e8d6' } : undefined}>
+        style={lado === 'A' ? { borderRight: '2px solid var(--divisoria)' } : undefined}>
         {saindo ? (
           // Desfez: o time certo desce de cima e empurra o errado de volta para a fila
           <div className="empurra">

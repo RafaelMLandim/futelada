@@ -50,15 +50,15 @@ export function AjustesTorneio({ hook, onInicio }: { hook: TorneioHook; onInicio
             <div className="ph">Torneio compartilhado<span className="sub">{org ? 'você é o organizador' : 'você é mesário'}</span></div>
             <div className="pb" style={{ display: 'grid', gap: 10 }}>
               <div className="led num" style={{ textAlign: 'center', padding: 10 }}>
-                <div style={{ fontSize: 14, color: '#c9d4e3', letterSpacing: 1 }}>CÓDIGO PARA ENTRAR</div>
+                <div style={{ fontSize: 14, color: 'var(--texto-no-escuro)', letterSpacing: 1 }}>CÓDIGO PARA ENTRAR</div>
                 <div style={{ fontSize: 40, letterSpacing: 6 }}>{codigo}</div>
               </div>
               <button className="btn sm" onClick={convidar}><Icone nome="times" /> Convidar mesários</button>
-              {aviso && <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>{aviso}</div>}
+              {aviso && <div role="status" className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>{aviso}</div>}
             </div>
             {/* cada campo tem um mesário: quem pega trava o campo para os outros (PLANO.md, seção 10) */}
             {!org && (
-              <div className="pb" style={{ borderTop: '2px solid #e3e8d6', display: 'grid', gap: 8 }}>
+              <div className="pb" style={{ borderTop: '2px solid var(--divisoria)', display: 'grid', gap: 8 }}>
                 <div style={{ fontWeight: 700 }}>Meu campo <span className="mut">· você marca os jogos dele</span></div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {numerosDosCampos.map((c) => {
@@ -79,17 +79,17 @@ export function AjustesTorneio({ hook, onInicio }: { hook: TorneioHook; onInicio
                     ? 'Vai sair? Toque em "Só acompanhar" para liberar o campo para outro mesário.'
                     : 'Campo em cinza já tem mesário: para trocar, ele libera (ou o organizador).'}
                 </div>
-                {avisoCampo && <div style={{ color: 'var(--vermelho)', fontWeight: 700 }}>{avisoCampo}</div>}
+                {avisoCampo && <div role="status" style={{ color: 'var(--vermelho)', fontWeight: 700 }}>{avisoCampo}</div>}
               </div>
             )}
             {/* organizador vê quem está em cada campo e libera se o mesário foi embora */}
             {org && (
-              <div style={{ borderTop: '2px solid #e3e8d6' }}>
+              <div style={{ borderTop: '2px solid var(--divisoria)' }}>
                 <div className="pb" style={{ fontWeight: 700, paddingBottom: 4 }}>Mesários</div>
                 {numerosDosCampos.map((c) => {
                   const m = hook.campos[c]
                   return (
-                    <div key={c} className="tr" style={{ borderTop: '1px solid #e3e8d6' }}>
+                    <div key={c} className="tr" style={{ borderTop: '1px solid var(--divisoria)' }}>
                       <span style={{ width: 70, fontWeight: 800 }}>Campo {c}</span>
                       <span className={m ? 'nome' : 'mut'} style={{ flex: 1 }}>{m ? m.nome : 'livre'}</span>
                       {m && (
@@ -105,7 +105,12 @@ export function AjustesTorneio({ hook, onInicio }: { hook: TorneioHook; onInicio
               </div>
             )}
           </section>
-        ) : hook.podeCompartilhar && (
+        ) : null}
+
+        {/* telão: o organizador liga uma TV a um campo pelo código que aparece nela (PLANO.md, seção 20) */}
+        {codigo && org && <LigarTelao hook={hook} campos={numerosDosCampos} />}
+
+        {codigo ? null : hook.podeCompartilhar && (
           <section className="panel">
             <div className="ph">Compartilhar</div>
             <div className="pb" style={{ display: 'grid', gap: 10 }}>
@@ -116,7 +121,7 @@ export function AjustesTorneio({ hook, onInicio }: { hook: TorneioHook; onInicio
               <button className="btn sm" disabled={compartilhando} onClick={compartilhar}>
                 <Icone nome="times" /> {compartilhando ? 'Compartilhando…' : 'Compartilhar torneio'}
               </button>
-              {aviso && <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>{aviso}</div>}
+              {aviso && <div role="status" className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>{aviso}</div>}
             </div>
           </section>
         )}
@@ -151,5 +156,49 @@ export function AjustesTorneio({ hook, onInicio }: { hook: TorneioHook; onInicio
         )}
       </div>
     </div>
+  )
+}
+
+/** Ligar uma TV (ou notebook, tablet) como telão de um campo: escolhe o campo e digita o código que aparece nela. */
+function LigarTelao({ hook, campos }: { hook: TorneioHook; campos: number[] }) {
+  const [campo, setCampo] = useState(campos[0] ?? 1)
+  const [codigoDaTela, setCodigoDaTela] = useState('')
+  const [ligando, setLigando] = useState(false)
+  const [aviso, setAviso] = useState<{ texto: string; deu: boolean } | null>(null)
+  const ligar = async () => {
+    setLigando(true)
+    setAviso(null)
+    const deu = await hook.parearTela(codigoDaTela, campo).catch(() => false)
+    setLigando(false)
+    setAviso(deu
+      ? { texto: `Pronto! A tela agora mostra o${campos.length > 1 ? ` Campo ${campo}` : ' jogo'}.`, deu: true }
+      : { texto: 'Não achei uma tela com esse código. Confira as letras na TV e a internet.', deu: false })
+    if (deu) setCodigoDaTela('')
+  }
+  return (
+    <section className="panel">
+      <div className="ph">Telão<span className="sub">placar na TV</span></div>
+      <div className="pb" style={{ display: 'grid', gap: 10 }}>
+        <div className="mut" style={{ color: 'var(--navy)' }}>
+          Na TV, notebook ou tablet, abra <b>dois-ou-dez.web.app/telao</b>. Vai aparecer um código: digite aqui.
+          {campos.length > 1 && ' Cada campo tem o seu telão.'}
+        </div>
+        {campos.length > 1 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} role="radiogroup" aria-label="Campo do telão">
+            {campos.map((numero) => (
+              <button key={numero} role="radio" aria-checked={campo === numero} className={'chip' + (campo === numero ? ' on' : '')}
+                onClick={() => setCampo(numero)}>Campo {numero}</button>
+            ))}
+          </div>
+        )}
+        <input className="inp num" aria-label="Código da tela" placeholder="Código da tela" maxLength={6} autoCapitalize="characters" autoComplete="off"
+          style={{ fontSize: 26, letterSpacing: 6, textAlign: 'center', textTransform: 'uppercase' }}
+          value={codigoDaTela} onChange={(evento) => setCodigoDaTela(evento.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))} />
+        <button className="btn sm" disabled={ligando || codigoDaTela.length !== 6} onClick={() => void ligar()}>
+          {ligando ? 'Ligando…' : `Ligar telão${campos.length > 1 ? ` do Campo ${campo}` : ''}`}
+        </button>
+        {aviso && <div role="status" style={{ color: aviso.deu ? 'var(--verde)' : 'var(--vermelho)', fontWeight: 700 }}>{aviso.texto}</div>}
+      </div>
+    </section>
   )
 }

@@ -1175,8 +1175,15 @@ conta ou digita o nome), a mesma pessoa aparecendo duas vezes (entrou com a cont
 - **Gol:** vinheta "GOOOL!" com o autor e a **assistência**, o **desenho do uniforme** em tela cheia (no mesmo sentido da camisa)
   e **confete** nas cores do time. Camisa preta: usa a segunda cor do uniforme.
 - **Torneio acabou:** o campeão. Sem barra do topo nem rodapé: só o painel (o campo vai na linha da fase).
-- **Protótipo:** `src/telas/torneio/Telao.tsx`, aberto só no desenvolvimento com `?telao=local&campo=N` (lê o torneio deste navegador).
-- **Falta para valer:**
-  - **Pareamento:** a TV abre `/telao` e mostra um código + QR; no celular, "Compartilhar → Telão" escolhe o **campo** e digita o código.
-  - Ler o torneio da nuvem **sem login** na TV, com uma chave do pareamento (ajuste em `firestore.rules`).
-  - Quadro da chave do mata-mata; pênaltis ao vivo; Chromecast (depois).
+- **Como liga (pareamento, 14/11):** a TV abre **dois-ou-dez.web.app/telao** (sem login: entra anônima) e mostra um
+  código de 6 letras/números (sem 0/O, 1/I/L). O organizador, no torneio compartilhado, vai em **Ajustes → Telão**,
+  escolhe o **campo** e digita o código. A TV vira o telão daquele campo, ao vivo; desligou e ligou, volta no mesmo campo.
+  Para trocar de campo, o organizador liga de novo com o mesmo código.
+  - Nuvem: `telas/{uid da TV}` = `{ codigo, criadaEm }`; o pareamento grava `torneio, campo, nomeDoTorneio, pareadaEm`.
+    Regras: só a TV cria/renova a própria tela; só a **organizadora daquele torneio** pareia (acha a tela pelo código,
+    uma por vez); a TV pareada **só lê** o torneio, os jogos em andamento e os resultados (`telaDoTorneio()`), nunca grava.
+  - Só funciona com **torneio compartilhado**: o placar sai do celular do mesário para a nuvem e da nuvem para a TV.
+  - Teste local sem nuvem: `?telao=local&campo=N` (só no desenvolvimento, lê o torneio deste navegador).
+- **Corrigido junto (14/11):** compartilhar um torneio que **já tinha jogos em andamento** falhava (a regra dos jogos lia o
+  torneio que ainda não existia no mesmo envio) e o app apagava a cópia do celular. A regra agora usa `getAfter`.
+- **Depois:** quadro da chave do mata-mata; musiquinha nas pausas; QR code na TV; Chromecast.

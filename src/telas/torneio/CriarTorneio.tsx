@@ -41,7 +41,7 @@ export function CriarTorneio({ onCriar, onEntrar }: {
                   {entrando ? '…' : 'Entrar'}
                 </button>
               </div>
-              {erro && <div className="mut" style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{erro}</div>}
+              {erro && <div role="status" className="mut" style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{erro}</div>}
             </div>
           </section>
         )}

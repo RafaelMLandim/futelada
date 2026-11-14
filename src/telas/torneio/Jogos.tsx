@@ -87,8 +87,8 @@ export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: 
       <div className="conteudo">
         {vencedor && (
           <section className="led num" style={{ textAlign: 'center', padding: 14 }}>
-            <div style={{ fontSize: 16, color: '#c9d4e3', letterSpacing: 1 }}>CAMPEÃO</div>
-            <div className="row" style={{ justifyContent: 'center', gap: 10, fontSize: 32, textTransform: 'uppercase' }}>
+            <div style={{ fontSize: 16, color: 'var(--texto-no-escuro)', letterSpacing: 1 }}>CAMPEÃO</div>
+            <div className="row" style={{ justifyContent: 'center', gap: 10, fontSize: 30, textTransform: 'uppercase' }}>
               <Icone nome="trofeu" tamanho={30} />{timePorId(torneio, vencedor)?.nome}
             </div>
           </section>

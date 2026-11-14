@@ -65,7 +65,7 @@ export function Times({ hook, onSorteio }: { hook: TorneioHook; onSorteio: () =>
               <div key={j.id} className="tr" style={{ minHeight: 36, fontSize: 14, color: i >= linha ? 'var(--mut)' : undefined }}>
                 <span className="no" style={i >= linha ? { background: '#9aa4ae' } : undefined}>{i + 1}</span>
                 <span className="nome">{j.nome}</span>
-                {i >= linha && <span className="tag" style={{ background: '#e3e8d6' }}>Reserva</span>}
+                {i >= linha && <span className="tag" style={{ background: 'var(--divisoria)' }}>Reserva</span>}
               </div>
             ))}
           </section>

@@ -72,7 +72,7 @@ export function BotaoCompartilhar() {
               <div style={{ display: 'flex', justifyContent: 'center' }}><QrCode texto={link} /></div>
               <div className="mut" aria-label={`Link para ${tipo === 'acompanhar' ? 'acompanhar' : 'passar o controle'}`}
                 style={{ wordBreak: 'break-all', textAlign: 'center', fontSize: 13 }}>{link}</div>
-              {aviso && <div className="tag t-ok" style={{ justifySelf: 'center' }}>{aviso}</div>}
+              {aviso && <div role="status" className="tag t-ok" style={{ justifySelf: 'center' }}>{aviso}</div>}
               <button className="btn" onClick={() => void enviar()}><Icone nome="compartilhar" /> Enviar o link</button>
               <button className="btn w sm" onClick={() => void copiar()}>Copiar o link</button>
               <button className="btn w sm" onClick={() => setLinks(null)}>Fechar</button>

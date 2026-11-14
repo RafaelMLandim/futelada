@@ -144,7 +144,7 @@ function NovaCaixinha({ turmas, turmaInicial, onFechar, onCriada }: {
             <span className="mut" style={{ color: 'var(--navy)', fontWeight: 700 }}>Nome de quem recebe</span>
             <input className="inp" placeholder="Como aparece no Pix" value={recebedor} onChange={(evento) => setRecebedor(evento.target.value)} />
           </label>
-          {erro && <div style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{erro}</div>}
+          {erro && <div role="status" style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{erro}</div>}
           <button className="btn" disabled={!pronto || salvando} onClick={() => void criar()}>{salvando ? 'Criando…' : 'Criar caixinha'}</button>
           <button className="btn w sm" onClick={onFechar}>Cancelar</button>
         </div>
@@ -190,12 +190,12 @@ function CaixinhaAberta({ caixinha, lancamentos, onSaida, onFechar }: { caixinha
             <button className="btn w sm" onClick={() => void copiar()}>Copiar Pix</button>
             <button className="btn sm" onClick={() => void compartilharLink()}>Link p/ grupo</button>
           </div>
-          {aviso && <div className="mut" style={{ color: 'var(--navy)', fontWeight: 600, textAlign: 'center' }}>{aviso}</div>}
+          {aviso && <div role="status" className="mut" style={{ color: 'var(--navy)', fontWeight: 600, textAlign: 'center' }}>{aviso}</div>}
           <div className="mut" style={{ fontSize: 13 }}>Toque no nome para confirmar o pagamento (ou desfazer). Amarelo: avisou que pagou, confira no banco.</div>
           <div>
             {caixinha.jogadores.map((jogador) => {
               const estado = status[jogador.id]
-              const cor = estado === 'pago' ? 'var(--verde)' : estado === 'avisou' ? 'var(--amarelo)' : '#e3e8d6'
+              const cor = estado === 'pago' ? 'var(--verde)' : estado === 'avisou' ? 'var(--amarelo)' : 'var(--divisoria)'
               return (
                 <button key={jogador.id} className="tr" style={{ width: '100%', border: 0, font: 'inherit', color: 'var(--navy)', textAlign: 'left', cursor: 'pointer', borderLeft: `8px solid ${cor}` }}
                   onClick={() => alternar(jogador)}>

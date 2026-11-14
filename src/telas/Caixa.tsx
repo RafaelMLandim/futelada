@@ -54,7 +54,7 @@ export function Caixa({ onVoltar }: { onVoltar: () => void }) {
               </section>
             )}
             <section className="led" style={{ padding: 14, textAlign: 'center' }}>
-              <div className="num" style={{ color: '#c9d4e3', fontSize: 15, letterSpacing: 1 }}>{`SALDO · ${nomeDaTurma(turmaDoFiltro).toUpperCase()}`}</div>
+              <div className="num" style={{ color: 'var(--texto-no-escuro)', fontSize: 15, letterSpacing: 1 }}>{`SALDO · ${nomeDaTurma(turmaDoFiltro).toUpperCase()}`}</div>
               <div className="num" style={{ fontSize: 52, color: saldo >= 0 ? 'var(--amarelo)' : '#ff8a80' }}>{reais(saldo)}</div>
             </section>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>

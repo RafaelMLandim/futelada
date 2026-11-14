@@ -66,7 +66,7 @@ export function PagarPelada({ codigo }: { codigo: string }) {
       <Barra titulo={cobranca?.titulo ?? 'Pagar a pelada'} sub={cobranca?.titulo ? 'Caixinha da pelada' : (cobranca?.data ?? '')} />
       <div className="conteudo">
         {erroAoAbrir && (
-          <div className="panel pb" style={{ display: 'grid', gap: 10, textAlign: 'center', color: 'var(--navy)' }}>
+          <div role="status" className="panel pb" style={{ display: 'grid', gap: 10, textAlign: 'center', color: 'var(--navy)' }}>
             <b>Não deu para abrir agora.</b>
             <span className="mut">Confira a internet. Se abriu pelo WhatsApp ou Instagram, tente abrir no Safari ou no Chrome.</span>
             <button className="btn" onClick={() => { setErroAoAbrir(null); setCobranca(undefined); setTentativa((numero) => numero + 1) }}>Tentar de novo</button>
@@ -87,12 +87,12 @@ export function PagarPelada({ codigo }: { codigo: string }) {
                 <div className="mut" style={{ fontSize: 12 }}>Abra o app do seu banco, escolha Pix e leia o QR ou cole o código.</div>
               </div>
             </section>
-            {aviso && <div className="panel pb" style={{ textAlign: 'center', fontWeight: 700, color: 'var(--navy)' }}>{aviso}</div>}
+            {aviso && <div role="status" className="panel pb" style={{ textAlign: 'center', fontWeight: 700, color: 'var(--navy)' }}>{aviso}</div>}
             <section className="panel">
               <div className="ph">Já pagou? Toque no seu nome</div>
               {cobranca.jogadores.map((j) => {
                 const status = avisos[j.id]?.status
-                const cor = status === 'pago' ? 'var(--verde)' : status === 'avisou' ? 'var(--amarelo)' : '#e3e8d6'
+                const cor = status === 'pago' ? 'var(--verde)' : status === 'avisou' ? 'var(--amarelo)' : 'var(--divisoria)'
                 return (
                   <button key={j.id} className="tr" disabled={status === 'pago'} aria-label={`Já paguei: ${j.nome}`}
                     style={{ width: '100%', border: 0, font: 'inherit', color: 'var(--navy)', textAlign: 'left', cursor: 'pointer', borderLeft: `8px solid ${cor}` }}

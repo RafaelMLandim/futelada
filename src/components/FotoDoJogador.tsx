@@ -80,7 +80,7 @@ export function FotoDoJogador({ foto, conta, nome, comEspaco }: { foto: string |
                   ))}
                 </div>
                 <div className="mut" style={{ lineHeight: 1.35 }}>A foto deixa de aparecer para você. Se outras pessoas também denunciarem, ela sai do app.</div>
-                {erro && <div style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{erro}</div>}
+                {erro && <div role="status" style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{erro}</div>}
                 <div className="opcoes-lado-a-lado">
                   <button className="btn w sm" onClick={fechar}>Cancelar</button>
                   <button className="btn sm r" disabled={!motivo || enviando} onClick={() => void enviar()}>{enviando ? 'Enviando…' : 'Enviar denúncia'}</button>

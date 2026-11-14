@@ -73,7 +73,7 @@ export function Avatar({ tamanho = 36 }: { tamanho?: number }) {
               )}
               <button className="btn r sm" onClick={() => { setAberta(false); void sair() }}>Sair da conta</button>
               <button className="btn w sm" onClick={() => setAberta(false)}>Fechar</button>
-              {erro && <div className="mut" style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{erro}</div>}
+              {erro && <div role="status" className="mut" style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{erro}</div>}
               <button className="lnk" disabled={excluindo} onClick={pedirExclusao} style={{ color: 'var(--vermelho)' }}>
                 {excluindo ? 'Excluindo a conta…' : 'Excluir conta'}
               </button>

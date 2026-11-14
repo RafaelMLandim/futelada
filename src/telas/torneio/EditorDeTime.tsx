@@ -147,7 +147,7 @@ export function EditorDeTime({ torneio, inicial, onSalvar, onExcluir, onCancelar
                   if (Math.abs(deslocamento) > 40) passarModelo(deslocamento < 0 ? 1 : -1)
                 }}>
                 <CamisaQueTroca cor={time.cor} uniforme={time.uniforme} troca={troca} tamanho={150} />
-                <span className="num" style={{ fontSize: 24, color: 'var(--navy)', textTransform: 'uppercase', lineHeight: 1 }} aria-live="polite">{NOME_DO_MODELO[modelo]}</span>
+                <span className="num" style={{ fontSize: 26, color: 'var(--navy)', textTransform: 'uppercase', lineHeight: 1 }} aria-live="polite">{NOME_DO_MODELO[modelo]}</span>
                 <span className="mut" style={{ fontSize: 13 }}>{posicaoDoModelo + 1} de {MODELOS_DE_UNIFORME.length}</span>
               </div>
               <button className="ib" aria-label="Próximo modelo" onClick={() => passarModelo(1)}>
@@ -221,7 +221,7 @@ export function EditorDeTime({ torneio, inicial, onSalvar, onExcluir, onCancelar
           {time.jogadores.map((j, i) => (
             <div key={j.id}>
               {(i === 0 || i === linha) && (
-                <div className="tr" style={{ minHeight: 28, fontSize: 12, letterSpacing: 1, color: 'var(--mut)', background: '#e3e8d6' }}>
+                <div className="tr" style={{ minHeight: 28, fontSize: 12, letterSpacing: 1, color: 'var(--mut)', background: 'var(--divisoria)' }}>
                   {i === 0 ? `TITULARES (${linha} NA LINHA)` : 'RESERVAS'}
                 </div>
               )}

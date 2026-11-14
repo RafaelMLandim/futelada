@@ -65,7 +65,7 @@ export function ResumoDeGols({ gols, tempoMin, nomeDoLado, onRemover, onAutor }:
           <>
             <span className="nome-autor">{a.nome}</span>{' '}
             <span className="minuto-gol">{a.gols.map((g) => g.minuto ?? '•').join(', ')}</span>
-            {a.passes.length > 0 && <span className="mut" style={{ display: 'block', fontSize: 11 }}>passe: {a.passes.join(', ')}</span>}
+            {a.passes.length > 0 && <span className="mut" style={{ display: 'block', fontSize: 12 }}>passe: {a.passes.join(', ')}</span>}
           </>
         )
         return tocavel
@@ -84,7 +84,7 @@ export function ResumoDeGols({ gols, tempoMin, nomeDoLado, onRemover, onAutor }:
         <div style={{ alignSelf: 'center', display: 'flex' }}><Bola tamanho={18} /></div>
         {coluna('B')}
       </div>
-      {tocavel && <div className="mut" style={{ textAlign: 'center', padding: '0 12px 8px', fontSize: 11 }}>{dica}</div>}
+      {tocavel && <div className="mut" style={{ textAlign: 'center', padding: '0 12px 8px', fontSize: 12 }}>{dica}</div>}
       {escolhendo && (
         <div className="modal" role="dialog" aria-modal="true" aria-label={`Gols de ${escolhendo.nome}`} onClick={() => setEscolhendo(null)}>
           <section className="panel" onClick={(ev) => ev.stopPropagation()}>
