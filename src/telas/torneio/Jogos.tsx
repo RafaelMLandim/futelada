@@ -35,7 +35,9 @@ export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: 
             <div className="pb mut" style={{ color: 'var(--navy)', fontSize: 15 }}>
               {torneio.regras.formato === 'pontos' && 'A ordem dos jogos. Todos jogam contra todos.'}
               {torneio.regras.formato === 'mata-mata' && 'A chave do mata-mata (quem pega quem).'}
-              {torneio.regras.formato === 'grupos' && `Os ${torneio.regras.grupos} grupos e a ordem dos jogos. Passam ${torneio.regras.classificamPorGrupo} de cada grupo.`}
+              {torneio.regras.formato === 'grupos' && (torneio.regras.grupos === 1
+                ? `Todos contra todos e a ordem dos jogos. Os ${torneio.regras.classificamPorGrupo} primeiros vão para o mata-mata.`
+                : `Os ${torneio.regras.grupos} grupos e a ordem dos jogos. Passam ${torneio.regras.classificamPorGrupo} de cada grupo.`)}
             </div>
           </section>
           {problemas.length > 0 && (

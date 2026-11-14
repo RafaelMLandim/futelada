@@ -16,12 +16,13 @@ export function PlacarLed({ lados, placar, tempoMin, gols, decorrido, rodando, f
   const totalMs = tempoMin * 60_000
   return (
     <section className="led" style={{ padding: '12px 12px 14px' }}>
-      <div className="row num" style={{ justifyContent: 'space-between', color: '#c9d4e3', fontWeight: 700, letterSpacing: 1, fontSize: 15 }}>
+      {/* três colunas: o do meio fica no centro do placar, mesmo com os textos dos lados de larguras diferentes */}
+      <div className="num" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 8, color: '#c9d4e3', fontWeight: 700, letterSpacing: 1, fontSize: 15 }}>
         <span>{tempoMin} MIN</span>
         {fim
           ? <span className="alerta" style={{ color: 'var(--amarelo)', fontSize: 18 }}>{textoFim}</span>
           : <span style={{ color: rodando ? 'var(--amarelo)' : '#c9d4e3' }}>{rodando ? '● AO VIVO' : 'PAUSADO'}</span>}
-        <span>{gols === null ? 'SÓ TEMPO' : `${gols} GOLS`}</span>
+        <span style={{ textAlign: 'right' }}>{gols === null ? 'SÓ TEMPO' : `${gols} GOLS`}</span>
       </div>
       {periodo && (
         <div className="num" style={{ textAlign: 'center', fontSize: 16, letterSpacing: 1, color: '#fff', textTransform: 'uppercase', marginTop: 6 }}>{periodo}</div>
@@ -35,9 +36,10 @@ export function PlacarLed({ lados, placar, tempoMin, gols, decorrido, rodando, f
           <span style={{ fontSize: 12, letterSpacing: 1 }}>{acrescimoMin ? ` DE +${acrescimoMin} MIN` : ''} ACRÉSCIMOS</span>
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', alignItems: 'center', textAlign: 'center', marginTop: 8 }}>
+      {/* o placar nunca quebra de linha: os nomes dos lados é que encolhem (com reticências); com dois dígitos, a fonte diminui no celular estreito */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', columnGap: 8, alignItems: 'center', textAlign: 'center', marginTop: 8 }}>
         <TimeNoPlacar lado={lados.A} />
-        <div className="num" style={{ fontSize: 64 }}>
+        <div className="num" style={{ fontSize: placar[0] >= 10 || placar[1] >= 10 ? 'clamp(44px, 14vw, 64px)' : 64, whiteSpace: 'nowrap' }}>
           {placar[0]}<span style={{ color: '#5e6a76', fontSize: 40, margin: '0 6px' }}>-</span>{placar[1]}
         </div>
         <TimeNoPlacar lado={lados.B} />

@@ -30,7 +30,17 @@ function detalhe(uniforme: Uniforme) {
   }
 }
 
-export function Camisa({ cor, tamanho = 22, contorno = '#0B1A2C', uniforme }: { cor: string; tamanho?: number; contorno?: string; uniforme?: Uniforme }) {
+/**
+ * Grossura do contorno (no desenho de 24 de lado): fino, para não engolir o uniforme. Quanto maior a camisa,
+ * mais fino em proporção; nas pequenas um pouco mais forte, para a camisa preta não sumir no fundo escuro.
+ */
+export const espessuraDoContorno = (tamanho: number) => (tamanho >= 80 ? 0.6 : tamanho >= 30 ? 0.8 : 1)
+
+export function Camisa({ cor, tamanho = 22, contorno = '#0B1A2C', uniforme, espessura = espessuraDoContorno(tamanho) }: {
+  cor: string; tamanho?: number; contorno?: string; uniforme?: Uniforme
+  /** grossura do contorno; sem ela, sai do tamanho (espessuraDoContorno) */
+  espessura?: number
+}) {
   // o id do recorte só com letras e números (o do React traz sinais que alguns navegadores não aceitam em url(#…))
   const recorte = `camisa${useId().replace(/[^a-zA-Z0-9]/g, '')}`
   const desenho = uniforme && uniforme.modelo !== 'lisa' ? detalhe(uniforme) : null
@@ -39,7 +49,7 @@ export function Camisa({ cor, tamanho = 22, contorno = '#0B1A2C', uniforme }: { 
       {desenho && <defs><clipPath id={recorte}><path d={FORMA} /></clipPath></defs>}
       <path d={FORMA} fill={cor} />
       {desenho && <g clipPath={`url(#${recorte})`}>{desenho}</g>}
-      <path d={FORMA} fill="none" stroke={contorno} strokeWidth="1.5" strokeLinejoin="round" />
+      <path d={FORMA} fill="none" stroke={contorno} strokeWidth={espessura} strokeLinejoin="round" />
     </svg>
   )
 }
@@ -63,7 +73,7 @@ export function CamisaQueTroca({ cor, uniforme, troca, tamanho }: { cor: string;
         {troca && <g key={`sai${troca.numero}`} className={`desenho-sai-pela-${lado === 'direita' ? 'esquerda' : 'direita'}`}>{desenhoDe(troca.anterior)}</g>}
         <g key={`entra${troca?.numero ?? 0}`} className={troca ? `desenho-entra-pela-${lado}` : undefined}>{desenhoDe(uniforme)}</g>
       </g>
-      <path d={FORMA} fill="none" stroke="#0B1A2C" strokeWidth="1" strokeLinejoin="round" />
+      <path d={FORMA} fill="none" stroke="#0B1A2C" strokeWidth={espessuraDoContorno(tamanho)} strokeLinejoin="round" />
     </svg>
   )
 }

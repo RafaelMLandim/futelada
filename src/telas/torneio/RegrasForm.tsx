@@ -35,6 +35,13 @@ export function RegrasForm({ regras, mudar, travado = false, minCampos = 1 }: {
   const r = regras
   const temPontos = r.formato === 'pontos' || r.formato === 'grupos'
   const temMata = r.formato === 'mata-mata' || r.formato === 'grupos'
+  // Com 1 grupo (pontos corridos + mata-mata) passam de 2 a 8; com mais grupos, de 1 a 4 por grupo
+  const minimoQuePassa = r.grupos === 1 ? 2 : 1
+  const maximoQuePassa = r.grupos === 1 ? 8 : 4
+  const mudarGrupos = (quantidade: number) => {
+    const grupos = limitar(quantidade, 1, 16)
+    mudar({ grupos, classificamPorGrupo: limitar(r.classificamPorGrupo, grupos === 1 ? 2 : 1, grupos === 1 ? 8 : 4) })
+  }
 
   return (
     <>
@@ -97,17 +104,17 @@ export function RegrasForm({ regras, mudar, travado = false, minCampos = 1 }: {
         )}
         {r.formato === 'grupos' && (
           <>
-            <Linha titulo="Grupos">
+            <Linha titulo="Grupos" detalhe={r.grupos === 1 ? 'Um grupo só: pontos corridos e os primeiros vão para o mata-mata' : undefined}>
               {travado ? <span className="num" style={{ fontSize: 24 }}>{r.grupos}</span>
-                : <Passo rotulo="grupos" valor={r.grupos} menos={() => mudar({ grupos: limitar(r.grupos - 1, 2, 16) })} mais={() => mudar({ grupos: limitar(r.grupos + 1, 2, 16) })} />}
+                : <Passo rotulo="grupos" valor={r.grupos} menos={() => mudarGrupos(r.grupos - 1)} mais={() => mudarGrupos(r.grupos + 1)} />}
             </Linha>
-            <Linha titulo="Passam de cada grupo">
+            <Linha titulo={r.grupos === 1 ? 'Passam para o mata-mata' : 'Passam de cada grupo'}>
               {travado ? <span className="num" style={{ fontSize: 24 }}>{r.classificamPorGrupo}</span>
-                : <Passo rotulo="classificados por grupo" valor={r.classificamPorGrupo} menos={() => mudar({ classificamPorGrupo: limitar(r.classificamPorGrupo - 1, 1, 4) })} mais={() => mudar({ classificamPorGrupo: limitar(r.classificamPorGrupo + 1, 1, 4) })} />}
+                : <Passo rotulo="classificados por grupo" valor={r.classificamPorGrupo} menos={() => mudar({ classificamPorGrupo: limitar(r.classificamPorGrupo - 1, minimoQuePassa, maximoQuePassa) })} mais={() => mudar({ classificamPorGrupo: limitar(r.classificamPorGrupo + 1, minimoQuePassa, maximoQuePassa) })} />}
             </Linha>
           </>
         )}
-        {r.formato === 'grupos' && (
+        {r.formato === 'grupos' && r.grupos > 1 && (
           <Linha titulo="Chave como na Copa" detalhe={!r.chaveCopa
             ? 'Desligada: cruzamento simples (1º de um grupo x 2º de outro)'
             : r.classificamPorGrupo > 2
@@ -119,7 +126,7 @@ export function RegrasForm({ regras, mudar, travado = false, minCampos = 1 }: {
               : <Chave rotulo="Chave como na Copa" ligada={r.chaveCopa} alternar={() => mudar({ chaveCopa: !r.chaveCopa })} />}
           </Linha>
         )}
-        {r.formato === 'grupos' && r.campos >= 2 && (
+        {r.formato === 'grupos' && r.grupos > 1 && r.campos >= 2 && (
           <Linha titulo="Cada grupo no seu campo" detalhe={r.grupos > r.campos ? 'Mais grupos que campos: eles se revezam' : 'Grupo A no Campo 1, Grupo B no Campo 2…'}>
             <Chave rotulo="Cada grupo no seu campo" ligada={r.grupoPorCampo} alternar={() => mudar({ grupoPorCampo: !r.grupoPorCampo })} />
           </Linha>

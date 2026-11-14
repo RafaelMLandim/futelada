@@ -172,7 +172,7 @@ button.tr:nth-child(even) { background: var(--zebra); }
 .bstatus b { color: var(--amarelo); letter-spacing: 1px; }
 .bstatus .on { color: #7ee08f; }
 .bstatus .off { color: #ffb39e; }
-.seletor-jogos { display: flex; gap: 6px; overflow-x: auto; padding: 8px 12px; background: var(--navy); flex: none; scrollbar-width: none; }
+.seletor-jogos { display: flex; gap: 6px; overflow-x: auto; padding: 10px 12px 0; background: transparent; flex: none; scrollbar-width: none; }
 .seletor-jogos .chip { flex: none; height: 34px; font-size: 14px; text-transform: none; }
 .autor-gol { font-size: 14px; line-height: 1.35; max-width: 100%; }
 .autor-gol .nome-autor { font-weight: 700; }
@@ -465,3 +465,123 @@ label { min-width: 0; }
 .faixa-bateria-texto { display: inline-block; padding-left: 100%; animation: correr-faixa 14s linear infinite; }
 @keyframes correr-faixa { from { transform: translateX(0); } to { transform: translateX(-100%); } }
 @media (prefers-reduced-motion: reduce) { .faixa-bateria { white-space: normal; padding: 8px 12px; } .faixa-bateria-texto { animation: none; padding-left: 0; } }
+
+/* ---------- Telão do torneio (TV, projetor, tablet na parede; telas/torneio/Telao.tsx) ----------
+   Tudo em --u: 1/100 da largura, sem passar de 1/56 da altura (16:9 enche a tela; outros formatos cabem). */
+.telao {
+  --u: min(calc(var(--largura-tela) / 100), calc(var(--altura-tela) / 56.25));
+  position: fixed; inset: 0; width: var(--largura-tela); height: var(--altura-tela); overflow: hidden;
+  display: flex; flex-direction: column; color: #fff; font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+  background: repeating-linear-gradient(90deg, var(--grama) 0 calc(var(--u) * 10), var(--grama2) calc(var(--u) * 10) calc(var(--u) * 20));
+}
+
+/* sem moldura: o placar ocupa toda a tela entre o topo e o rodapé */
+.telao-jogo, .telao-parado, .telao-campeao { flex: 1; min-height: 0; position: relative; background: #0a0f14;
+  display: flex; flex-direction: column; align-items: center; padding: calc(var(--u) * 1.5) calc(var(--u) * 2.5); overflow: hidden; }
+.telao-fase { font-size: calc(var(--u) * 2.8); color: #c9d4e3; text-transform: uppercase; letter-spacing: .08em; }
+.telao-situacao { font-size: calc(var(--u) * 2); color: #c9d4e3; text-transform: uppercase; letter-spacing: .1em; margin-top: calc(var(--u) * .3); }
+.telao-situacao.ao-vivo { color: var(--amarelo); }
+.telao-relogio { font-size: calc(var(--u) * 11); line-height: 1; color: var(--amarelo); font-variant-numeric: tabular-nums; margin-top: calc(var(--u) * .4); }
+.telao-relogio.passou { color: #ff5a4a; }
+.telao-acrescimo { font-size: calc(var(--u) * 2); color: #ffb39e; text-transform: uppercase; letter-spacing: .05em; }
+.telao-placar { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; width: 100%; column-gap: calc(var(--u) * 2); margin-top: calc(var(--u) * .5); }
+.telao-time { display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * .8); min-width: 0; }
+.telao-time svg { width: calc(var(--u) * 10); height: calc(var(--u) * 10); }
+.telao-nome { font-size: calc(var(--u) * 4); text-transform: uppercase; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; line-height: 1.05; }
+.telao-gols { display: flex; align-items: center; gap: calc(var(--u) * 2); font-size: calc(var(--u) * 21); line-height: .9; color: var(--amarelo); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.telao-x { color: #5e6a76; font-size: .45em; }
+.telao-lances { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--u) * 6); width: 100%; margin-top: calc(var(--u) * 1); flex: 1; min-height: 0; overflow: hidden; }
+.telao-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: calc(var(--u) * .4); font-size: calc(var(--u) * 2.2); font-family: 'Barlow', sans-serif; font-weight: 600; }
+.telao-lista.lado-B { align-items: flex-end; }
+.telao-lista li { display: flex; align-items: center; gap: calc(var(--u) * .6); }
+.telao-lista svg { width: calc(var(--u) * 2.2); height: calc(var(--u) * 2.2); color: #c9d4e3; }
+.telao-lista b { color: var(--amarelo); }
+.telao-cartao { display: inline-block; width: calc(var(--u) * 1.4); height: calc(var(--u) * 2); border-radius: calc(var(--u) * .2); }
+.telao-cartao.amarelo { background: var(--amarelo); } .telao-cartao.vermelho { background: #ff3b30; } .telao-cartao.azul { background: #2f80ed; }
+.telao-barra { width: 100%; height: calc(var(--u) * .6); background: #26313c; border-radius: calc(var(--u) * .3); overflow: hidden; flex: none; margin-top: calc(var(--u) * 1); }
+.telao-barra div { height: 100%; background: var(--amarelo); }
+
+.telao-vinheta { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--u) * 1);
+  background: radial-gradient(circle at center, color-mix(in srgb, var(--cor-do-time) 55%, #0a0f14) 0%, #0a0f14 75%); animation: telao-entra .35s ease-out; }
+.telao-vinheta-texto { font-size: calc(var(--u) * 20); line-height: .9; color: var(--amarelo); font-style: italic; letter-spacing: .02em; text-shadow: 0 calc(var(--u) * .5) 0 #000; animation: telao-pulsa .8s ease-in-out infinite alternate; }
+.telao-vinheta-time { display: flex; align-items: center; gap: calc(var(--u) * 1.5); font-size: calc(var(--u) * 5); text-transform: uppercase; }
+.telao-vinheta-time svg { width: calc(var(--u) * 8); height: calc(var(--u) * 8); }
+.telao-vinheta-autor { font-size: calc(var(--u) * 3.5); color: #e8edf3; font-family: 'Barlow', sans-serif; font-weight: 700; }
+.telao-vinheta-passe { font-size: calc(var(--u) * 2.6); color: #c9d4e3; font-family: 'Barlow', sans-serif; font-weight: 600; }
+.telao-vinheta-passe b { color: #fff; }
+.telao-passe { font-family: 'Barlow', sans-serif; font-weight: 500; font-size: .75em; color: #9fb0c2; }
+.telao-vinheta-placar { font-size: calc(var(--u) * 6); color: var(--amarelo); }
+/* o desenho do uniforme em tela cheia (entra varrendo da esquerda) e papel picado caindo */
+.telao-vinheta > :not(.telao-uniforme):not(.telao-confetes) { position: relative; z-index: 2; }
+.telao-uniforme, .telao-confetes { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.telao-uniforme { opacity: .45; animation: telao-varre .7s cubic-bezier(.2, .8, .2, 1) both; }
+/* escurece o meio para o texto continuar legível em cima do desenho */
+.telao-uniforme::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(10, 15, 20, .55) 0%, rgba(10, 15, 20, .1) 70%); }
+@keyframes telao-varre { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.telao-confetes { z-index: 3; }
+.telao-confetes span { position: absolute; top: -5%; height: calc(var(--u) * 1.4); border-radius: calc(var(--u) * .15); opacity: 0;
+  animation-name: telao-confete; animation-timing-function: linear; animation-fill-mode: forwards; }
+.telao-confetes span.redondo { height: auto; aspect-ratio: 1; border-radius: 50%; }
+@keyframes telao-confete {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--deriva), calc(var(--altura-tela) * 1.1)) rotate(var(--giro)); }
+}
+/* pênaltis: bolinhas de cada lado, de quem é a vez e a vinheta de cada cobrança */
+.telao-cobrancas { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--u) * 8); width: 100%; margin-top: calc(var(--u) * 1.5); }
+.telao-bolinhas { display: flex; flex-wrap: wrap; gap: calc(var(--u) * 1); justify-content: center; }
+.telao-bolinhas span { width: calc(var(--u) * 4); height: calc(var(--u) * 4); border-radius: 50%; border: calc(var(--u) * .3) solid #3a4652;
+  display: grid; place-items: center; font-size: calc(var(--u) * 2.4); color: #fff; }
+.telao-bolinhas span.gol { background: var(--verde); border-color: #6fd17f; animation: telao-entra .35s ease-out; }
+.telao-bolinhas span.perdeu { background: var(--vermelho); border-color: #ff7a6e; animation: telao-entra .35s ease-out; }
+.telao-vez { margin-top: auto; font-size: calc(var(--u) * 3.6); text-transform: uppercase; color: #fff; padding: calc(var(--u) * .5) calc(var(--u) * 3);
+  border-radius: calc(var(--u) * .8); background: color-mix(in srgb, var(--cor-do-time) 45%, #0a0f14); border: 1px solid rgba(255, 255, 255, .25); }
+.telao-vez.vencedor { background: var(--amarelo); color: var(--navy); font-size: calc(var(--u) * 4.4); animation: telao-pulsa .8s ease-in-out infinite alternate; }
+.telao-fim { font-size: calc(var(--u) * 5); color: var(--amarelo); text-transform: uppercase; letter-spacing: .06em; margin-top: calc(var(--u) * .5); }
+.telao-vez.parado { animation: none; }
+.telao-cobranca.gol { background: radial-gradient(circle at center, #1d7a35 0%, #0a0f14 75%); }
+.telao-cobranca.perdeu { background: radial-gradient(circle at center, #8f2219 0%, #0a0f14 75%); }
+.telao-cobranca.perdeu .telao-vinheta-texto { color: #ff8a7e; }
+@media (prefers-reduced-motion: reduce) { .telao-confetes { display: none; } .telao-uniforme { animation: none; } }
+@keyframes telao-entra { from { transform: scale(1.15); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes telao-pulsa { from { transform: scale(1); } to { transform: scale(1.06); } }
+
+.telao-quadro-titulo { font-size: calc(var(--u) * 3.4); color: var(--amarelo); text-transform: uppercase; letter-spacing: .08em; flex: none; }
+.telao-quadro { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; animation: telao-surge .5s ease-out; }
+/* entrada do quadro só com movimento (sem transparência: se a animação não rodar, o quadro aparece igual) */
+@keyframes telao-surge { from { transform: translateY(calc(var(--u) * 2)); } to { transform: none; } }
+.telao-aviso { font-size: calc(var(--u) * 4); color: #c9d4e3; text-transform: uppercase; }
+.telao-proximo { width: 100%; display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 1.5); }
+.telao-pontos { display: flex; gap: calc(var(--u) * .8); flex: none; }
+.telao-pontos span { width: calc(var(--u) * 1); height: calc(var(--u) * 1); border-radius: 50%; background: #3a4652; }
+.telao-pontos span.on { background: var(--amarelo); }
+.telao-tabelas { display: grid; gap: calc(var(--u) * 1.5) calc(var(--u) * 3); width: 100%; align-content: center; }
+.telao-tabela { width: 100%; border-collapse: collapse; font-size: calc(var(--u) * 2.6); font-variant-numeric: tabular-nums; }
+.telao-tabela.compacta { font-size: calc(var(--u) * 2.3); }
+/* nome completo do time: ocupa o que sobrar da linha e corta com reticências se não couber */
+.telao-tabela { table-layout: fixed; }
+.telao-tabela .coluna-posicao { width: calc(var(--u) * 3.4); }
+.telao-tabela .coluna-numero { width: calc(var(--u) * 4.2); }
+.telao-tabela.compacta td:not(.nome), .telao-tabela.compacta th:not(.esquerda) { font-size: .85em; }
+.telao-tabela td.nome { overflow: hidden; }
+.telao-time-linha { max-width: 100%; }
+.telao-time-linha > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.telao-tabela th { color: var(--amarelo); text-transform: uppercase; font-weight: 700; padding: calc(var(--u) * .3) calc(var(--u) * .8); text-align: center; border-bottom: calc(var(--u) * .2) solid #26313c; }
+.telao-tabela td { padding: calc(var(--u) * .35) calc(var(--u) * .8); text-align: center; border-bottom: 1px solid #1c2630; }
+.telao-tabela .esquerda { text-align: left; }
+.telao-tabela .posicao { width: calc(var(--u) * 3); color: #c9d4e3; }
+.telao-tabela tr.passa .posicao { color: var(--navy); background: var(--amarelo); border-radius: calc(var(--u) * .3); }
+.telao-tabela b { color: var(--amarelo); }
+.telao-time-linha { display: inline-flex; align-items: center; gap: calc(var(--u) * .8); text-transform: uppercase; }
+.telao-time-linha svg, .telao-artilharia svg { width: 1.3em; height: 1.3em; flex: none; }
+.telao-artilharia { list-style: none; margin: 0; padding: 0; width: min(100%, calc(var(--u) * 70)); display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--u) * .8) calc(var(--u) * 4); font-size: calc(var(--u) * 2.6); }
+.telao-artilharia li { display: flex; align-items: center; gap: calc(var(--u) * 1); border-bottom: 1px solid #1c2630; padding-bottom: calc(var(--u) * .5); }
+.telao-artilharia .posicao { color: #c9d4e3; width: calc(var(--u) * 2.5); }
+.telao-artilharia .nome { flex: 1; min-width: 0; display: flex; flex-direction: column; text-transform: uppercase; line-height: 1.05; }
+.telao-artilharia small { font-size: .6em; color: #c9d4e3; }
+.telao-artilharia b { color: var(--amarelo); font-size: 1.3em; }
+.telao-campeao { justify-content: center; gap: calc(var(--u) * 1.2); color: var(--amarelo); }
+.telao-campeao > svg { width: calc(var(--u) * 14); height: calc(var(--u) * 14); }
+.telao-campeao-titulo { font-size: calc(var(--u) * 4); color: #c9d4e3; text-transform: uppercase; letter-spacing: .15em; }
+.telao-campeao-time { display: flex; align-items: center; gap: calc(var(--u) * 2); font-size: calc(var(--u) * 8); text-transform: uppercase; color: #fff; }
+.telao-campeao-time svg { width: calc(var(--u) * 10); height: calc(var(--u) * 10); }

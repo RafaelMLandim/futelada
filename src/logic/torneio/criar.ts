@@ -128,9 +128,13 @@ export function problemasParaSortear(torneio: Torneio): string[] {
     if (jogadoresDeLinha(t).length < regras.linha) problemas.push(`${t.nome} precisa de pelo menos ${regras.linha} jogadores de linha`)
   }
   if (regras.formato === 'grupos') {
-    if (regras.grupos < 2) problemas.push('Use pelo menos 2 grupos')
-    if (times.length < regras.grupos * 2) problemas.push(`Com ${regras.grupos} grupos, precisa de pelo menos ${regras.grupos * 2} times`)
-    if (regras.classificamPorGrupo < 1 || regras.classificamPorGrupo * regras.grupos < 2) problemas.push('Precisa classificar pelo menos 2 times no total')
+    // 1 grupo só = pontos corridos e os melhores da tabela vão para o mata-mata
+    if (regras.grupos < 1) problemas.push('Use pelo menos 1 grupo')
+    const textoDosGrupos = regras.grupos === 1 ? '1 grupo' : `${regras.grupos} grupos`
+    if (times.length < regras.grupos * 2) problemas.push(`Com ${textoDosGrupos}, precisa de pelo menos ${regras.grupos * 2} times`)
+    if (regras.classificamPorGrupo < 1 || regras.classificamPorGrupo * regras.grupos < 2) {
+      problemas.push(regras.grupos === 1 ? 'Com 1 grupo, precisam passar pelo menos 2 times' : 'Precisa classificar pelo menos 2 times no total')
+    }
     const menorGrupo = Math.floor(times.length / Math.max(1, regras.grupos))
     if (regras.classificamPorGrupo > menorGrupo) problemas.push(`Não dá para classificar ${regras.classificamPorGrupo} de grupos com ${menorGrupo} times`)
   }
@@ -190,7 +194,8 @@ export function sortear(torneio: Torneio, aleatorio: Aleatorio = Math.random): T
   for (let i = 0; i < maior; i++) for (const g of porGrupo) if (g[i]) intercalados.push(g[i])
   const jogosDeGrupo = numerar(ordenarSemRepetir(intercalados, timesDe))
 
-  // Mata-mata (cruzamento simples): sementes 1ºA, 1ºB…, 2ºA, 2ºB… (1º de um grupo pega 2º de outro)
+  // Mata-mata (cruzamento simples): sementes 1ºA, 1ºB…, 2ºA, 2ºB… (1º de um grupo pega 2º de outro).
+  // Com 1 grupo, fica 1º x 4º e 2º x 3º (ou 1º x 8º, 2º x 7º…), como num playoff de liga.
   const sementes: Origem[] = []
   for (let posicao = 1; posicao <= regras.classificamPorGrupo; posicao++) {
     for (let grupo = 0; grupo < regras.grupos; grupo++) sementes.push({ tipo: 'grupo', grupo, posicao })

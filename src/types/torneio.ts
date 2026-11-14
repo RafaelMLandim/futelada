@@ -101,6 +101,16 @@ export type Escalacao = {
 }
 
 /** Um jogo que está sendo jogado agora (fica salvo: sobrevive a fechar o app). */
+/** Uma cobrança da disputa de pênaltis. */
+export type Cobranca = { lado: Lado; jogadorId: string | null; nome: string | null; gol: boolean }
+
+/** Disputa de pênaltis: cobranças alternadas; depois das normais, alternadas até alguém errar. */
+export type Penaltis = {
+  comeca: Lado // quem bate primeiro (pode ser sorteado na moeda)
+  quantidade: number // cobranças normais de cada lado
+  cobrancas: Cobranca[]
+}
+
 export type PartidaTorneio = {
   jogoId: string
   campo: number // 1, 2… (onde está sendo jogado)
@@ -118,6 +128,9 @@ export type PartidaTorneio = {
   // substituições feitas no jogo, na ordem (para desfazer a última). primeiraVez: quem entrou ainda não tinha jogado;
   // goleiroAntes: quem estava no gol antes (quem saiu era o goleiro e quem entrou virou o goleiro)
   substituicoesFeitas?: SubstituicaoFeita[]
+  // disputa de pênaltis em andamento: fica no jogo (e na nuvem) para o telão acompanhar e para não se perder
+  // se o celular do mesário fechar no meio; some quando o resultado é confirmado
+  penaltis?: Penaltis | null
 }
 
 export type SubstituicaoFeita = { lado: Lado; saiId: string; entraId: string; primeiraVez: boolean; goleiroAntes: string | null }

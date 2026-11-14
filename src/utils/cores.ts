@@ -16,12 +16,16 @@ export const COLETES: Colete[] = [
 /** Cor da camisa de quem está na fila (ainda sem colete). */
 export const SEM_COLETE = '#C9D1BC'
 
-/** Cor do texto que fica legível sobre a cor (escuro em cores claras, branco nas escuras). */
-export function textoSobre(cor: string): string {
+/** Quanto a cor (#rrggbb) é clara: 0 = preto, 1 = branco. */
+export function luminancia(cor: string): number {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(cor.slice(i, i + 2), 16) / 255)
   const canal = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
-  const luminancia = 0.2126 * canal(r) + 0.7152 * canal(g) + 0.0722 * canal(b)
-  return luminancia > 0.3 ? '#10223A' : '#FFFFFF'
+  return 0.2126 * canal(r) + 0.7152 * canal(g) + 0.0722 * canal(b)
+}
+
+/** Cor do texto que fica legível sobre a cor (escuro em cores claras, branco nas escuras). */
+export function textoSobre(cor: string): string {
+  return luminancia(cor) > 0.3 ? '#10223A' : '#FFFFFF'
 }
 
 // Cor da camisa na Tabela, por número do time (repete depois do último).

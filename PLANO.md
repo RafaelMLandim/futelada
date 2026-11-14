@@ -469,6 +469,10 @@ src/
   - **Melhor campanha** (entre grupos): pontos por jogo, vitórias por jogo, saldo por jogo, disciplinar,
     sorteio (por jogo, porque os grupos podem ter tamanhos diferentes). A vaga só sai quando os grupos acabam.
   - 3 ou mais passando por grupo, ou a opção desligada: cruzamento simples de antes.
+- **1 grupo só** (grupos + mata-mata com 1 grupo) = pontos corridos com mata-mata no fim: passam de 2 a 8
+  (com 2+ grupos, de 1 a 4 por grupo) e a chave segue a tabela: 1º x 2º na final; 1º x 4º e 2º x 3º nas
+  semis; 1º x 8º, 4º x 5º, 2º x 7º, 3º x 6º nas quartas. "Chave como na Copa" e "Cada grupo no seu campo"
+  somem com 1 grupo.
 - **Tela cheia** ("Ver chave do mata-mata" em Jogos, "Tela cheia" na Tabela): lado 1 à esquerda, lado 2 à
   direita, final no meio com o troféu e o campeão; 3º lugar embaixo; quem passa por W.O. aparece tracejado.
   Abre ajustada à tela (zoom mínimo legível) e centralizada na final; botões − / +; deitar o celular mostra tudo.
@@ -1156,3 +1160,23 @@ conta ou digita o nome), a mesma pessoa aparecendo duas vezes (entrou com a cont
   `utils/bateria.ts`: no app, `Device.getBatteryInfo` (Android e iPhone); no navegador, só o Chrome informa a bateria.
 - Fotos do perfil: dicas novas ("Selecione uma foto em que: você esteja sozinho; o fundo seja simples, como uma parede
   branca; a iluminação seja boa") e, ao tocar em "Usar foto", o botão trava e abre "Preparando sua foto" até a foto aparecer.
+
+## 20. Telão do torneio (protótipo, 14/11/2026)
+- **O que é:** a tela de **um campo** para TV, projetor ou tablet na parede. Só mostra, ninguém mexe. **Cada campo tem o seu telão.**
+  Só no torneio (a pelada não tem). **Sem som** (atrapalha o jogo); depois, talvez uma musiquinha nas pausas.
+- **Jogo rolando no campo:** placar enorme, cronômetro, acréscimo, fase/tempo, gols (autor e minuto) e cartões de cada lado.
+  Gol abre a vinheta **"GOOOL!"** com o time, o autor e o placar (6 s).
+- **Campo parado:** alterna a cada 12 s entre o próximo jogo do campo, a classificação (até 4 grupos por quadro) e a artilharia.
+- **Pênaltis:** placar dos pênaltis enorme, o do jogo pequeno em cima, as bolinhas de cada lado (verde = gol,
+  vermelha = perdeu, vazia = falta bater), "Vez do time" na cor dele; cada cobrança abre "GOL!" (verde) ou "PERDEU!" (vermelho)
+  com o batedor por 3 s; no fim, "Time venceu nos pênaltis!" com confete.
+  A disputa agora fica **gravada no jogo em andamento** (`PartidaTorneio.penaltis`, `penaltisNaPartida`): vai para a nuvem
+  com o jogo e, se o celular do mesário fechar no meio, ele volta direto na disputa.
+- **Gol:** vinheta "GOOOL!" com o autor e a **assistência**, o **desenho do uniforme** em tela cheia (no mesmo sentido da camisa)
+  e **confete** nas cores do time. Camisa preta: usa a segunda cor do uniforme.
+- **Torneio acabou:** o campeão. Sem barra do topo nem rodapé: só o painel (o campo vai na linha da fase).
+- **Protótipo:** `src/telas/torneio/Telao.tsx`, aberto só no desenvolvimento com `?telao=local&campo=N` (lê o torneio deste navegador).
+- **Falta para valer:**
+  - **Pareamento:** a TV abre `/telao` e mostra um código + QR; no celular, "Compartilhar → Telão" escolhe o **campo** e digita o código.
+  - Ler o torneio da nuvem **sem login** na TV, com uma chave do pareamento (ajuste em `firestore.rules`).
+  - Quadro da chave do mata-mata; pênaltis ao vivo; Chromecast (depois).

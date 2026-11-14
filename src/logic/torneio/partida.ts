@@ -2,7 +2,7 @@
 // placar, gols, cartões, substituições e encerramento.
 
 import type { CorCartao, Gol, Jogador, Lado, Placar } from '../../types/pelada'
-import type { JogoTorneio, PartidaTorneio, Torneio } from '../../types/torneio'
+import type { JogoTorneio, PartidaTorneio, Penaltis, Torneio } from '../../types/torneio'
 import { alternarCrono, cronoZerado, darAcrescimos, pararNoFim } from '../cronometro'
 import { cartoesAoDar } from '../cartoes'
 import { outro } from '../lado'
@@ -38,8 +38,8 @@ export function camposLivres(t: Torneio): number[] {
  * O campo que terminar os seus grupos antes passa a ajudar os outros (`campoLiberadoDosGrupos`).
  */
 export function campoDoJogo(t: Torneio, jogo: JogoTorneio): number | null {
-  const { formato, grupoPorCampo, campos } = t.regras
-  if (formato !== 'grupos' || !grupoPorCampo || campos < 2 || jogo.fase !== 'grupo' || jogo.grupo === null) return null
+  const { formato, grupoPorCampo, campos, grupos } = t.regras
+  if (formato !== 'grupos' || !grupoPorCampo || campos < 2 || grupos < 2 || jogo.fase !== 'grupo' || jogo.grupo === null) return null
   return (jogo.grupo % campos) + 1
 }
 
@@ -241,6 +241,11 @@ export function substituirNaPartida(t: Torneio, jogoId: string, lado: Lado, saiI
 }
 
 /** Encerra o jogo e guarda o resultado. No mata-mata empatado, passe o placar dos pênaltis. */
+/** Grava a disputa de pênaltis no jogo em andamento (null = volta para antes dos pênaltis). */
+export function penaltisNaPartida(t: Torneio, jogoId: string, penaltis: Penaltis | null): Torneio {
+  return comPartida(t, jogoId, (p) => ({ ...p, penaltis }))
+}
+
 export function encerrarPartida(t: Torneio, jogoId: string, penaltis: Placar | null = null, agora = Date.now()): Torneio {
   const p = partidaDoJogo(t, jogoId)
   if (!p) throw new Error('Esse jogo não está em andamento')

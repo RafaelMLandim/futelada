@@ -14,7 +14,7 @@ export { novaDisputa, quemBate, placarDosPenaltis, vencedorDosPenaltis, cobrar, 
 export { situacaoDisciplinar, type SituacaoDisciplinar } from './suspensoes'
 export { iniciarEscalacao, substituir, impedimentoDaSubstituicao, saiuDoJogo } from './escalacao'
 export { iniciarPartida, cancelarPartida, cronoDaPartida, fimDoTempoDaPartida, acrescimosNaPartida, golNaPartida, passeNaPartida, removerGolDaPartida, cartaoNaPartida,
-  expulsosNaPartida, goleiroNaPartida, golVazioPorExpulsao, irParaOGol, substituirNaPartida, encerrarPartida, partidaDoJogo, timesJogando, camposLivres,
+  expulsosNaPartida, goleiroNaPartida, golVazioPorExpulsao, irParaOGol, substituirNaPartida, encerrarPartida, penaltisNaPartida, partidaDoJogo, timesJogando, camposLivres,
   jogosParaComecar, campoDoJogo, campoLiberadoDosGrupos, campoParaJogo, proximosPorCampo, podeComecarNoCampo } from './partida'
 export { artilhariaDoTorneio, assistenciasDoTorneio, goleirosDoTorneio, cartoesDoTorneio, type ArtilheiroTorneio, type GarcomTorneio,
   type GoleiroTorneio, type CartoesTorneio } from './estatisticas'

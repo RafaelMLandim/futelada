@@ -2,8 +2,8 @@ import { useState, type ReactNode } from 'react'
 import { Camisa } from '../../components/Camisa'
 import { LADOS } from '../../logic'
 import {
-  cobrar, comecarProrrogacao, encerrarPartida, expulsosNaPartida, jogoPorId, novaDisputa, partidaDoJogo, placarDecisivo, placarDosPenaltis, precisaDePenaltis, quemBate, vencedorDosPenaltis,
-  vaiParaProrrogacao, voltarCobranca, type Penaltis,
+  cobrar, comecarProrrogacao, encerrarPartida, expulsosNaPartida, jogoPorId, novaDisputa, partidaDoJogo, penaltisNaPartida, placarDecisivo, placarDosPenaltis,
+  precisaDePenaltis, quemBate, vencedorDosPenaltis, vaiParaProrrogacao, voltarCobranca, type Penaltis,
 } from '../../logic/torneio'
 import type { TorneioHook } from '../../store/torneio'
 import type { Lado } from '../../types/pelada'
@@ -21,7 +21,10 @@ export function FimDeJogo({ hook, jogoId, times, onFechar, onEncerrado, onAcresc
   const t = hook.torneio!
   const p = partidaDoJogo(t, jogoId)!
   const jogo = jogoPorId(t, jogoId)!
-  const [penaltis, setPenaltis] = useState<Penaltis | null>(null)
+  // a disputa fica gravada no jogo (vai para a nuvem e para o telão; não se perde se o celular fechar)
+  const penaltis = p.penaltis ?? null
+  const setPenaltis = (mudar: Penaltis | null | ((atual: Penaltis | null) => Penaltis | null)) =>
+    hook.aplicar((x) => penaltisNaPartida(x, jogoId, typeof mudar === 'function' ? mudar(partidaDoJogo(x, jogoId)?.penaltis ?? null) : mudar))
   const [batedor, setBatedor] = useState<string | null>(null)
   const [a, b] = p.placar
   const empate = a === b

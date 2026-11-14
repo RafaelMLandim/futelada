@@ -1,15 +1,10 @@
 // Disputa de pênaltis: cobranças alternadas; depois das normais, alternadas até alguém errar.
 
 import type { Lado, Placar } from '../../types/pelada'
+import type { Cobranca, Penaltis } from '../../types/torneio'
 import { outro } from '../lado'
 
-export type Cobranca = { lado: Lado; jogadorId: string | null; nome: string | null; gol: boolean }
-
-export type Penaltis = {
-  comeca: Lado // quem bate primeiro (pode ser sorteado na moeda)
-  quantidade: number // cobranças normais de cada lado
-  cobrancas: Cobranca[]
-}
+export type { Cobranca, Penaltis } from '../../types/torneio'
 
 export const novaDisputa = (comeca: Lado, quantidade: number): Penaltis => ({ comeca, quantidade, cobrancas: [] })
 

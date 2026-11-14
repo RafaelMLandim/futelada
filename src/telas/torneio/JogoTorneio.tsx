@@ -37,8 +37,10 @@ type Escolha =
   | { tipo: 'passe'; lado: Lado; indice: number; autorId: string } // assistências ligadas: quem deu o passe
 
 // O jogo do torneio em andamento: placar, gols, cartões, substituições e encerramento.
-export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
+export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou, seletorDeJogos = null }: {
   hook: TorneioHook; jogoId: string; editavel?: boolean; onTerminou: () => void
+  /** Jogos rolando ao mesmo tempo (um por campo): fica entre o cabeçalho e o placar. */
+  seletorDeJogos?: ReactNode
 }) {
   const t = hook.torneio!
   const p = partidaDoJogo(t, jogoId)!
@@ -119,7 +121,7 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
   // O resumo de fim de jogo abre pelo botão ou sozinho quando acaba o tempo
   const acrescimoMin = p.crono.acrescimoMin ?? 0
   const chaveDoFim = `${p.prorrogacao ? 'P' : 'R'}${periodoDaPartida(p)}+${acrescimoMin}`
-  const fimAberto = editavel && !escolhendoAcrescimos && (fimManual || (acabouTempo && ultimo && fimDispensadoEm !== chaveDoFim))
+  const fimAberto = editavel && !escolhendoAcrescimos && (fimManual || !!p.penaltis || (acabouTempo && ultimo && fimDispensadoEm !== chaveDoFim))
   const fimDoTempoAberto = editavel && !escolhendoAcrescimos && !fimManual && fimDoTempo && !noIntervalo && fimDispensadoEm !== chaveDoFim
   const fecharFim = () => { setFimManual(false); setFimDispensadoEm(chaveDoFim) }
   const proximo = nomeDoPeriodo(regras, p, periodoDaPartida(p) + 1)
@@ -265,7 +267,8 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou }: {
 
   return (
     <div className="scr" key={p.jogoId}>
-      <Barra titulo={`${times.A.nome} x ${times.B.nome}`} sub={`${nomeDoJogo(t, jogo)}${regras.campos > 1 ? ` · Campo ${p.campo}` : ''}`} />
+      <Barra titulo={`${siglaDoTime(times.A)} x ${siglaDoTime(times.B)}`} sub={`${nomeDoJogo(t, jogo)}${regras.campos > 1 ? ` · Campo ${p.campo}` : ''}`} />
+      {seletorDeJogos}
       <div className="conteudo" style={{ gap: 10 }}>
         <PlacarLed lados={{ A: { titulo: times.A.nome, cor: times.A.cor, uniforme: times.A.uniforme }, B: { titulo: times.B.nome, cor: times.B.cor, uniforme: times.B.uniforme } }}
           placar={p.placar} tempoMin={duracao} gols={regras.gols} decorrido={decorrido} rodando={p.crono.rodando} fim={fim || fimDoTempo}

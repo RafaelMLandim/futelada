@@ -3,7 +3,7 @@ import { Barra } from '../../components/Barra'
 import { useMusicaDeFundo } from '../../utils/musica'
 import { Icone, type NomeIcone } from '../../components/Icone'
 import { StatusDaBarra } from '../../components/navegacao'
-import { campeao, timesDoJogo } from '../../logic/torneio'
+import { campeao, siglaDoTime, timesDoJogo } from '../../logic/torneio'
 import { useTorneio } from '../../store/torneio'
 import { codigoDoLink, limparLink } from '../../utils/convite'
 import { AjustesTorneio } from './AjustesTorneio'
@@ -132,22 +132,22 @@ export function TorneioApp({ onInicio }: { onInicio: () => void }) {
         {aba === 'jogos' && <Jogos hook={hook} onJogar={abrirJogo} />}
         {aba === 'jogo' && atual && (
           <>
-            {emAndamento.length > 1 && (
-              <div className="seletor-jogos" role="tablist" aria-label="Jogos em andamento">
-                {emAndamento.map((p) => {
-                  const jogo = torneio.jogos.find((j) => j.id === p.jogoId)!
-                  const ids = timesDoJogo(torneio, jogo)
-                  const nome = (id: string | null) => torneio.times.find((x) => x.id === id)?.nome ?? '?'
-                  return (
-                    <button key={p.jogoId} role="tab" aria-selected={p.jogoId === atual.jogoId}
-                      className={'chip' + (p.jogoId === atual.jogoId ? ' on' : '')} onClick={() => setJogoAberto(p.jogoId)}>
-                      C{p.campo} · {nome(ids.A)} {p.placar[0]}-{p.placar[1]} {nome(ids.B)}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-            <JogoTorneio key={atual.jogoId} hook={hook} jogoId={atual.jogoId} editavel={podeMarcar(atual.campo)} onTerminou={aoTerminar} />
+            <JogoTorneio key={atual.jogoId} hook={hook} jogoId={atual.jogoId} editavel={podeMarcar(atual.campo)} onTerminou={aoTerminar}
+              seletorDeJogos={emAndamento.length > 1 && (
+                <div className="seletor-jogos" role="tablist" aria-label="Jogos em andamento">
+                  {emAndamento.map((p) => {
+                    const jogo = torneio.jogos.find((j) => j.id === p.jogoId)!
+                    const ids = timesDoJogo(torneio, jogo)
+                    const sigla = (id: string | null) => { const time = torneio.times.find((x) => x.id === id); return time ? siglaDoTime(time) : '?' }
+                    return (
+                      <button key={p.jogoId} role="tab" aria-selected={p.jogoId === atual.jogoId}
+                        className={'chip' + (p.jogoId === atual.jogoId ? ' on' : '')} onClick={() => setJogoAberto(p.jogoId)}>
+                        C{p.campo} · {sigla(ids.A)} {p.placar[0]}-{p.placar[1]} {sigla(ids.B)}
+                      </button>
+                    )
+                  })}
+                </div>
+              )} />
           </>
         )}
         {aba === 'jogo' && !atual && <Jogos hook={hook} onJogar={abrirJogo} />}
