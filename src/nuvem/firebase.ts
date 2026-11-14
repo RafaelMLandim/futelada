@@ -3,7 +3,7 @@
 
 import { initializeApp } from 'firebase/app'
 import {
-  EmailAuthProvider, GoogleAuthProvider, OAuthProvider, connectAuthEmulator, createUserWithEmailAndPassword, deleteUser, getAuth, getRedirectResult, linkWithCredential, linkWithRedirect, onIdTokenChanged,
+  EmailAuthProvider, GoogleAuthProvider, OAuthProvider, connectAuthEmulator, createUserWithEmailAndPassword, browserLocalPersistence, deleteUser, getAuth, getRedirectResult, indexedDBLocalPersistence, initializeAuth, linkWithCredential, linkWithRedirect, onIdTokenChanged,
   reauthenticateWithCredential, reauthenticateWithPopup, sendPasswordResetEmail, signInAnonymously, updateProfile, signInWithCredential, signInWithEmailAndPassword, signInWithRedirect, signOut, type User,
 } from 'firebase/auth'
 import {
@@ -12,7 +12,7 @@ import {
 } from 'firebase/firestore'
 import type { DadosNuvem, Operacao } from '../logic/torneio'
 import type { PartidaTorneio, ResultadoJogo } from '../types/torneio'
-import { nativo } from '../utils/nativo'
+import { nativo, noIphone } from '../utils/nativo'
 import { baseDaNuvem, baseParaNuvem } from './formato'
 import { entrarComUmToque, prepararUmToque } from './umToque'
 import { CONTADORES_ZERADOS, PLANO_VAZIO, type Contadores, type DadosDoPlano, type Plano } from '../logic/plano'
@@ -96,7 +96,9 @@ export function criarNuvemFirebase(): Nuvem {
   // armazenamento do navegador, que é o que falha no iPhone (aba privada, navegador de dentro do WhatsApp/Instagram)
   const paginaDoLink = !nativo() && /[?&](lista|pagar|ver|controle)=/.test(location.search)
   const db = initializeFirestore(app, { localCache: paginaDoLink ? memoryLocalCache() : persistentLocalCache({ tabManager: persistentMultipleTabManager() }) })
-  const auth = getAuth(app)
+  // No iPhone o app roda em capacitor://, onde o "popup/redirect" do login do navegador nunca termina de carregar e
+  // deixava o app preso na tela de abertura. Lá o login já é o nativo (o token vem do celular), então fica sem ele.
+  const auth = noIphone() ? initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] }) : getAuth(app)
   if (usarEmulador()) {
     connectAuthEmulator(auth, `http://${location.hostname}:9099`, { disableWarnings: true })
     connectFirestoreEmulator(db, location.hostname, 8080)
@@ -111,7 +113,7 @@ export function criarNuvemFirebase(): Nuvem {
   // Quem já entrou com o Google continua logado; senão, entra anônimo (como sempre foi)
   const logado = (async () => {
     await auth.authStateReady()
-    await getRedirectResult(auth).catch(async (e) => {
+    if (!nativo()) await getRedirectResult(auth).catch(async (e) => {
       // voltou do Google com uma conta que já existe (entrou em outro celular): troca para ela
       const credencial = GoogleAuthProvider.credentialFromError(e)
       if ((e as { code?: string }).code === 'auth/credential-already-in-use' && credencial) await signInWithCredential(auth, credencial)
