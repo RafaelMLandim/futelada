@@ -613,3 +613,13 @@ label { min-width: 0; }
 .telao-instrucao.pequena, .telao-aviso.pequeno { font-size: calc(var(--u) * 2.2); }
 .telao-codigo { font-size: calc(var(--u) * 14); color: var(--amarelo); letter-spacing: .12em; line-height: 1; font-variant-numeric: tabular-nums;
   background: #121a22; border: calc(var(--u) * .3) solid #26313c; border-radius: calc(var(--u) * 1.2); padding: calc(var(--u) * 1) calc(var(--u) * 3); }
+
+/* Fundo da tela de entrada: o goleiro voando e o jogador chutando (telas/Login.tsx).
+   Celular (em pé): como sempre, grandes e cruzando a tela. Tela deitada (tablet deitado, computador, TV): o goleiro no
+   alto à direita e o jogador embaixo à esquerda, cada um na sua metade, medidos pela altura (não se cruzam no meio). */
+.silhueta-goleiro { width: 120%; aspect-ratio: 1659 / 699; right: -22%; top: 7%; transform: scaleX(-1) rotate(-10deg); }
+.silhueta-chute { width: 92%; aspect-ratio: 736 / 723; left: -3%; bottom: -1%; }
+@media (orientation: landscape) and (min-width: 700px) {
+  .silhueta-goleiro { width: min(58%, calc(var(--altura-tela) * 1.25)); right: -4%; top: 2%; }
+  .silhueta-chute { width: min(46%, calc(var(--altura-tela) * .92)); left: 0; bottom: -2%; }
+}

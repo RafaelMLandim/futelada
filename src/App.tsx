@@ -18,8 +18,10 @@ import { useFecharJanelaComEsc } from './utils/teclaEsc'
 import { useMusicaDeFundo } from './utils/musica'
 import { VoltarAoInicio } from './components/navegacao'
 import { TelaoLocal, TelaoNaTv } from './telas/torneio/Telao'
+import { EscolherTorneio } from './telas/torneio/EscolherTorneio'
+import { listaDeTorneios } from './store/torneio'
 
-type Modo = 'inicio' | 'pelada' | 'torneio' | 'caixa' | 'historico' | 'perfil'
+type Modo = 'inicio' | 'pelada' | 'torneio' | 'torneios' | 'caixa' | 'historico' | 'perfil'
 const CHAVE_MODO = 'app:modo'
 
 function modoSalvo(): Modo {
@@ -27,7 +29,7 @@ function modoSalvo(): Modo {
   if (new URLSearchParams(location.search).get('entrar')) return 'torneio'
   try {
     const m = localStorage.getItem(CHAVE_MODO)
-    return m === 'pelada' || m === 'torneio' || m === 'caixa' || m === 'historico' || m === 'perfil' ? m : 'inicio'
+    return m === 'pelada' || m === 'torneio' || m === 'torneios' || m === 'caixa' || m === 'historico' || m === 'perfil' ? m : 'inicio'
   } catch {
     return 'inicio'
   }
@@ -84,11 +86,12 @@ export default function App() {
   const inicio = () => setModo('inicio')
   const tela = modo === 'pelada' ? <PeladaApp />
     : modo === 'torneio' ? <TorneioApp onInicio={inicio} />
+    : modo === 'torneios' ? <EscolherTorneio onAbrir={() => setModo('torneio')} onVoltar={inicio} />
     : modo === 'caixa' ? <Caixa onVoltar={inicio} />
     : modo === 'historico' ? <Historico />
     : modo === 'perfil' ? <Perfil />
     : null
   // o menu da foto (no topo) tem "Voltar ao início"
   if (tela) return <VoltarAoInicio.Provider value={inicio}>{tela}</VoltarAoInicio.Provider>
-  return <Inicio onPelada={() => setModo('pelada')} onTorneio={() => setModo('torneio')} onCaixa={() => setModo('caixa')} onHistorico={() => setModo('historico')} onPerfil={() => setModo('perfil')} />
+  return <Inicio onPelada={() => setModo('pelada')} onTorneio={() => setModo(listaDeTorneios().length ? 'torneios' : 'torneio')} onCaixa={() => setModo('caixa')} onHistorico={() => setModo('historico')} onPerfil={() => setModo('perfil')} />
 }

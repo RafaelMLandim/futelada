@@ -7,7 +7,7 @@ import type { Perfil } from '../nuvem/tipos'
 const CHAVE_DONO = 'celular:dono'
 const guardado = (uid: string) => `celular:guardado:${uid}`
 /** O que fica salvo no celular e é de uma pessoa (o modo e a identidade do aparelho não são). */
-export const CHAVES_DA_CONTA = ['pelada:v5', 'torneio:v1', 'torneio:ativo']
+export const CHAVES_DA_CONTA = ['pelada:v5', 'torneio:v1', 'torneio:ativo', 'torneio:guardados']
 
 /** A conta dona do que está no celular (null: sem login). */
 export function donoDoCelular(): string | null {

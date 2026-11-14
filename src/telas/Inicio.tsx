@@ -6,7 +6,7 @@ import { Logo } from '../components/Logo'
 import { carregar as peladaSalva } from '../store/armazenamento'
 import { useCaixa, useConta, useHistorico } from '../store/conta'
 import { useImportarTurmaAntiga, useTurmas } from '../store/turmas'
-import { torneioSalvo } from '../store/torneio'
+import { listaDeTorneios } from '../store/torneio'
 import { usePlano } from '../store/plano'
 import { textoDasPeladasGratis } from '../logic/plano'
 import { dataHoje, reais } from '../utils/formatar'
@@ -22,7 +22,8 @@ export function Inicio({ onPelada, onTorneio, onCaixa, onHistorico, onPerfil }: 
   // "Pelada 3 de 10 grátis" (só com a cobrança ligada e sem Pro)
   const gratis = textoDasPeladasGratis(usePlano())
   const pelada = peladaSalva()
-  const torneio = torneioSalvo()
+  const torneios = listaDeTorneios()
+  const torneio = torneios[0] ?? null
   const partidas = pelada?.estado.historico.length ?? 0
 
   return (
@@ -53,9 +54,12 @@ export function Inicio({ onPelada, onTorneio, onCaixa, onHistorico, onPerfil }: 
 
         <section className="panel">
           <div className="ph" style={{ fontSize: 22, padding: '10px 14px' }}><span className="row" style={{ gap: 10 }}><Icone nome="trofeu" tamanho={26} />Torneio</span></div>
+          {/* com torneio no celular, abre a pré-tela "Torneios" (escolher um ou criar outro) */}
           <Opcao icone="trofeu" titulo={torneio ? torneio.nome : 'Novo torneio'} onClick={onTorneio}
-            detalhe={torneio ? (torneio.campeao ? `🏆 ${torneio.campeao}` : 'Em andamento') : 'Times fixos, tabela, chave e campeão'}
-            acao={torneio ? (torneio.campeao ? 'Ver' : 'Continuar') : 'Criar'} />
+            detalhe={!torneio ? 'Times fixos, tabela, chave e campeão'
+              : torneios.length > 1 ? `${torneios.length} torneios · escolher ou criar outro`
+                : torneio.campeao ? `🏆 ${torneio.campeao} · ou crie outro` : 'Em andamento · ou crie outro'}
+            acao={!torneio ? 'Criar' : torneios.length > 1 ? 'Escolher' : torneio.campeao ? 'Ver' : 'Continuar'} />
         </section>
       </div>
     </div>

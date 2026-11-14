@@ -1187,3 +1187,13 @@ conta ou digita o nome), a mesma pessoa aparecendo duas vezes (entrou com a cont
 - **Corrigido junto (14/11):** compartilhar um torneio que **já tinha jogos em andamento** falhava (a regra dos jogos lia o
   torneio que ainda não existia no mesmo envio) e o app apagava a cópia do celular. A regra agora usa `getAfter`.
 - **Depois:** quadro da chave do mata-mata; musiquinha nas pausas; QR code na TV; Chromecast.
+
+## 21. Vários torneios no mesmo celular (14/11/2026)
+- Antes: um torneio por vez (com um em andamento, a tela inicial só oferecia "Continuar").
+- Agora: o aberto continua nos lugares de sempre (`torneio:v1` local, `torneio:ativo` compartilhado); os outros ficam em
+  `torneio:guardados` (local inteiro; compartilhado só o código, ele segue na nuvem). Funções em `store/torneio.ts`:
+  `listaDeTorneios`, `guardarTorneioAberto`, `abrirTorneio`.
+- **Pré-tela "Torneios"** (`telas/torneio/EscolherTorneio.tsx`, modo `torneios`): lista (o aberto por último em cima) e
+  "Novo torneio". A tela inicial abre a pré-tela quando já existe torneio no celular; sem nenhum, vai direto para criar.
+- Tela de entrada (Login): em tela deitada (≥ 700 px) o goleiro fica no alto à direita e o jogador embaixo à esquerda
+  (`.silhueta-goleiro`, `.silhueta-chute`); antes os dois cresciam pela largura e se cruzavam no meio.

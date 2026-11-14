@@ -13,9 +13,9 @@ const apple = (
 )
 
 /** Desenho de public/ (silhueta ou arte) pintado com uma cor (máscara CSS). */
-function Silhueta({ arquivo, cor, style }: { arquivo: string; cor: string; style: React.CSSProperties }) {
+function Silhueta({ arquivo, cor, className, style }: { arquivo: string; cor: string; className?: string; style?: React.CSSProperties }) {
   const url = `url(${import.meta.env.BASE_URL}${arquivo})`
-  return <div aria-hidden="true" style={{ position: 'absolute', background: cor, maskImage: url, WebkitMaskImage: url, maskSize: 'contain', WebkitMaskSize: 'contain', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat', ...style }} />
+  return <div aria-hidden="true" className={className} style={{ position: 'absolute', background: cor, maskImage: url, WebkitMaskImage: url, maskSize: 'contain', WebkitMaskSize: 'contain', maskRepeat: 'no-repeat', WebkitMaskRepeat: 'no-repeat', ...style }} />
 }
 
 /**
@@ -28,8 +28,9 @@ export function Login({ conta, onVoltar }: { conta?: ReturnType<typeof useConta>
   const [comEmail, setComEmail] = useState(false)
   return (
     <div className="scr" style={{ height: 'var(--altura-tela)', position: 'relative', overflow: 'hidden' }}>
-      <Silhueta arquivo="arte/goleiro.png" cor="rgba(255,255,255,.15)" style={{ width: '120%', aspectRatio: '1659 / 699', right: '-22%', top: '7%', transform: 'scaleX(-1) rotate(-10deg)' }} />
-      <Silhueta arquivo="arte/chute.png" cor="rgba(255,255,255,.15)" style={{ width: '92%', aspectRatio: '736 / 723', left: '-3%', bottom: '-1%' }} />
+      {/* tamanhos e posições no CSS (.silhueta-goleiro, .silhueta-chute): em tela deitada a composição muda para os dois não se cruzarem */}
+      <Silhueta arquivo="arte/goleiro.png" cor="rgba(255,255,255,.15)" className="silhueta-goleiro" />
+      <Silhueta arquivo="arte/chute.png" cor="rgba(255,255,255,.15)" className="silhueta-chute" />
       <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 26, padding: '24px 24px 14dvh', textAlign: 'center' }}>
         <Logo tamanho={150} fundo={false} />
         {conta && (

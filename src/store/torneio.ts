@@ -10,6 +10,8 @@ import type { PartidaTorneio, Torneio } from '../types/torneio'
 
 const CHAVE = 'torneio:v1'
 const CHAVE_ATIVO = 'torneio:ativo'
+/** Os outros torneios deste celular (os que não estão abertos agora), do mais recente para o mais antigo. */
+const CHAVE_GUARDADOS = 'torneio:guardados'
 
 /** Torneio compartilhado que este celular está acompanhando. */
 export type Ativo = { codigo: string; campo: number | null; nome?: string; campeao?: string }
@@ -48,18 +50,69 @@ const carregarLocal = () => {
   return t ? completar(t) : null
 }
 
-/** Para a tela inicial: o torneio local ou o compartilhado que está sendo acompanhado. */
 /** Nome do time campeão (null enquanto o torneio não acabou). */
 const nomeDoCampeao = (t: Torneio) => {
   const id = campeao(t)
   return id ? t.times.find((x) => x.id === id)?.nome ?? null : null
 }
 
-export function torneioSalvo(): { nome: string; codigo?: string; campeao?: string } | null {
+
+// ---------- Vários torneios no mesmo celular ----------
+// O torneio aberto continua nos lugares de sempre (local em "torneio:v1", compartilhado em "torneio:ativo"); os outros
+// ficam guardados numa lista. Abrir um da lista guarda o que estava aberto e põe o escolhido no lugar. O compartilhado
+// guardado é só o código (ele continua na nuvem, com os outros celulares marcando).
+
+type TorneioGuardado = { tipo: 'local'; torneio: Torneio } | { tipo: 'nuvem'; ativo: Ativo }
+
+/** Um torneio da lista (pré-tela "Torneios"). */
+export type ResumoDoTorneio = { id: string; nome: string; campeao?: string; codigo?: string; aberto: boolean }
+
+const idDoGuardado = (guardado: TorneioGuardado) => (guardado.tipo === 'local' ? `local:${guardado.torneio.id}` : `nuvem:${guardado.ativo.codigo}`)
+const resumoDoGuardado = (guardado: TorneioGuardado, aberto: boolean): ResumoDoTorneio => guardado.tipo === 'local'
+  ? { id: idDoGuardado(guardado), nome: guardado.torneio.nome, campeao: nomeDoCampeao(completar(guardado.torneio)) ?? undefined, aberto }
+  : { id: idDoGuardado(guardado), nome: guardado.ativo.nome ?? 'Torneio compartilhado', campeao: guardado.ativo.campeao, codigo: guardado.ativo.codigo, aberto }
+
+/** O que está nos lugares de sempre: o compartilhado aberto e o local (que fica por baixo enquanto um compartilhado está aberto). */
+function torneiosNosLugares(): { aberto: TorneioGuardado | null; porBaixo: TorneioGuardado | null } {
   const ativo = ler<Ativo>(CHAVE_ATIVO)
-  if (ativo) return { nome: ativo.nome ?? 'Torneio compartilhado', codigo: ativo.codigo, campeao: ativo.campeao }
-  const local = carregarLocal()
-  return local ? { nome: local.nome, campeao: nomeDoCampeao(local) ?? undefined } : null
+  const local = ler<Torneio>(CHAVE)
+  const doLocal: TorneioGuardado | null = local ? { tipo: 'local', torneio: local } : null
+  return ativo ? { aberto: { tipo: 'nuvem', ativo }, porBaixo: doLocal } : { aberto: doLocal, porBaixo: null }
+}
+
+const guardados = () => ler<TorneioGuardado[]>(CHAVE_GUARDADOS) ?? []
+
+/** Todos os torneios deste celular: o aberto primeiro, depois os outros (o último aberto antes). */
+export function listaDeTorneios(): ResumoDoTorneio[] {
+  const { aberto, porBaixo } = torneiosNosLugares()
+  return [
+    ...(aberto ? [resumoDoGuardado(aberto, true)] : []),
+    ...(porBaixo ? [resumoDoGuardado(porBaixo, false)] : []),
+    ...guardados().map((guardado) => resumoDoGuardado(guardado, false)),
+  ]
+}
+
+/** Tira o que está aberto (e o local de baixo) dos lugares de sempre e põe no começo da lista. */
+export function guardarTorneioAberto(): void {
+  const { aberto, porBaixo } = torneiosNosLugares()
+  const novos = [aberto, porBaixo].filter((guardado): guardado is TorneioGuardado => !!guardado)
+  if (!novos.length) return
+  const ids = new Set(novos.map(idDoGuardado))
+  escrever(CHAVE_GUARDADOS, [...novos, ...guardados().filter((guardado) => !ids.has(idDoGuardado(guardado)))])
+  escrever(CHAVE, null)
+  escrever(CHAVE_ATIVO, null)
+}
+
+/** Abre um torneio da lista (o que estava aberto vai para a lista). */
+export function abrirTorneio(id: string): void {
+  if (listaDeTorneios().find((resumo) => resumo.id === id)?.aberto) return
+  guardarTorneioAberto()
+  const lista = guardados()
+  const escolhido = lista.find((guardado) => idDoGuardado(guardado) === id)
+  if (!escolhido) return
+  escrever(CHAVE_GUARDADOS, lista.filter((guardado) => guardado !== escolhido))
+  if (escolhido.tipo === 'local') escrever(CHAVE, escolhido.torneio)
+  else escrever(CHAVE_ATIVO, escolhido.ativo)
 }
 
 export type StatusNuvem = 'carregando' | 'ok' | 'nao-encontrado' | 'erro'
