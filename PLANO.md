@@ -1197,3 +1197,113 @@ conta ou digita o nome), a mesma pessoa aparecendo duas vezes (entrou com a cont
   "Novo torneio". A tela inicial abre a pré-tela quando já existe torneio no celular; sem nenhum, vai direto para criar.
 - Tela de entrada (Login): em tela deitada (≥ 700 px) o goleiro fica no alto à direita e o jogador embaixo à esquerda
   (`.silhueta-goleiro`, `.silhueta-chute`); antes os dois cresciam pela largura e se cruzavam no meio.
+
+## 22. Inscrição dos times pelo link (15/11/2026)
+Primeira parte da conta do jogador no torneio: como no link da pelada (seção 17.2), ninguém precisa do app, mas quem
+entra com a conta já fica ligado a ela.
+- **Dois links.** O organizador manda o **link do torneio** (`?inscricao=CÓDIGO`) para os capitães (aba Times, painel
+  "Inscrição pelo link"; só em torneio compartilhado e antes do sorteio). O capitão **entra com a conta**, escolhe o nome e a
+  cor (as cores já usadas ficam apagadas) e manda o **link do time** (`&time=ID`) para os jogadores. Assim ninguém cai no
+  time errado.
+- **Jogador:** com a conta (apelido) ou **só o nome**; "Na linha" ou "No gol" (pode ter vários goleiros) e o número da camisa,
+  opcional (número repetido no time não entra). Pode sair do time enquanto as inscrições estão abertas. No navegador do
+  Android aparece "Baixe o app" (dá para fechar).
+- **Capitão:** vê os jogadores, tira quem entrou por engano e pode tirar o time do torneio. Leva a **braçadeira**
+  (`components/Bracadeira.tsx`: "C" pequeno em faixa amarelo-clara, suave) ao lado do nome, no link e na aba Times
+  (`TimeTorneio.capitao` = o `inscrito` dele).
+- **Organizador:** o celular dele junta as inscrições nos times do torneio (`logic/torneio/inscricao.ts`,
+  `juntarInscricoes`; só ele grava o torneio). Time do link tem a etiqueta "pelo link"; o nome e a cor seguem os do
+  capitão. Ao editar, o nome e a cor vão para o link, e quem ele tira sai do link. Ele ainda fecha cada time antes do
+  sorteio (como os digitados). Torneio grátis: passou do limite de times, os últimos inscritos ficam de fora.
+- **Fecha no sorteio** (`aberta: false`; reabre se o sorteio for desfeito).
+- **Nuvem:** `inscricoes/{código}` (organizador, nome do torneio, aberta, limite) → `times/{id}` (capitão, nome, cor) →
+  `jogadores/{conta ou celular}`. Regras: capitão precisa de conta; cada jogador grava só o próprio registro; tira o
+  jogador ele mesmo, o capitão ou o organizador; com as inscrições fechadas ninguém entra. Testes em
+  `testes-regras/isolamento.mjs`.
+- **Depois (segunda parte):** a conta do jogador no torneio (o que ele vê do torneio, números na carta).
+
+### 22.1 Vários goleiros e posição livre (15/11/2026)
+- **Um goleiro marcado, o titular; reserva é reserva.** Não existe "goleiro reserva": quem vai para o gol vira o
+  goleiro. Nas listas (editor, Times, escalação): o goleiro, os titulares da linha e, **no fim, os reservas**. No editor o
+  goleiro fica na mesma lista dos outros; a luva ao lado do "+" adiciona o goleiro (só quando o time não tem), e os 3
+  pontinhos têm "Passar para o gol" (troca: quem estava no gol vai para a linha no lugar dele) / "Passar para a linha".
+  Outros marcados como goleiro (pelo link, por exemplo) viram reservas comuns ao abrir o editor. O número da camisa de
+  todos só aparece em "Colocar números nas camisas".
+- **"Goleiro" é só a posição de costume.** Nada trava: na escalação antes do jogo, a luva põe **qualquer jogador** no gol
+  (quem estava no gol fica no lugar dele: no banco ou na linha); no jogo, "Ir para o gol" e a substituição já trocam.
+- **Banco** = quem não está no gol nem na linha. A janela da escalação abre quando o time tem reserva ou mais de um
+  marcado como goleiro; nela, quem fica no banco desce para o fim. Sugestão: quem começou no gol no último jogo do time (`ResultadoJogo.noGol`);
+  senão o primeiro goleiro; titular suspenso, entra o próximo marcado como goleiro (se houver).
+- **Sorteio:** pelo menos um goleiro e `linha + 1` jogadores no time (um goleiro reserva pode completar a linha).
+- No link do time, vários jogadores podem marcar "No gol".
+- **Luva padrão do app** (desenho em `utils/luva.ts`, componente `components/LuvaDoGoleiro.tsx`): luva inclinada, pintada
+  com a cor do time (o velcro na segunda cor do uniforme; palma cinza em luva clara); na pelada, amarela. Substitui o
+  emoji 🧤 e a etiqueta "Goleiro" em todo lugar: listas de times, link, editor, escalação, partida do torneio (quem fez
+  o gol, "Ir para o gol"), "quem fez" e passe da pelada, goleiros fixos (Ajustes e Fila), escalação da pelada
+  ("⇄ Trocar" com a luva), confirmados do link, histórico, seleção e a imagem da tabela. Na pelada a luva fica na cor
+  do colete do lado do gol (em campo, no "quem fez" e na Fila); fora do gol, amarela.
+- **Goleiro fixo na escalação da pelada (15/11/2026):** sem a caixinha de seleção. A linha do goleiro é como a dos
+  jogadores (luva, nome, ⋮); tocar abre "Goleiro do Time N": quem está no gol (só informação), "Trocar com o X" (um
+  botão por goleiro fixo esperando, com 3 ou mais), "⇄ Roubar o goleiro do Azul" (troca com o do outro gol; embaixo,
+  quem vem e quem vai), "Sem goleiro" e "Cancelar" (sem X, como as outras janelas).
+
+### 22.2 Carta do torneio (15/11/2026)
+Decidido: a carta do torneio fica **separada** da pelada; quem foi digitado pelo organizador poderá dizer "esse sou eu"
+(a fazer); as conquistas do torneio **contam na cor da carta**.
+- **Quem entra:** só quem joga com a conta (entrou pelo link do time com login).
+- **Quando grava:** o celular do organizador manda o resumo (`logic/torneio/carta.ts`, `resumoDoTorneioParaAsCartas`)
+  na hora em que os números mudam (`store/torneioNaCarta.ts`); o último jogo leva à tela do campeão, então não espera.
+  Sem internet, manda de novo ao abrir o torneio (guarda o que já mandou no celular).
+- **Servidor** (`registrarTorneioNaCarta`): só o organizador daquele torneio; confere os números e grava
+  `cartas/{conta}/torneios/{código}` (regravar refaz, não soma). Quem saiu do resumo sai da carta (lista em
+  `torneios/{código}/privado/carta`, só o servidor lê). Regras: o dono só lê; ninguém grava.
+- **Números:** jogos, vitórias, empates (pênaltis contam como empate), gols, assistências, cartões, jogos sem levar gol
+  (quem começou no gol) e gols contra. No fim do torneio: campeão, vice (perdeu a final / 2º nos pontos corridos),
+  artilheiro, garçom e luva de ouro (empate no 1º vale para todos), para quem jogou ao menos um jogo.
+- **Tela:** dois perfis separados, sem abas: na tela inicial, o "Meu perfil" do grupo Pelada abre só a carta da pelada
+  e o do grupo Torneio só a do torneio (o subtítulo diz qual; o app lembra qual estava aberto). O do torneio é dividido
+  por torneio: uma carta por torneio do ano, deslizando como as turmas da pelada (sem a carta de todos), cada uma com
+  a cor e as conquistas daquele torneio. Carta do torneio com "TOR" (torneios) no lugar de "PEL", conquistas Campeão, Vice, Artilheiro do
+  torneio, Garçom do torneio, Luva de ouro do torneio e Competidor.
+- **Cor da carta:** a carta de todas as peladas conta também as conquistas do torneio (as 6 melhores). A de cada
+  torneio vem do desempenho nele (`nivelDoTorneio`; num torneio só não dá para juntar pontos): campeão = ouro, campeão
+  com um prêmio (artilheiro, garçom ou luva de ouro) = diamante, com dois ou mais = lendária; sem o título, vice ou
+  algum prêmio = prata; só jogou = bronze.
+- **Número da carta (15/11/2026):** no lugar do aproveitamento, a carta mostra a **nota** ("GERAL"), de 0 a 99 (nunca
+  100): na pelada, os pontos das conquistas em porcentagem do máximo (pontos ÷ 18 × 99, `notaDaCarta`); no torneio, o
+  número de cada cor, na mesma faixa da pelada (bronze 20, prata 50, ouro 75, diamante 92; `notaDoTorneio`). A cor do
+  torneio vem dos pontos dele (`pontosDoTorneio`: campeão 2 ou vice 1, mais 1 por prêmio; 0 bronze, 1 prata, 2 ouro,
+  3 diamante, 4+ lendária). A **lendária** mostra a coroa e "LENDÁRIA" no lugar do número (na tela e na imagem).
+- **Melhor jogador:** título que o organizador dá no fim do torneio (aba Tabela, depois do campeão: "Escolher o
+  melhor jogador", trocar ou tirar). Fica em `Torneio.melhorJogador`, aparece para todos na Tabela e vira a conquista
+  "Melhor jogador" (1/2/4) e um prêmio na carta do torneio.
+
+### 22.3 Torneios em que joga (pré-tela "Torneios", 15/11/2026)
+- Quem entra num time pelo link **com a conta** ganha a participação no perfil (`usuarios/{uid}/participacoes/{link}`:
+  torneio, time, cor); sair do time apaga. O link de inscrição guarda o código do torneio (`inscricoes/{código}.torneio`).
+- **Pré-tela "Torneios":** **Jogando** (os torneios em que joga, com a camisa do time; tocar abre **só para
+  acompanhar**) e **Organizando** (os do celular), com **"Novo torneio"** sempre: dá para organizar jogando.
+- **Só acompanhar** (`Ativo.jogador`, `hook.soAcompanha`): vê jogos, tabela e artilharia ao vivo; não pega campo nem
+  convida mesários: não tem a aba Ajustes (sai pelo "Voltar ao início" da foto). Mesário continua sendo quem o
+  organizador chama pelo convite.
+- Tela inicial: com torneios em que joga, o grupo Torneio mostra "Torneios · Jogando N · ou crie o seu" e abre a pré-tela.
+
+### 22.4 "Esse sou eu" (15/11/2026)
+- Quem tem conta e foi digitado pelo organizador (só o nome) **toca no próprio nome** na lista da aba Times (os
+  jogadores sem conta viram botão para quem ainda não é ninguém no torneio) e só confirma: "Você é o JOÃO? · Sou eu".
+  Um aviso no topo explica ("toque no seu nome na lista"); na aba Jogos, o aviso tem "Ver os times". O pedido
+  fica em `torneios/{código}/pedidos/{conta}` (cada um só no próprio; o organizador lê e tira). Dá para cancelar.
+- No link do time, quem está logado tem o atalho **"O organizador já me colocou pelo nome"**, que abre o torneio para
+  acompanhar (em vez de entrar de novo no time).
+- **Vale na hora, sem o organizador confirmar** (decidido em 15/11: os campeonatos conferem documento no local; o app
+  só faz a gestão). Quem grava é o celular do organizador, sozinho, em qualquer aba (`useEsseSouEuAutomatico`; leva
+  um instante): liga o jogador à conta (`ligarContaAoJogador`: não troca quem já tem conta, nem liga a mesma conta duas
+  vezes) e apaga o pedido. Ligado, o torneio entra no "Jogando" da pessoa e
+  os números vão para a carta dela.
+- Sem tela para o organizador nem "desfazer" (decidido em 15/11): a pessoa tocou no nome, leu e confirmou. No torneio
+  não há dois jogadores com o mesmo nome (o editor pede sobrenome ou apelido), então o nome já escolhido não é
+  tocável; se dois pedirem o mesmo ao mesmo tempo, vale o primeiro, e o pedido do outro some (ele escolhe de novo).
+- Legenda das conquistas: a do torneio explica a regra própria (campeão 2, vice 1, cada prêmio 1; o Geral de cada cor);
+  a da pelada explica o Geral (porcentagem dos pontos, 18 = 99).
+- **Chave na aba Tabela (15/11/2026):** saiu o quadro pequeno "Mata-mata" (colunas rolando de lado); no lugar, o botão
+  "Ver chave do mata-mata", que abre a mesma chave completa da aba Jogos (`ChaveCompleta`).

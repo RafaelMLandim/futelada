@@ -1,4 +1,5 @@
 import { Barra } from '../components/Barra'
+import { LuvaDoGoleiro } from '../components/LuvaDoGoleiro'
 import { Camisa } from '../components/Camisa'
 import { Icone } from '../components/Icone'
 import { Cartao } from '../components/Cartao'
@@ -231,7 +232,7 @@ export function Tabela({ pelada, data, cobranca }: { pelada: Pelada; data?: stri
               </div>}
           {goleiroNaSelecao && (
             <div className="tr" style={{ background: 'var(--amarelo-claro)' }}>
-              <span className="no g">G</span>
+              <LuvaDoGoleiro tamanho={26} rotulo="goleiro" />
               <FotoDoJogador foto={fotos[contas[jogadorGoleiro(goleiroNaSelecao.nome).id]]} conta={contas[jogadorGoleiro(goleiroNaSelecao.nome).id]} nome={goleiroNaSelecao.nome} comEspaco={comFotos} />
               <span className="nome">{goleiroNaSelecao.nome}</span>
               <span style={col}>{goleiroNaSelecao.jogos}</span>

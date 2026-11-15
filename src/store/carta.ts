@@ -2,28 +2,57 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { contasDaPelada, type JogadorNoAno } from '../logic'
-import type { PeladaDaCarta } from '../logic/carta'
+import type { PeladaDaCarta, TorneioDaCarta } from '../logic/carta'
 import { obterNuvem } from '../nuvem'
 import type { DadosDoJogador } from '../nuvem/tipos'
 import type { Estado } from '../types/pelada'
 import { semAsDenunciadas } from './denuncias'
 import { donoDoCelular } from './donoDoCelular'
 
-/** Peladas da carta de quem está logado. null = carregando. */
-export function useCarta() {
-  const [peladas, setPeladas] = useState<PeladaDaCarta[] | null>(null)
+/**
+ * A última carta que chegou, guardada no celular (de quem está logado): o perfil abre já com os números e a cor certos,
+ * sem começar zerado e mudar de bronze para ouro quando a nuvem responde.
+ */
+function cartaGuardada<T>(chave: string): T[] | null {
+  try {
+    const guardada = JSON.parse(localStorage.getItem(chave) ?? 'null') as { dono: string; itens: T[] } | null
+    return guardada && guardada.dono === donoDoCelular() ? guardada.itens : null
+  } catch {
+    return null
+  }
+}
+
+function guardarCarta<T>(chave: string, itens: T[]) {
+  const dono = donoDoCelular()
+  try {
+    if (dono) localStorage.setItem(chave, JSON.stringify({ dono, itens }))
+  } catch {
+    // sem espaço: só abre carregando até a nuvem responder
+  }
+}
+
+/** Ouve uma parte da carta (peladas ou torneios), começando pela guardada no celular. null = carregando (nada guardado). */
+function useParteDaCarta<T>(chave: string, ouvir: (nuvem: NonNullable<Awaited<ReturnType<typeof obterNuvem>>>, aoMudar: (itens: T[]) => void) => () => void) {
+  const [itens, setItens] = useState<T[] | null>(() => cartaGuardada<T>(chave))
   useEffect(() => {
     let parar = () => {}
     let vivo = true
     void obterNuvem().then((nuvem) => {
-      if (!nuvem) { setPeladas([]); return }
-      if (vivo) parar = nuvem.ouvirCarta(setPeladas)
+      if (!nuvem) { setItens([]); return }
+      if (vivo) parar = ouvir(nuvem, (novos) => { guardarCarta(chave, novos); setItens(novos) })
     })
     return () => { vivo = false; parar() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ouve uma vez (a chave e o jeito de ouvir não mudam)
   }, [])
-  return peladas
+  return itens
 }
 
+/** Peladas da carta de quem está logado. null = carregando. */
+export const useCarta = () => useParteDaCarta<PeladaDaCarta>('carta:peladas', (nuvem, aoMudar) => nuvem.ouvirCarta(aoMudar))
+
+
+/** Torneios da carta de quem está logado. null = carregando. */
+export const useCartaDosTorneios = () => useParteDaCarta<TorneioDaCarta>('carta:torneios', (nuvem, aoMudar) => nuvem.ouvirCartaDosTorneios(aoMudar))
 
 /** Fotos para a imagem da seleção: id do jogador → foto, de quem jogou com conta e escolheu foto. */
 export async function fotosDaPelada(estado: Estado): Promise<Record<string, string>> {

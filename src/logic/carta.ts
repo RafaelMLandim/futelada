@@ -145,11 +145,19 @@ const pontosDaConquista = (conquista: Conquista) => (conquista.nivel ? NIVEIS.in
  * Cor da carta: soma as 6 melhores conquistas (bronze vale 1 ponto, prata 2 e ouro 3; o máximo é 18) e desconta as negativas,
  * como o Pé Trocado (a carta pode cair). Toda carta começa no bronze.
  */
-export function nivelDaCarta(conquistas: Conquista[]): NivelDaCarta {
+/** Pontos da carta: as 6 melhores conquistas (bronze 1, prata 2, ouro 3; no máximo 18), menos as negativas. */
+export function pontosDaCarta(conquistas: Conquista[]): number {
   const ganhos = conquistas.filter((conquista) => !conquista.negativa).map(pontosDaConquista)
     .sort((x, y) => y - x).slice(0, CONQUISTAS_NA_CARTA).reduce((total, valor) => total + valor, 0)
   const perdas = conquistas.filter((conquista) => conquista.negativa).reduce((total, conquista) => total + pontosDaConquista(conquista), 0)
-  const pontos = Math.max(0, ganhos - perdas)
+  return Math.max(0, ganhos - perdas)
+}
+
+/** O número grande da carta: os pontos em porcentagem do máximo (18), de 0 a 99 (como nos games, nunca 100). */
+export const notaDaCarta = (conquistas: Conquista[]) => Math.round((pontosDaCarta(conquistas) / 18) * 99)
+
+export function nivelDaCarta(conquistas: Conquista[]): NivelDaCarta {
+  const pontos = pontosDaCarta(conquistas)
   const ouros = conquistas.filter((conquista) => !conquista.negativa && conquista.nivel === 'ouro').length
   if (pontos >= 18 && ouros >= OUROS_PARA_LENDARIA) return 'lendaria'
   return pontos >= 16 ? 'diamante' : pontos >= 12 ? 'ouro' : pontos >= 6 ? 'prata' : 'bronze'
@@ -249,3 +257,62 @@ export const METAIS_DA_CARTA: Record<NivelDaCarta, { metal: [string, string, str
   diamante: { metal: ['#effdff', '#74d3ee', '#c6f4ff'], borda: ['#ffffff', '#2a9cc4'], tinta: '#06303f' },
   lendaria: { metal: ['#1b222c', '#0c1016', '#1d242e'], borda: ['#fbe6a2', '#c9a227'], tinta: '#f5d77a' },
 }
+
+// ---- Torneios na carta (PLANO.md, seção 22.2): a carta do torneio fica separada da carta da pelada ----
+
+/** O que o jogador fez em um torneio. Só o servidor grava; regravar o mesmo torneio só refaz os números dele. */
+export type TorneioDaCarta = {
+  id: string // código do torneio
+  nome: string
+  data: number // quando o primeiro jogo dele acabou (define a temporada)
+  jogos: number; vitorias: number; empates: number; gols: number; assistencias: number
+  amarelos: number; vermelhos: number; golsContra?: number; jogosSemSofrer?: number
+  campeao?: boolean; vice?: boolean; artilheiro?: boolean; garcom?: boolean; luvaDeOuro?: boolean
+  melhorJogador?: boolean // escolhido pelo organizador
+}
+
+export const torneiosDaTemporada = (torneios: TorneioDaCarta[], temporada: number) => torneios.filter((torneio) => temporadaDaPelada(torneio) === temporada)
+
+/** Soma os torneios no mesmo formato dos números da carta (o lugar das peladas guarda quantos torneios). */
+export function numerosDosTorneios(torneios: TorneioDaCarta[]): NumerosDaCarta {
+  const comoPeladas = torneios.map((torneio) => ({ ...torneio, turma: torneio.id, nomeDaTurma: torneio.nome }))
+  return numerosDaCarta(comoPeladas)
+}
+
+/** Conquistas do torneio (as de cada temporada; contam também para a cor da carta). */
+export function conquistasDosTorneios(torneios: TorneioDaCarta[]): Conquista[] {
+  const vezes = (campo: 'campeao' | 'vice' | 'artilheiro' | 'garcom' | 'luvaDeOuro' | 'melhorJogador') => torneios.filter((torneio) => torneio[campo]).length
+  const lista: Omit<Conquista, 'nivel' | 'proximaMeta'>[] = [
+    { id: 'campeao', nome: 'Campeão', descricao: 'Torneios ganhos', valor: vezes('campeao'), metas: [1, 2, 4] },
+    { id: 'vice', nome: 'Vice', descricao: 'Vezes em 2º lugar', valor: vezes('vice'), metas: [1, 2, 4] },
+    { id: 'artilheiro-do-torneio', nome: 'Artilheiro do torneio', descricao: 'Vezes artilheiro de um torneio', valor: vezes('artilheiro'), metas: [1, 2, 4] },
+    { id: 'garcom-do-torneio', nome: 'Garçom do torneio', descricao: 'Vezes líder de assistências', valor: vezes('garcom'), metas: [1, 2, 4] },
+    { id: 'luva-de-ouro-do-torneio', nome: 'Luva de ouro do torneio', descricao: 'Vezes goleiro menos vazado', valor: vezes('luvaDeOuro'), metas: [1, 2, 4] },
+    { id: 'melhor-jogador', nome: 'Melhor jogador', descricao: 'Vezes eleito o melhor do torneio', valor: vezes('melhorJogador'), metas: [1, 2, 4] },
+    { id: 'competidor', nome: 'Competidor', descricao: 'Torneios jogados', valor: torneios.length, metas: [2, 5, 10] },
+  ]
+  return lista.map((conquista) => {
+    const alcancadas = conquista.metas.filter((meta) => conquista.valor >= meta).length
+    return { ...conquista, nivel: alcancadas ? NIVEIS[alcancadas - 1] : null, proximaMeta: conquista.metas[alcancadas] ?? null }
+  })
+}
+
+/**
+ * Pontos de um torneio, pelo que o jogador fez nele (num torneio só não dá para juntar pontos de conquistas): campeão 2
+ * (ou vice 1), mais 1 por prêmio (artilheiro, garçom, luva de ouro, melhor jogador). O número da carta chega ao máximo com 5.
+ */
+export function pontosDoTorneio(torneio: TorneioDaCarta): number {
+  const premios = [torneio.artilheiro, torneio.garcom, torneio.luvaDeOuro, torneio.melhorJogador].filter(Boolean).length
+  return (torneio.campeao ? 2 : torneio.vice ? 1 : 0) + premios
+}
+
+/** Cor da carta de um torneio, pelos pontos dele: 0 bronze, 1 prata, 2 ouro (campeão), 3 diamante, 4 ou mais lendária. */
+export function nivelDoTorneio(torneio: TorneioDaCarta): NivelDaCarta {
+  return (['bronze', 'prata', 'ouro', 'diamante', 'lendaria'] as const)[Math.min(4, pontosDoTorneio(torneio))]
+}
+
+/**
+ * O número grande da carta do torneio: o mesmo de cada cor na carta da pelada (bronze 20, prata 50, ouro 75,
+ * diamante 92), para um diamante valer o mesmo nas duas. A lendária mostra a coroa (99).
+ */
+export const notaDoTorneio = (torneio: TorneioDaCarta) => [20, 50, 75, 92, 99][Math.min(4, pontosDoTorneio(torneio))]

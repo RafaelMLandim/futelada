@@ -23,7 +23,6 @@ const PATHS = {
   editar: <><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13 7l4 4" /></>,
   compartilhar: <><circle cx="18" cy="5" r="2.5" /><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="19" r="2.5" /><path d="M8.2 10.8l7.6-4.5M8.2 13.2l7.6 4.5" /></>,
   carteira: <><path d="M4 7h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a1 1 0 0 1-1-1z" /><path d="M4 7l11-3v3" /><path d="M16 13h4" /></>,
-  luva: <><path d="M7 18V10a1.5 1.5 0 0 1 3 0V6.5a1.5 1.5 0 0 1 3 0V6a1.5 1.5 0 0 1 3 0v1.5a1.5 1.5 0 0 1 3 0v6c0 2.6-1.8 4.5-4.3 4.5z" /><path d="M7 14l-2-2a1.5 1.5 0 0 0-2.2 2.1L7 18.5" /><path d="M6.5 18h10.2v3H6.5z" /></>,
   opcoes: <><circle cx="12" cy="5" r=".8" /><circle cx="12" cy="12" r=".8" /><circle cx="12" cy="19" r=".8" /></>,
   certo: <path d="M5 12.5l4.5 4.5L19 7.5" />,
   som: <><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" /><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" /></>,

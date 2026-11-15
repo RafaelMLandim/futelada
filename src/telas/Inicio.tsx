@@ -7,12 +7,14 @@ import { carregar as peladaSalva } from '../store/armazenamento'
 import { useCaixa, useConta, useHistorico } from '../store/conta'
 import { useImportarTurmaAntiga, useTurmas } from '../store/turmas'
 import { listaDeTorneios } from '../store/torneio'
+import { useParticipacoes } from '../store/participacoes'
 import { usePlano } from '../store/plano'
 import { textoDasPeladasGratis } from '../logic/plano'
 import { dataHoje, reais } from '../utils/formatar'
 
 // Tela inicial: pelada do dia, torneio, caixa da pelada e histórico (a conta fica na foto, no topo).
-export function Inicio({ onPelada, onTorneio, onCaixa, onHistorico, onPerfil }: { onPelada: () => void; onTorneio: () => void; onCaixa: () => void; onHistorico: () => void; onPerfil: () => void }) {
+/** `onPerfil`: abre o Meu perfil na carta da pelada ou na do torneio (cada grupo abre a sua). */
+export function Inicio({ onPelada, onTorneio, onCaixa, onHistorico, onPerfil }: { onPelada: () => void; onTorneio: (comLista: boolean) => void; onCaixa: () => void; onHistorico: () => void; onPerfil: (carta: 'pelada' | 'torneio') => void }) {
   const conta = useConta()
   const caixa = useCaixa()
   const { peladas } = useHistorico()
@@ -22,8 +24,11 @@ export function Inicio({ onPelada, onTorneio, onCaixa, onHistorico, onPerfil }: 
   // "Pelada 3 de 10 grátis" (só com a cobrança ligada e sem Pro)
   const gratis = textoDasPeladasGratis(usePlano())
   const pelada = peladaSalva()
-  const torneios = listaDeTorneios()
+  // os que organiza neste celular (os abertos só para acompanhar ficam no "Jogando" da pré-tela)
+  const torneios = listaDeTorneios().filter((item) => !item.jogador)
   const torneio = torneios[0] ?? null
+  // torneios em que joga (entrou num time pelo link com a conta): o torneio abre a pré-tela, com o Jogando
+  const jogando = (useParticipacoes() ?? []).length
   const partidas = pelada?.estado.historico.length ?? 0
 
   return (
@@ -38,7 +43,7 @@ export function Inicio({ onPelada, onTorneio, onCaixa, onHistorico, onPerfil }: 
       <div className="conteudo" style={{ justifyContent: 'safe center', gap: 16 }}>
         <section className="panel">
           <div className="ph" style={{ fontSize: 22, padding: '10px 14px' }}><span className="row" style={{ gap: 10 }}><Icone nome="bola" tamanho={26} />Pelada</span></div>
-          <Opcao icone="times" titulo="Meu perfil" onClick={conta.logado ? onPerfil : conta.entrar}
+          <Opcao icone="times" titulo="Meu perfil" onClick={conta.logado ? () => onPerfil('pelada') : conta.entrar}
             detalhe={conta.logado ? 'Sua carta e suas conquistas' : 'Sua carta de jogador · entre com o Google'}
             acao={conta.logado ? 'Ver' : 'Entrar'} />
           <Opcao icone="bola" titulo="Pelada do dia" onClick={onPelada}
@@ -55,11 +60,14 @@ export function Inicio({ onPelada, onTorneio, onCaixa, onHistorico, onPerfil }: 
         <section className="panel">
           <div className="ph" style={{ fontSize: 22, padding: '10px 14px' }}><span className="row" style={{ gap: 10 }}><Icone nome="trofeu" tamanho={26} />Torneio</span></div>
           {/* com torneio no celular, abre a pré-tela "Torneios" (escolher um ou criar outro) */}
-          <Opcao icone="trofeu" titulo={torneio ? torneio.nome : 'Novo torneio'} onClick={onTorneio}
-            detalhe={!torneio ? 'Times fixos, tabela, chave e campeão'
+          <Opcao icone="trofeu" titulo={torneio ? torneio.nome : jogando ? 'Torneios' : 'Novo torneio'} onClick={() => onTorneio(jogando > 0 || torneios.length > 0)}
+            detalhe={!torneio && jogando ? `Jogando ${jogando} · ou crie o seu` : !torneio ? 'Times fixos, tabela, chave e campeão'
               : torneios.length > 1 ? `${torneios.length} torneios · escolher ou criar outro`
                 : torneio.campeao ? `🏆 ${torneio.campeao} · ou crie outro` : 'Em andamento · ou crie outro'}
-            acao={!torneio ? 'Criar' : torneios.length > 1 ? 'Escolher' : torneio.campeao ? 'Ver' : 'Continuar'} />
+            acao={!torneio && jogando ? 'Ver' : !torneio ? 'Criar' : torneios.length > 1 ? 'Escolher' : torneio.campeao ? 'Ver' : 'Continuar'} />
+          <Opcao icone="times" titulo="Meu perfil" onClick={conta.logado ? () => onPerfil('torneio') : conta.entrar}
+            detalhe={conta.logado ? 'Sua carta do torneio e suas conquistas' : 'Sua carta do torneio · entre com o Google'}
+            acao={conta.logado ? 'Ver' : 'Entrar'} />
         </section>
       </div>
     </div>

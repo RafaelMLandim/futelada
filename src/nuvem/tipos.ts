@@ -1,11 +1,13 @@
 import type { DadosNuvem, Operacao } from '../logic/torneio'
 import type { PeladaGuardada } from '../logic/historico'
-import type { PeladaDaCarta, ResumoDaCarta } from '../logic/carta'
+import type { PeladaDaCarta, ResumoDaCarta, TorneioDaCarta } from '../logic/carta'
+import type { ResumoDoTorneioNaCarta } from '../logic/torneio/carta'
 import type { DadosDoPlano } from '../logic/plano'
 import type { JogadorDaTurma } from '../logic/turma'
 import type { Caixinha } from '../logic/caixinha'
 import type { Cronometro } from '../types/app'
 import type { Estado, StatusPagamento } from '../types/pelada'
+import type { InscricaoDoTorneio, JogadorInscrito, TimeInscrito } from '../types/torneio'
 
 /** Cobrança do campo pago na nuvem (o link que vai para o grupo). */
 export type CobrancaNuvem = {
@@ -44,6 +46,18 @@ export type ListaDaPelada = { organizador: string; data: string }
 /** naFila: o organizador já pôs a pessoa na fila (ela continua na lista para ver isso no link). */
 /** goleiro: vai como goleiro fixo (os números do gol vão para a carta dele). */
 export type ConfirmadoNaLista = { id: string; nome: string; comConta: boolean; em: number; naFila?: boolean; goleiro?: boolean }
+
+/**
+ * Participação em um torneio (PLANO.md, seção 22.3): quem entrou num time pelo link com a conta. Fica no perfil dele e
+ * aparece na pré-tela "Torneios" (Jogando), para acompanhar. `id` = o código do link de inscrição.
+ */
+/**
+ * "Esse sou eu" (PLANO.md, seção 22.4): quem tem conta diz que é um jogador digitado pelo organizador; o organizador
+ * confirma e o jogador passa a ser da conta (os números vão para a carta). `id` = a conta de quem pediu.
+ */
+export type PedidoEsseSouEu = { id: string; jogador: string; nomeDoJogador: string; nomeDaConta: string; em: number }
+
+export type ParticipacaoNoTorneio = { id: string; torneio: string | null; nomeDoTorneio: string; time: string; nomeDoTime: string; cor: string; data: number }
 
 /** Quem está usando o app: anônimo (sem login), com a conta Google ou com e-mail e senha. */
 export type Perfil = { uid: string; nome: string | null; email: string | null; foto: string | null; anonimo: boolean; comSenha?: boolean; comApple?: boolean }
@@ -152,6 +166,34 @@ export interface Nuvem {
   /** Pelada encerrada ou cancelada: o link deixa de existir (só o organizador). */
   apagarLista(codigo: string): Promise<void>
 
+  // ---- inscrição dos times pelo link (PLANO.md, seção 22) ----
+  /** O organizador cria o link (ou muda: aberta, limite, nome). */
+  publicarInscricao(codigo: string, dados: Omit<InscricaoDoTorneio, 'organizador'>): Promise<void>
+  /** Acompanha o link: os dados (null = não existe) e os times inscritos, cada um com os jogadores. */
+  ouvirInscricao(codigo: string, aoMudar: (inscricao: InscricaoDoTorneio | null, times: TimeInscrito[]) => void, aoErro?: (erro: Error) => void): () => void
+  /** O capitão (com conta) inscreve o time. */
+  inscreverTime(codigo: string, time: { id: string; nome: string; cor: string; nomeDoCapitao: string }): Promise<void>
+  /** Muda o nome ou a cor do time inscrito (o capitão ou o organizador). */
+  mudarTimeInscrito(codigo: string, timeId: string, dados: { nome?: string; cor?: string }): Promise<void>
+  /** Tira o time da inscrição, com os jogadores (o capitão ou o organizador). */
+  tirarTimeInscrito(codigo: string, timeId: string): Promise<void>
+  /** Quem abriu o link do time entra nele (sempre no próprio registro). */
+  entrarNoTime(codigo: string, timeId: string, jogador: Omit<JogadorInscrito, 'id' | 'em'>): Promise<void>
+  /** Sai do time: a própria pessoa, o capitão ou o organizador. */
+  sairDoTime(codigo: string, timeId: string, jogadorId: string): Promise<void>
+  /** "Esse sou eu": pede (ou cancela, com null) para ser o jogador digitado. Sempre no próprio pedido. */
+  pedirEsseSouEu(torneio: string, pedido: Omit<PedidoEsseSouEu, 'id' | 'em'> | null): Promise<void>
+  /** O próprio pedido no torneio (null = nenhum). */
+  ouvirMeuPedido(torneio: string, aoMudar: (pedido: PedidoEsseSouEu | null) => void): () => void
+  /** O organizador: os pedidos do torneio. */
+  ouvirPedidos(torneio: string, aoMudar: (pedidos: PedidoEsseSouEu[]) => void): () => void
+  /** O organizador tira o pedido (confirmado ou recusado). */
+  tirarPedido(torneio: string, conta: string): Promise<void>
+  /** Os torneios em que quem está logado joga (vazio sem login), do mais novo ao mais antigo. */
+  ouvirParticipacoes(aoMudar: (participacoes: ParticipacaoNoTorneio[]) => void): () => void
+  /** Guarda (ou tira, com null) a participação no perfil de quem está logado. */
+  guardarParticipacao(id: string, participacao: Omit<ParticipacaoNoTorneio, 'id'> | null): Promise<void>
+
   // ---- carta e foto do jogador (PLANO.md, seção 17) ----
   /** Peladas da carta de quem está logado (só o servidor grava; vazio sem login). */
   ouvirCarta(aoMudar: (peladas: PeladaDaCarta[]) => void): () => void
@@ -160,6 +202,10 @@ export interface Nuvem {
   salvarDadosDoJogador(dados: Partial<DadosDoJogador>): Promise<void>
   /** Pelada encerrada: o servidor grava os números na carta de cada conta (só ele grava). */
   registrarNaCarta(data: number, turma: string | null, jogadores: ResumoDaCarta[]): Promise<void>
+  /** Torneios da carta de quem está logado (só o servidor grava; vazio sem login). */
+  ouvirCartaDosTorneios(aoMudar: (torneios: TorneioDaCarta[]) => void): () => void
+  /** O organizador manda o resumo do torneio: o servidor grava na carta de quem jogou com conta (refaz, não soma). */
+  registrarTorneioNaCarta(codigo: string, nome: string, data: number, jogadores: ResumoDoTorneioNaCarta[]): Promise<void>
   /** Pelada apagada do histórico: os números saem da carta de quem jogou. */
   retirarDaCarta(data: number, contas: string[]): Promise<void>
   /** Denuncia a foto ou o apelido de outra conta (com 3 pessoas diferentes, o servidor tira). */

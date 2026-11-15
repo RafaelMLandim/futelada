@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { LuvaDoGoleiro } from '../components/LuvaDoGoleiro'
 import { Barra } from '../components/Barra'
 import { obterNuvem } from '../nuvem'
 import type { ConfirmadoNaLista, ListaDaPelada } from '../nuvem/tipos'
@@ -148,7 +149,7 @@ export function EntrarNaLista({ codigo }: { codigo: string }) {
             <section className="panel">
               <div className="ph">Confirmados<span className="sub">{confirmados.length}</span></div>
               {confirmados.length === 0 && <div className="pb mut">Ninguém confirmou ainda. Seja o primeiro!</div>}
-              {confirmados.map((confirmado) => <div key={confirmado.id} className="tr"><span className="nome">{confirmado.nome}</span>{confirmado.goleiro && <span className="tag">Goleiro</span>}{confirmado.naFila && <span className="mut">{confirmado.goleiro ? 'no gol' : 'na fila'}</span>}</div>)}
+              {confirmados.map((confirmado) => <div key={confirmado.id} className="tr"><span className="nome">{confirmado.nome}</span>{confirmado.goleiro && <LuvaDoGoleiro tamanho={26} rotulo="goleiro" />}{confirmado.naFila && <span className="mut">{confirmado.goleiro ? 'no gol' : 'na fila'}</span>}</div>)}
             </section>
           </>
         )}

@@ -2,6 +2,7 @@
 // - imagem da seleção da pelada (1080×1920, 9:16): a seleção no campo e a chuteira e luva de ouro;
 // - carta do jogador, a do perfil (também 9:16);
 
+import { imagemDaLuva } from './luva'
 import { artilharia, criterioDoArtilheiro, garcons, goleiroDaSelecao, goleirosMenosVazados, jogadorGoleiro, selecaoDaPelada, tabelaDaPelada } from '../logic'
 import type { RelatorioDoAno } from '../logic'
 import { FORMA_DA_CARTA, FORMA_DE_DENTRO_DA_CARTA, METAIS_DA_CARTA, type NivelDaCarta, type NumerosDaCarta } from '../logic/carta'
@@ -464,6 +465,8 @@ export async function imagemDaTabela(estado: Estado, dia: string): Promise<Blob>
   const letra = Math.round(alturaDaLinha * 0.58)
   const altura = Math.max(1350, topoDaTabela + 76 + linhas.length * alturaDaLinha + 60 + 98)
   const { c, tela, r } = await prepararTela(altura)
+  // a luva padrão do app na frente do goleiro (sem ela, se não carregar)
+  const luva = linhas.some((linha) => linha.goleiro) ? await imagemDaLuva().catch(() => null) : null
   // fundo de gramado listrado, como no app
   for (let y = 220; y < altura; y += 120) { c.fillStyle = Math.floor(y / 120) % 2 ? VERDE : VERDE_CLARO; c.fillRect(0, y, L, 120) }
   cabecalho(c, r, 'TABELA DA PELADA', dia.toUpperCase())
@@ -486,7 +489,10 @@ export async function imagemDaTabela(estado: Estado, dia: string): Promise<Blob>
     if (indice % 2) { c.fillStyle = '#eef2e4'; c.fillRect(esquerda, y, largura, alturaDaLinha) }
     const base = y + alturaDaLinha / 2 + letra * 0.34
     texto(c, `${indice + 1}`, esquerda + 48, base, { tam: letra - 2, cor: '#6b7a8c', alinha: 'center' })
-    texto(c, `${linha.goleiro ? '🧤 ' : ''}${linha.nome}`, esquerda + 96, base, { tam: letra, cor: NAVY, max: xDoNumero(0) - larguraDoNumero / 2 - esquerda - 110 })
+    const comLuva = linha.goleiro && luva
+    if (comLuva) c.drawImage(luva, esquerda + 92, y + (alturaDaLinha - letra * 1.3) / 2, letra * 1.3, letra * 1.3)
+    const recuo = comLuva ? letra * 1.4 : 0
+    texto(c, linha.nome, esquerda + 96 + recuo, base, { tam: letra, cor: NAVY, max: xDoNumero(0) - larguraDoNumero / 2 - esquerda - 110 - recuo })
     const valores = [linha.jogos, linha.vitorias, linha.empates, linha.derrotas, linha.gols, linha.assistencias]
     valores.forEach((valor, coluna) => texto(c, `${valor}`, xDoNumero(coluna), base, {
       tam: letra, alinha: 'center', cor: coluna === 1 && valor > 0 ? '#1F6B33' : coluna === 3 && valor > 0 ? '#c8352b' : valor > 0 ? NAVY : '#a9b4c2',
@@ -554,8 +560,10 @@ export type InsigniaNaImagem = { imagem: string; nome: string; nivel: string; de
 export async function imagemDaCarta(carta: {
   nome: string; foto: string | null; numeros: NumerosDaCarta; rotulo: string; nivel: NivelDaCarta
   titulo?: string; subtitulo?: string; insignias?: InsigniaNaImagem[]
+  contagem?: string // a sigla do último número (PEL; na carta do torneio, TOR)
+  nota?: number // o número grande (0 a 99); na lendária, a coroa
 }): Promise<Blob> {
-  const { nome, foto, numeros, rotulo, nivel, titulo = 'MINHA CARTA', subtitulo = rotulo, insignias = [] } = carta
+  const { nome, foto, numeros, rotulo, nivel, titulo = 'MINHA CARTA', subtitulo = rotulo, insignias = [], contagem = 'PEL', nota = 0 } = carta
   const A = ALTURA
   const { c, tela, r } = await prepararTela(A)
   estadio(c, 0, A)
@@ -612,9 +620,13 @@ export async function imagemDaCarta(carta: {
   c.globalAlpha = 0.4; c.lineWidth = 2; c.strokeStyle = tinta; c.stroke(new Path2D(FORMA_DE_DENTRO_DA_CARTA))
   c.restore()
 
-  // aproveitamento e logo
-  texto(c, String(numeros.aproveitamento), 170, 245, { tam: 150, cor: tinta, alinha: 'center' })
-  texto(c, '% APROV.', 170, 285, { tam: 24, cor: tinta, peso: 700, fonte: NORMAL, alinha: 'center' })
+  // o número (os pontos da carta, de 0 a 99; na lendária, a coroa) e o logo
+  if (nivel === 'lendaria') {
+    c.save(); c.translate(170 - 66, 130); c.scale(5.5, 5.5); c.fillStyle = tinta
+    c.fill(new Path2D('M2 17L3.6 5.5l5 4.6L12 2l3.4 8.1 5-4.6L22 17Z')); c.fillRect(2, 17.6, 20, 2.4)
+    c.restore()
+  } else texto(c, String(nota), 170, 245, { tam: 150, cor: tinta, alinha: 'center' })
+  texto(c, nivel === 'lendaria' ? 'LENDÁRIA' : 'GERAL', 170, 285, { tam: 24, cor: tinta, peso: 700, fonte: NORMAL, alinha: 'center' })
   if (r.logo) c.drawImage(r.logo, 118, 305, 104, 104)
 
   // foto (a da conta do Google pode não deixar desenhar: aí vai a inicial)
@@ -653,7 +665,7 @@ export async function imagemDaCarta(carta: {
   // números em duas colunas
   const colunas: [string, number][][] = [
     [['JOG', numeros.jogos], ['VIT', numeros.vitorias], ['GOL', numeros.gols]],
-    [['ASS', numeros.assistencias], ['EMP', numeros.empates], ['PEL', numeros.peladas]],
+    [['ASS', numeros.assistencias], ['EMP', numeros.empates], [contagem, numeros.peladas]],
   ]
   colunas.forEach((coluna, indice) => {
     coluna.forEach(([sigla, valor], linha) => {

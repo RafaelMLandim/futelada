@@ -1,4 +1,4 @@
-// App Links (PLANO.md, seção 16): no app instalado, os links do site (?ver=, ?controle=, ?pagar=, ?entrar=, ?lista=)
+// App Links (PLANO.md, seção 16): no app instalado, os links do site (?ver=, ?controle=, ?pagar=, ?entrar=, ?lista=, ?inscricao=)
 // abrem dentro do app. Os parâmetros do link viram o endereço da tela, e o App lê como no site.
 
 import { App } from '@capacitor/app'

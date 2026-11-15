@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { LuvaDoGoleiro } from '../components/LuvaDoGoleiro'
 import { Aviso } from '../components/Aviso'
 import { Barra } from '../components/Barra'
 import { Camisa } from '../components/Camisa'
@@ -230,7 +231,7 @@ export function Config({ pelada, onPronto, onCancelar }: { pelada: Pelada; onPro
           <div className="ph">Goleiros fixos<span className="sub">opcional · um em cada gol</span></div>
           {cfg.goleiros.map((g, i) => (
             <div key={g + i} className="tr">
-              <span className="no g">G</span>
+              <LuvaDoGoleiro tamanho={26} rotulo="goleiro" />
               <span className="nome">{g}</span>
               <button className="btn w sm" style={{ flex: 'none', width: 'auto', padding: '6px 10px', minHeight: 0, fontSize: 13 }} onClick={() => irParaALinha(g)}>Ir para a linha</button>
               <button className="ib g" aria-label={`Remover goleiro ${g}`}

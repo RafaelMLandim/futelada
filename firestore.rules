@@ -32,6 +32,11 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow write: if false;
     }
+    // Os torneios na carta (seção 22.2): também só o servidor grava; o dono só lê.
+    match /cartas/{uid}/torneios/{torneio} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
 
     // Link da pelada (seção 17.2): quem tem o código vê a lista e se coloca nela, sempre no próprio registro;
     // o organizador tira quem foi para a fila. Ninguém de fora mexe no registro dos outros.
@@ -56,6 +61,56 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['naFila'])
           && request.resource.data.naFila is bool;
         allow delete: if request.auth != null && (request.auth.uid == id || request.auth.uid == organizador());
+      }
+    }
+
+    // Inscrição dos times pelo link (seção 22): quem tem o código vê os times inscritos. O capitão (com conta)
+    // inscreve o time; os jogadores entram pelo link do time, cada um no próprio registro (com conta ou só o nome).
+    // Com as inscrições fechadas (sorteio feito), ninguém entra mais. Só o organizador muda o link.
+    match /inscricoes/{codigo} {
+      function link() { return get(/databases/$(database)/documents/inscricoes/$(codigo)).data; }
+      function comConta() { return request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
+      allow get: if request.auth != null;
+      allow list: if request.auth != null && resource.data.organizador == request.auth.uid;
+      allow create: if comConta() && request.resource.data.organizador == request.auth.uid
+        && request.resource.data.keys().hasOnly(['organizador', 'nomeDoTorneio', 'aberta', 'limiteDeTimes', 'torneio']);
+      allow update: if comConta() && resource.data.organizador == request.auth.uid && request.resource.data.organizador == request.auth.uid
+        && request.resource.data.keys().hasOnly(['organizador', 'nomeDoTorneio', 'aberta', 'limiteDeTimes', 'torneio']);
+      allow delete: if comConta() && resource.data.organizador == request.auth.uid;
+
+      match /times/{time} {
+        function nomeECor(dados) {
+          return dados.nome is string && dados.nome.size() > 0 && dados.nome.size() <= 30
+            && dados.cor is string && dados.cor.size() <= 9;
+        }
+        allow read: if request.auth != null;
+        allow create: if comConta() && link().aberta == true
+          && request.resource.data.capitao == request.auth.uid
+          && request.resource.data.keys().hasOnly(['capitao', 'nomeDoCapitao', 'nome', 'cor', 'em'])
+          && nomeECor(request.resource.data) && request.resource.data.em is number
+          && request.resource.data.nomeDoCapitao is string && request.resource.data.nomeDoCapitao.size() <= 40;
+        // o capitão (com as inscrições abertas) ou o organizador mudam só o nome e a cor
+        allow update: if request.auth != null
+          && (request.auth.uid == link().organizador || (request.auth.uid == resource.data.capitao && link().aberta == true))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome', 'cor'])
+          && nomeECor(request.resource.data);
+        allow delete: if request.auth != null && (request.auth.uid == resource.data.capitao || request.auth.uid == link().organizador);
+
+        match /jogadores/{id} {
+          function timeInscrito() { return get(/databases/$(database)/documents/inscricoes/$(codigo)/times/$(time)).data; }
+          allow read: if request.auth != null;
+          allow create, update: if request.auth != null && request.auth.uid == id && link().aberta == true
+            && exists(/databases/$(database)/documents/inscricoes/$(codigo)/times/$(time))
+            && request.resource.data.keys().hasOnly(['nome', 'comConta', 'em', 'goleiro', 'camisa'])
+            && request.resource.data.nome is string && request.resource.data.nome.size() > 0 && request.resource.data.nome.size() <= 40
+            && request.resource.data.comConta is bool && request.resource.data.em is number
+            // "com conta" só quem entrou mesmo com a conta
+            && (request.resource.data.comConta == false || comConta())
+            && (!('goleiro' in request.resource.data) || request.resource.data.goleiro is bool)
+            && (!('camisa' in request.resource.data) || (request.resource.data.camisa is int && request.resource.data.camisa >= 0 && request.resource.data.camisa <= 99));
+          allow delete: if request.auth != null
+            && (request.auth.uid == id || request.auth.uid == timeInscrito().capitao || request.auth.uid == link().organizador);
+        }
       }
     }
 
@@ -175,6 +230,18 @@ service cloud.firestore {
         allow create: if comConta() && request.resource.data.uid == request.auth.uid;
         allow update: if comConta() && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid;
         allow delete: if comConta() && (resource.data.uid == request.auth.uid || organizador() == request.auth.uid);
+      }
+
+      // "Esse sou eu" (seção 22.4): quem tem conta pede para ser um jogador digitado, sempre no próprio pedido;
+      // o organizador vê os pedidos e tira (confirmado ou recusado). Ninguém mais lê.
+      match /pedidos/{conta} {
+        allow get: if comConta() && (request.auth.uid == conta || souOrganizador());
+        allow list: if comConta() && souOrganizador();
+        allow create, update: if comConta() && request.auth.uid == conta
+          && request.resource.data.keys().hasOnly(['jogador', 'nomeDoJogador', 'nomeDaConta', 'em'])
+          && request.resource.data.jogador is string && request.resource.data.nomeDoJogador is string
+          && request.resource.data.nomeDaConta is string && request.resource.data.nomeDaConta.size() <= 40 && request.resource.data.em is number;
+        allow delete: if comConta() && (request.auth.uid == conta || souOrganizador());
       }
 
       // Jogos em andamento: o organizador marca todos; o mesário só os do campo dele

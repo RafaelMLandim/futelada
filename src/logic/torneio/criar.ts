@@ -79,11 +79,24 @@ export function removerTime(torneio: Torneio, id: string): Torneio {
 export const adicionarJogadorAoTime = (t: TimeTorneio, jogador: Jogador): TimeTorneio => ({ ...t, jogadores: [...t.jogadores, jogador] })
 export const removerJogadorDoTime = (t: TimeTorneio, id: string): TimeTorneio => ({ ...t, jogadores: t.jogadores.filter((j) => j.id !== id) })
 
-/** O goleiro do time (o jogador marcado com `goleiro`). */
+/** O goleiro titular do time (o primeiro marcado com `goleiro`). */
 export const goleiroDoTime = (time: TimeTorneio): JogadorDoTime | null => time.jogadores.find((jogador) => jogador.goleiro) ?? null
+
+/** Todos os goleiros do time, na ordem da lista (o primeiro é o titular; os outros, reservas). */
+export const goleirosDoTime = (time: TimeTorneio): JogadorDoTime[] => time.jogadores.filter((jogador) => jogador.goleiro)
 
 /** Os jogadores de linha do time (todos menos o goleiro), na ordem do cadastro. */
 export const jogadoresDeLinha = (time: TimeTorneio): JogadorDoTime[] => time.jogadores.filter((jogador) => !jogador.goleiro)
+
+/**
+ * Como o time aparece nas listas: o goleiro titular, os titulares da linha e, no fim, os reservas (outros goleiros,
+ * se houver, ficam entre os reservas, por último).
+ */
+export function partesDoTime(time: TimeTorneio, linha: number) {
+  const [goleiro = null, ...goleirosReservas] = goleirosDoTime(time)
+  const deLinha = jogadoresDeLinha(time)
+  return { goleiro, titulares: deLinha.slice(0, linha), reservas: [...deLinha.slice(linha), ...goleirosReservas] }
+}
 
 /** Titulares (os primeiros `linha` jogadores de linha) e reservas do time. */
 export function titularesEReservas(time: TimeTorneio, linha: number) {
@@ -139,7 +152,8 @@ export function problemasParaSortear(torneio: Torneio): string[] {
   for (const t of times) {
     if (!t.fechado) problemas.push(`Feche o time ${t.nome}`)
     if (!goleiroDoTime(t)) problemas.push(`${t.nome} precisa de um goleiro`)
-    if (jogadoresDeLinha(t).length < regras.linha) problemas.push(`${t.nome} precisa de pelo menos ${regras.linha} jogadores de linha`)
+    // um goleiro reserva pode completar a linha (no jogo, qualquer um joga em qualquer posição)
+    if (t.jogadores.length < regras.linha + 1) problemas.push(`${t.nome} precisa de pelo menos ${regras.linha + 1} jogadores (${regras.linha} na linha e o goleiro)`)
   }
   if (regras.formato === 'grupos') {
     // 1 grupo só = pontos corridos e os melhores da tabela vão para o mata-mata

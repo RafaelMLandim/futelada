@@ -17,6 +17,9 @@ import { TelaPremium } from '../../components/TelaPremium'
 import { comoCriarTorneio, TIMES_DO_TORNEIO_GRATIS } from '../../logic/plano'
 import { contarUso, usarCreditoDeTorneio, usePlano } from '../../store/plano'
 import { useConfirmar } from '../../utils/confirmacao'
+import { useInscricaoDoTorneio } from '../../store/inscricaoDoTorneio'
+import { useTorneioNaCarta } from '../../store/torneioNaCarta'
+import { useEsseSouEuAutomatico } from './EsseSouEu'
 
 type Aba = 'times' | 'jogos' | 'jogo' | 'tabela' | 'ajustes'
 
@@ -32,6 +35,12 @@ export function TorneioApp({ onInicio }: { onInicio: () => void }) {
   const plano = usePlano()
   const [premium, setPremium] = useState(false)
   const confirmar = useConfirmar()
+  // inscrição dos times pelo link: o celular do organizador junta os times que chegam (em qualquer aba)
+  const inscricao = useInscricaoDoTorneio(hook, torneio?.limiteDeTimes && !plano.ultimate ? torneio.limiteDeTimes : null)
+  // a carta de quem joga com conta: o celular do organizador manda os números a cada jogo que acaba
+  useTorneioNaCarta(hook)
+  // "esse sou eu": o celular do organizador liga sozinho quem pediu
+  useEsseSouEuAutomatico(hook)
 
   // Entrou pelo link de convite (?entrar=CÓDIGO)
   const { entrar } = hook
@@ -93,7 +102,7 @@ export function TorneioApp({ onInicio }: { onInicio: () => void }) {
       {premium && <TelaPremium motivo="torneio" onFechar={() => setPremium(false)} />}
     </>)
   }
-  const aba: Aba = abaEscolhida ?? (torneio.emAndamento.length ? 'jogo' : torneio.sorteado ? 'jogos' : 'times')
+  const aba: Aba = (abaEscolhida === 'ajustes' && hook.soAcompanha ? null : abaEscolhida) ?? (torneio.emAndamento.length ? 'jogo' : torneio.sorteado ? 'jogos' : 'times')
 
   // Jogos em andamento (por campo) e qual está aberto na aba Jogo
   const emAndamento = [...torneio.emAndamento].sort((a, b) => a.campo - b.campo)
@@ -113,7 +122,8 @@ export function TorneioApp({ onInicio }: { onInicio: () => void }) {
     ['jogos', torneio.sorteado ? 'lista' : 'sorteio', torneio.sorteado ? 'Jogos' : 'Sorteio'],
     ...(torneio.emAndamento.length ? [['jogo', 'bola', torneio.emAndamento.length > 1 ? `Ao vivo (${torneio.emAndamento.length})` : 'Ao vivo'] as [Aba, NomeIcone, string]] : []),
     ...(torneio.sorteado ? [['tabela', 'tabela', 'Tabela'] as [Aba, NomeIcone, string]] : []),
-    ['ajustes', 'ajustes', 'Ajustes'],
+    // quem só acompanha (joga nele) não tem o que ajustar
+    ...(hook.soAcompanha ? [] : [['ajustes', 'ajustes', 'Ajustes'] as [Aba, NomeIcone, string]]),
   ]
 
   // torneio compartilhado: o código e se está ao vivo ficam no canto do cabeçalho de todas as abas
@@ -128,8 +138,8 @@ export function TorneioApp({ onInicio }: { onInicio: () => void }) {
     <StatusDaBarra.Provider value={status}>
     <div style={{ display: 'flex', flexDirection: 'column', height: 'var(--altura-tela)' }}>
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        {aba === 'times' && <Times hook={hook} onSorteio={() => setAba('jogos')} />}
-        {aba === 'jogos' && <Jogos hook={hook} onJogar={abrirJogo} />}
+        {aba === 'times' && <Times hook={hook} inscricao={inscricao} onSorteio={() => setAba('jogos')} />}
+        {aba === 'jogos' && <Jogos hook={hook} onJogar={abrirJogo} onVerTimes={() => setAba('times')} />}
         {aba === 'jogo' && atual && (
           <>
             <JogoTorneio key={atual.jogoId} hook={hook} jogoId={atual.jogoId} editavel={podeMarcar(atual.campo)} onTerminou={aoTerminar}
@@ -151,7 +161,11 @@ export function TorneioApp({ onInicio }: { onInicio: () => void }) {
           </>
         )}
         {aba === 'jogo' && !atual && <Jogos hook={hook} onJogar={abrirJogo} />}
-        {aba === 'tabela' && <TabelaTorneio torneio={torneio} />}
+        {aba === 'tabela' && <TabelaTorneio torneio={torneio}
+          onEscolherMelhor={hook.souOrganizador ? (jogadorId) => hook.aplicar((atual) => {
+            const { melhorJogador: _antes, ...resto } = atual
+            return jogadorId ? { ...resto, melhorJogador: jogadorId } : resto
+          }) : undefined} />}
         {aba === 'ajustes' && <AjustesTorneio hook={hook} onInicio={onInicio} />}
       </div>
       <nav className="nav" aria-label="Navegação do torneio">

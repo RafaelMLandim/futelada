@@ -33,3 +33,17 @@ test('barra conta repetida, sem conta ou com caminho no meio', () => {
 test('a mesma pelada tem sempre o mesmo id: reenviar não soma de novo', () => {
   assert.equal(idDaPeladaNaCarta('dono', 123), idDaPeladaNaCarta('dono', 123))
 })
+
+test('torneio: resumo certo passa, números impossíveis e código inválido não', async () => {
+  const { codigoValido, jogadoresDoTorneioValidos } = await import('../carta.js')
+  const doTorneio = (parcial = {}) => ({ conta: 'c1', jogos: 3, vitorias: 2, empates: 0, gols: 4, assistencias: 1, amarelos: 1, vermelhos: 0, golsContra: 0, jogosSemSofrer: 0, campeao: true, ...parcial })
+  const [valido] = jogadoresDoTorneioValidos([doTorneio({ hacker: 1 })])
+  assert.equal(valido.campeao, true)
+  assert.equal(valido.vice, false)
+  assert.equal('hacker' in valido, false)
+  assert.equal(jogadoresDoTorneioValidos([doTorneio({ vitorias: 5 })]), null)
+  assert.equal(jogadoresDoTorneioValidos([doTorneio({ jogosSemSofrer: 4 })]), null)
+  assert.equal(jogadoresDoTorneioValidos([doTorneio({ vice: true })]), null)
+  assert.equal(codigoValido('L9QZ7X'), true)
+  assert.equal(codigoValido('a/b'), false)
+})

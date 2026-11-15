@@ -1,7 +1,7 @@
 // Regras do torneio (ver PLANO.md, seção 9). Funções puras, como as da pelada.
 
 export { regrasPadrao, novoTorneio, novoTime, adicionarTime, editarTime, numerosDasCamisas, removerTime, adicionarJogadorAoTime,
-  removerJogadorDoTime, titularesEReservas, goleiroDoTime, jogadoresDeLinha, converterGoleirosAntigos, problemasParaSortear, sortear,
+  removerJogadorDoTime, titularesEReservas, goleiroDoTime, goleirosDoTime, partesDoTime, jogadoresDeLinha, converterGoleirosAntigos, problemasParaSortear, sortear,
   nomeDoGrupo } from './criar'
 export { embaralhar, type Aleatorio } from './sorteio'
 export { todosContraTodos, ordenarSemRepetir } from './tabela'
@@ -12,7 +12,7 @@ export { jogoPorId, vencedor, placarDecisivo, precisaDePenaltis, resolverOrigem,
 export { novaDisputa, quemBate, placarDosPenaltis, vencedorDosPenaltis, cobrar, voltarCobranca,
   type Penaltis, type Cobranca } from './penaltis'
 export { situacaoDisciplinar, type SituacaoDisciplinar } from './suspensoes'
-export { iniciarEscalacao, substituir, impedimentoDaSubstituicao, saiuDoJogo, bancoSugerido, reservasDoJogo } from './escalacao'
+export { iniciarEscalacao, substituir, impedimentoDaSubstituicao, saiuDoJogo, bancoSugerido, reservasDoJogo, golSugerido, goleirosDoJogo } from './escalacao'
 export { iniciarPartida, cancelarPartida, cronoDaPartida, fimDoTempoDaPartida, acrescimosNaPartida, golNaPartida, passeNaPartida, removerGolDaPartida, cartaoNaPartida,
   expulsosNaPartida, goleiroNaPartida, golVazioPorExpulsao, irParaOGol, substituirNaPartida, encerrarPartida, penaltisNaPartida, partidaDoJogo, timesJogando, camposLivres,
   jogosParaComecar, campoDoJogo, campoLiberadoDosGrupos, campoParaJogo, proximosPorCampo, podeComecarNoCampo, jogoNaoComecou } from './partida'
@@ -21,6 +21,8 @@ export { artilhariaDoTorneio, assistenciasDoTorneio, goleirosDoTorneio, cartoesD
 export { cartoesAoRemover, removerCartaoDaPartida, substituicaoParaDesfazer, desfazerSubstituicao, impedimentoParaCorrigir, placarDosGols, placarTravado,
   corrigirResultado } from './correcoes'
 export { siglaDoTime, siglaAutomatica } from './sigla'
+export { resumoDoTorneioParaAsCartas, type ResumoDoTorneioNaCarta } from './carta'
+export { juntarInscricoes, vagasDaInscricao, ehCapitao, ligarContaAoJogador } from './inscricao'
 export { separar, juntar, diferencas, aplicarOperacoes, novoCodigo, type BaseTorneio, type DadosNuvem, type Operacao } from './sincronia'
 export { periodoDaPartida, temposDaFase, duracaoDoPeriodo, decorridoNoPeriodo, ultimoPeriodo, nomeDoPeriodo, rotuloDoPeriodo, vaiParaProrrogacao,
   comecarIntervalo, proximoTempo, comecarProrrogacao } from './periodos'

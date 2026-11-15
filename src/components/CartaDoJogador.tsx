@@ -18,14 +18,26 @@ const Silhueta = () => (
   </svg>
 )
 
-export function CartaDoJogador({ nome, foto, numeros, rotulo, nivel, exemplo = false }: {
-  nome: string; foto: string | null; numeros: NumerosDaCarta; rotulo: string; nivel: NivelDaCarta; exemplo?: boolean
+/** Coroa da carta lendária: ela fica no lugar do número (está acima do máximo). */
+const Coroa = ({ cor }: { cor: string }) => (
+  <svg className="carta-coroa" viewBox="0 0 24 20" aria-label="carta lendária" role="img">
+    <path d="M2 17L3.6 5.5l5 4.6L12 2l3.4 8.1 5-4.6L22 17Z" fill={cor} />
+    <rect x="2" y="17.6" width="20" height="2.4" rx="1" fill={cor} />
+  </svg>
+)
+
+/**
+ * `nota`: o número grande (os pontos da carta em porcentagem, de 0 a 99); na lendária, a coroa.
+ * `contagem`: a sigla do último número (PEL = peladas; na carta do torneio, TOR = torneios).
+ */
+export function CartaDoJogador({ nome, foto, numeros, rotulo, nivel, nota = 0, exemplo = false, contagem = 'PEL' }: {
+  nome: string; foto: string | null; numeros: NumerosDaCarta; rotulo: string; nivel: NivelDaCarta; nota?: number; exemplo?: boolean; contagem?: string
 }) {
   const id = useId()
   const { metal: [claro, meio, brilho], borda: [bordaClara, bordaEscura], tinta } = METAIS[nivel]
   const colunas: [string, string | number][][] = [
     [['JOG', numeros.jogos], ['VIT', numeros.vitorias], ['GOL', numeros.gols]],
-    [['ASS', numeros.assistencias], ['EMP', numeros.empates], ['PEL', numeros.peladas]],
+    [['ASS', numeros.assistencias], ['EMP', numeros.empates], [contagem, numeros.peladas]],
   ]
   return (
     <article className={`carta ${nivel}${exemplo ? ' exemplo' : ''}`} style={{ '--tinta': tinta } as CSSProperties} aria-label={`Carta de ${nome}, nível ${nivel}`}>
@@ -68,8 +80,8 @@ export function CartaDoJogador({ nome, foto, numeros, rotulo, nivel, exemplo = f
       </svg>
 
       <div className="carta-lado">
-        {exemplo ? <Traco classe="traco-nota" /> : <span className="num carta-nota">{numeros.aproveitamento}</span>}
-        {exemplo ? <Traco classe="traco-sigla" /> : <span className="carta-sigla">% APROV.</span>}
+        {exemplo ? <Traco classe="traco-nota" /> : nivel === 'lendaria' ? <Coroa cor={tinta} /> : <span className="num carta-nota">{nota}</span>}
+        {exemplo ? <Traco classe="traco-sigla" /> : <span className="carta-sigla">{nivel === 'lendaria' ? 'LENDÁRIA' : 'GERAL'}</span>}
         <Logo tamanho={46} fundo={false} />
       </div>
 

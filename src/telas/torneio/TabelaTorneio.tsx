@@ -15,10 +15,15 @@ import { descreverOrigem, timePorId } from './nomes'
 const COL = { width: 24, textAlign: 'center' as const, flex: 'none' }
 
 // Tabela do torneio: classificação (pontos corridos / grupos), chave do mata-mata e estatísticas.
-export function TabelaTorneio({ torneio }: { torneio: Torneio }) {
+/** `onEscolherMelhor`: só o organizador (escolhe o melhor jogador do torneio, que vai para a carta). */
+export function TabelaTorneio({ torneio, onEscolherMelhor }: { torneio: Torneio; onEscolherMelhor?: (jogadorId: string | null) => void }) {
   const { regras } = torneio
   const mata = torneio.jogos.filter((j) => j.fase === 'mata')
   const vencedorTorneio = campeao(torneio)
+  const [escolhendoMelhor, setEscolhendoMelhor] = useState(false)
+  const [chaveAberta, setChaveAberta] = useState(false)
+  const timeDoMelhor = torneio.times.find((time) => time.jogadores.some((jogador) => jogador.id === torneio.melhorJogador))
+  const melhor = timeDoMelhor?.jogadores.find((jogador) => jogador.id === torneio.melhorJogador)
 
   return (
     <div className="scr">
@@ -32,6 +37,48 @@ export function TabelaTorneio({ torneio }: { torneio: Torneio }) {
             </div>
           </section>
         )}
+        {/* melhor jogador: título que o organizador dá no fim do torneio (vira conquista na carta de quem tem conta) */}
+        {vencedorTorneio && (melhor || onEscolherMelhor) && (
+          <section className="panel">
+            <div className="ph">Melhor jogador<span className="sub">escolhido pelo organizador</span></div>
+            {melhor && timeDoMelhor ? (
+              <div className="tr" style={{ minHeight: 52 }}>
+                <Camisa cor={timeDoMelhor.cor} uniforme={timeDoMelhor.uniforme} tamanho={26} />
+                <span className="nome" style={{ fontSize: 18 }}>{melhor.nome}<span className="mut" style={{ fontSize: 13, marginLeft: 8 }}>{timeDoMelhor.nome}</span></span>
+                {onEscolherMelhor && <button className="tag t-y" style={{ border: '1px solid #0b1a2c', cursor: 'pointer' }} onClick={() => setEscolhendoMelhor(true)}>Trocar</button>}
+              </div>
+            ) : (
+              <div className="pb"><button className="btn sm" onClick={() => setEscolhendoMelhor(true)}><Icone nome="trofeu" tamanho={20} /> Escolher o melhor jogador</button></div>
+            )}
+          </section>
+        )}
+        {escolhendoMelhor && onEscolherMelhor && (
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Melhor jogador do torneio" onClick={() => setEscolhendoMelhor(false)}>
+            <section className="panel" onClick={(evento) => evento.stopPropagation()} style={{ maxHeight: '100%', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: 420 }}>
+              <div className="ph">Melhor jogador do torneio</div>
+              <div style={{ overflowY: 'auto', minHeight: 0 }}>
+                {torneio.times.map((time) => (
+                  <div key={time.id}>
+                    <div className="tr" style={{ minHeight: 30, fontSize: 12, letterSpacing: 1, color: 'var(--mut)', background: 'var(--divisoria)' }}>
+                      <Camisa cor={time.cor} uniforme={time.uniforme} tamanho={18} /> {time.nome}
+                    </div>
+                    {time.jogadores.map((jogador) => (
+                      <button key={jogador.id} className="tr linha-jogador" aria-pressed={jogador.id === torneio.melhorJogador}
+                        onClick={() => { onEscolherMelhor(jogador.id); setEscolhendoMelhor(false) }}>
+                        <span className="nome">{jogador.nome}</span>
+                        {jogador.id === torneio.melhorJogador && <span className="tag t-y">Melhor</span>}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <div className="pb" style={{ display: 'grid', gap: 8, borderTop: '2px solid var(--divisoria)' }}>
+                {torneio.melhorJogador && <button className="btn w sm" onClick={() => { onEscolherMelhor(null); setEscolhendoMelhor(false) }}>Tirar o título</button>}
+                <button className="btn w sm" onClick={() => setEscolhendoMelhor(false)}>Cancelar</button>
+              </div>
+            </section>
+          </div>
+        )}
 
         {regras.formato === 'pontos' && (
           <Classificacao torneio={torneio} titulo="Classificação" linhas={classificacao(torneio)} destaque={1} />
@@ -40,7 +87,13 @@ export function TabelaTorneio({ torneio }: { torneio: Torneio }) {
           <Classificacao key={g} torneio={torneio} titulo={nomeDoGrupo(g)} linhas={classificacao(torneio, g)}
             destaque={regras.classificamPorGrupo} legenda={`Passam ${regras.classificamPorGrupo}`} />
         ))}
-        {mata.length > 0 && <Chave torneio={torneio} jogos={mata} />}
+        {/* a chave do mata-mata abre na tela própria (a mesma da aba Jogos), mais visível que um quadro pequeno aqui */}
+        {mata.length > 0 && (
+          <button className="btn w sm" style={{ flex: 'none' }} onClick={() => setChaveAberta(true)}>
+            <Icone nome="trofeu" tamanho={20} /> Ver chave do mata-mata
+          </button>
+        )}
+        {chaveAberta && <ChaveCompleta torneio={torneio} onFechar={() => setChaveAberta(false)} />}
 
         <Estatisticas torneio={torneio} />
       </div>
@@ -76,43 +129,6 @@ function Classificacao({ torneio, titulo, linhas, destaque, legenda }: {
           </div>
         )
       })}
-    </section>
-  )
-}
-
-/** Chaveamento: uma coluna por rodada, rolando de lado; 3º lugar embaixo. */
-function Chave({ torneio, jogos }: { torneio: Torneio; jogos: JogoTorneio[] }) {
-  const terceiro = jogos.filter((j) => j.rodada === 'Disputa de 3º lugar')
-  const rodadas: { nome: string; jogos: JogoTorneio[] }[] = []
-  for (const j of [...jogos].sort((a, b) => a.ordem - b.ordem)) {
-    if (j.rodada === 'Disputa de 3º lugar' || j.perna === 'ida') continue // ida e volta: a caixa é da volta (mostra os dois jogos)
-    const r = rodadas.find((x) => x.nome === j.rodada)
-    if (r) r.jogos.push(j)
-    else rodadas.push({ nome: j.rodada, jogos: [j] })
-  }
-  const [telaCheia, setTelaCheia] = useState(false)
-  return (
-    <section className="panel">
-      <div className="ph">Mata-mata
-        <button className="tag t-y" style={{ border: 0, cursor: 'pointer', height: 26 }} onClick={() => setTelaCheia(true)}>Tela cheia ⤢</button>
-      </div>
-      {telaCheia && <ChaveCompleta torneio={torneio} onFechar={() => setTelaCheia(false)} />}
-      <div className="chave" style={{ display: 'flex', gap: 10, overflowX: 'auto', padding: 10, background: '#f6f7f2' }}>
-        {rodadas.map((r) => (
-          <div key={r.nome} style={{ display: 'flex', flexDirection: 'column', minWidth: 168, flex: 'none' }}>
-            <div className="num" style={{ fontSize: 14, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>{r.nome}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-around', flex: 1, gap: 10 }}>
-              {r.jogos.map((j) => <Confronto key={j.id} torneio={torneio} jogo={j} />)}
-            </div>
-          </div>
-        ))}
-      </div>
-      {terceiro.map((j) => (
-        <div key={j.id} style={{ padding: '0 10px 10px', background: '#f6f7f2' }}>
-          <div className="num" style={{ fontSize: 14, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Disputa de 3º lugar</div>
-          <div style={{ maxWidth: 220 }}><Confronto torneio={torneio} jogo={j} /></div>
-        </div>
-      ))}
     </section>
   )
 }

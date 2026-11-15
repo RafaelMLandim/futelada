@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { LuvaDoGoleiro } from '../components/LuvaDoGoleiro'
 import { Barra } from '../components/Barra'
 import { Carrossel, CarrosselDeTurmas } from '../components/CarrosselDeTurmas'
 import { Icone } from '../components/Icone'
@@ -123,7 +124,7 @@ function Relatorio({ peladas, ano, turma }: { peladas: PeladaNoHistorico[]; ano:
         ))}
         {r.goleiroDoAno && (
           <div className="tr" style={{ borderTop: '1px solid var(--divisoria)' }}>
-            <span className="no g">G</span>
+            <LuvaDoGoleiro tamanho={26} rotulo="goleiro" />
             <span className="nome" style={{ flex: 1 }}>{r.goleiroDoAno.nome}</span>
             <span className="mut">goleiro do ano</span>
           </div>
@@ -236,7 +237,7 @@ function PeladaAberta({ pelada, onFechar }: { pelada: PeladaNoHistorico; onFecha
           <div className="pb" style={{ display: 'grid', gap: 4, color: 'var(--navy)', fontWeight: 600 }}>
             {artilheiro && <div>⚽ Artilheiro: <b>{artilheiro.nome}</b> ({artilheiro.gols})</div>}
             {destaque && destaque.vitorias > 0 && <div>🏆 Mais vitórias: <b>{destaque.nome}</b> ({destaque.vitorias})</div>}
-            {goleiro && <div>🧤 Menos vazado: <b>{goleiro.nome}</b> ({goleiro.sofridos} em {goleiro.jogos} {goleiro.jogos === 1 ? 'jogo' : 'jogos'})</div>}
+            {goleiro && <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><LuvaDoGoleiro tamanho={24} /> Menos vazado: <b>{goleiro.nome}</b> ({goleiro.sofridos} em {goleiro.jogos} {goleiro.jogos === 1 ? 'jogo' : 'jogos'})</div>}
           </div>
           {tabela.length > 0 && (
             <table className="tabela-da-pelada">
@@ -244,7 +245,7 @@ function PeladaAberta({ pelada, onFechar }: { pelada: PeladaNoHistorico; onFecha
               <tbody>
                 {tabela.map((linha) => (
                   <tr key={linha.id}>
-                    <td>{linha.goleiro ? '🧤 ' : ''}{linha.nome}</td>
+                    <td>{linha.goleiro && <span style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 4 }}><LuvaDoGoleiro tamanho={20} rotulo="goleiro" /></span>}{linha.nome}</td>
                     <td>{linha.jogos}</td><td>{linha.vitorias}</td><td>{linha.empates}</td><td>{linha.derrotas}</td><td>{linha.gols}</td><td>{linha.assistencias}</td>
                   </tr>
                 ))}

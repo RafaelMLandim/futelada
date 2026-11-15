@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { LuvaDoGoleiro } from '../../components/LuvaDoGoleiro'
 import { Camisa } from '../../components/Camisa'
 import { Icone } from '../../components/Icone'
-import { goleiroDoTime, jogadoresDeLinha } from '../../logic/torneio'
+import { goleirosDoTime, jogadoresDeLinha } from '../../logic/torneio'
 import type { TimeTorneio } from '../../types/torneio'
 import { textoSobre } from '../../utils/cores'
 
@@ -14,8 +15,7 @@ export function NumerosDasCamisas({ time, onSalvar, onCancelar }: {
   onSalvar: (numeros: Record<string, number | undefined>) => void
   onCancelar: () => void
 }) {
-  const goleiro = goleiroDoTime(time)
-  const jogadores = [...(goleiro ? [goleiro] : []), ...jogadoresDeLinha(time)]
+  const jogadores = [...goleirosDoTime(time), ...jogadoresDeLinha(time)]
   const [numeros, setNumeros] = useState<Record<string, number | undefined>>(
     () => Object.fromEntries(jogadores.map((jogador) => [jogador.id, jogador.camisa])),
   )
@@ -61,7 +61,7 @@ export function NumerosDasCamisas({ time, onSalvar, onCancelar }: {
                   onKeyDown={passarParaOProximo} onFocus={(evento) => evento.currentTarget.select()} />
               </label>
               <span className="nome">{jogador.nome}</span>
-              {jogador.goleiro && <span className="tag t-y">Goleiro</span>}
+              {jogador.goleiro && <LuvaDoGoleiro cor={time.cor} segunda={time.uniforme?.segunda} tamanho={28} rotulo="goleiro" />}
             </div>
           ))}
         </div>

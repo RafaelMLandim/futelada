@@ -4,7 +4,7 @@ import { Camisa } from '../../components/Camisa'
 import { Icone } from '../../components/Icone'
 import {
   campoDoJogo, camposLivres, campeao, iniciarPartida, jogosParaComecar, nomeDoGrupo, podeComecarNoCampo, problemasParaSortear,
-  proximosPorCampo, reservasDoJogo, sortear,
+  proximosPorCampo, sortear,
 } from '../../logic/torneio'
 import type { TorneioHook } from '../../store/torneio'
 import type { Lado } from '../../types/pelada'
@@ -13,13 +13,15 @@ import { useConfirmar } from '../../utils/confirmacao'
 import { SEM_COLETE } from '../../utils/cores'
 import { ChaveCompleta } from './ChaveCompleta'
 import { CorrigirResultado } from './CorrigirResultado'
-import { EscolherEscalacao } from './EscolherEscalacao'
+import { EscolherEscalacao, precisaEscalar } from './EscolherEscalacao'
+import { EncontrarMeuNome } from './EsseSouEu'
+import { LADOS } from '../../logic/lado'
 import { descreverOrigem, nomeDoJogo, timePorId } from './nomes'
 
 const NOME_FORMATO = { pontos: 'Pontos corridos', 'mata-mata': 'Mata-mata', grupos: 'Grupos + mata-mata' }
 
 // Sorteio (grupos / chave / ordem) e a tabela de jogos.
-export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: string) => void }) {
+export function Jogos({ hook, onJogar, onVerTimes }: { hook: TorneioHook; onJogar: (jogoId: string) => void; onVerTimes?: () => void }) {
   const torneio = hook.torneio!
   const confirmar = useConfirmar()
   const [chaveAberta, setChaveAberta] = useState(false) // mata-mata em tela cheia
@@ -80,15 +82,15 @@ export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: 
   const variosCampos = torneio.regras.campos > 1
   const vencedor = campeao(torneio)
   const temMata = torneio.jogos.some((j) => j.fase === 'mata')
-  const comecarJogo = (jogoId: string, campo?: number, banco?: Record<Lado, string[]>) => {
+  const comecarJogo = (jogoId: string, campo?: number, banco?: Record<Lado, string[]>, noGol?: Record<Lado, string | null>) => {
     setEscalando(null)
-    hook.aplicar((t) => iniciarPartida(t, jogoId, campo, banco))
+    hook.aplicar((t) => iniciarPartida(t, jogoId, campo, banco, noGol))
     onJogar(jogoId)
   }
   const jogar = (jogoId: string, campo?: number) => {
     const jogo = torneio.jogos.find((candidato) => candidato.id === jogoId)
-    const reservas = jogo ? reservasDoJogo(torneio, jogo) : { A: 0, B: 0 }
-    if (reservas.A > 0 || reservas.B > 0) return setEscalando({ jogoId, campo })
+    // a janela da escalação abre se algum time tem reserva (quem fica no banco) ou mais de um goleiro (quem começa no gol)
+    if (jogo && LADOS.some((lado) => precisaEscalar(torneio, jogo, lado))) return setEscalando({ jogoId, campo })
     comecarJogo(jogoId, campo)
   }
   const jogoEscalando = escalando ? torneio.jogos.find((candidato) => candidato.id === escalando.jogoId) : undefined
@@ -97,6 +99,8 @@ export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: 
     <div className="scr">
       <Barra titulo="Jogos" sub={`${torneio.nome} · ${NOME_FORMATO[torneio.regras.formato]}`} />
       <div className="conteudo">
+        {/* quem joga e foi digitado pelo organizador se encontra ("esse sou eu") */}
+        {torneio.nuvem && !hook.souOrganizador && <EncontrarMeuNome torneio={torneio} codigo={torneio.nuvem.codigo} onVerTimes={onVerTimes} />}
         {vencedor && (
           <section className="led num" style={{ textAlign: 'center', padding: 14 }}>
             <div style={{ fontSize: 16, color: 'var(--texto-no-escuro)', letterSpacing: 1 }}>CAMPEÃO</div>
@@ -114,7 +118,7 @@ export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: 
         {corrigindo && <CorrigirResultado hook={hook} jogoId={corrigindo} onFechar={() => setCorrigindo(null)} />}
         {escalando && jogoEscalando && (
           <EscolherEscalacao torneio={torneio} jogo={jogoEscalando} onCancelar={() => setEscalando(null)}
-            onConfirmar={(banco) => comecarJogo(escalando.jogoId, escalando.campo, banco)} />
+            onConfirmar={(banco, noGol) => comecarJogo(escalando.jogoId, escalando.campo, banco, noGol)} />
         )}
         {[...torneio.emAndamento].sort((a, b) => a.campo - b.campo).map((p) => (
           <button key={p.jogoId} className="panel destaque row" style={{ padding: '10px 12px', cursor: 'pointer', font: 'inherit', color: 'inherit', textAlign: 'left' }}
@@ -127,7 +131,8 @@ export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: 
         ))}
         {mesarioSemCampo && !vencedor && (
           <div className="panel pb mut" style={{ color: 'var(--navy)' }}>
-            Você está acompanhando. Para marcar jogos, escolha o seu campo em <b>Ajustes</b>.
+            {hook.soAcompanha ? 'Você está acompanhando o torneio: os jogos, a tabela e a artilharia aparecem aqui ao vivo.'
+              : <>Você está acompanhando. Para marcar jogos, escolha o seu campo em <b>Ajustes</b>.</>}
           </div>
         )}
         {proximos.map(({ campo, jogo }) => (

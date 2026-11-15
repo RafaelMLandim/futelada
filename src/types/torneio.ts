@@ -33,9 +33,13 @@ export type RegrasTorneio = {
   assistencias: boolean // depois de quem fez o gol, pergunta quem deu o passe (líder de assistências: Troféu Garçom)
 }
 
-/** Jogador do time do torneio. `goleiro`: é o goleiro do time (um por time; nos outros fica vazio). */
+/**
+ * Jogador do time do torneio. `goleiro`: joga no gol (o time pode ter vários; o primeiro da lista começa no gol). É só
+ * a posição de costume: no jogo, qualquer um vai para o gol ou para a linha.
+ */
 /** `camisa`: número da camisa (opcional; sem ele o jogador aparece só pelo nome). */
-export type JogadorDoTime = Jogador & { goleiro?: boolean; camisa?: number }
+/** `inscrito`: entrou pelo link do time (o id do registro dele na inscrição: a conta ou o celular). */
+export type JogadorDoTime = Jogador & { goleiro?: boolean; camisa?: number; inscrito?: string }
 
 /**
  * Time do torneio: o goleiro (marcado com `goleiro`) e os jogadores de linha. Dos jogadores de linha,
@@ -55,7 +59,16 @@ export type TimeTorneio = {
   uniforme?: Uniforme // sem: camisa lisa, só com a cor
   jogadores: JogadorDoTime[]
   fechado: boolean // "Fechar time": acabaram os jogadores dele
+  inscricao?: string // veio pelo link de inscrição: o id do time inscrito (o nome e a cor seguem os do capitão)
+  capitao?: string // quem inscreveu o time pelo link (o `inscrito` do jogador): leva a braçadeira
 }
+
+/** Inscrição pelo link (PLANO.md, seção 22): o capitão inscreve o time e os jogadores entram pelo link do time. */
+/** `torneio`: o código do torneio na nuvem (quem joga com a conta abre ele para acompanhar). */
+export type InscricaoDoTorneio = { organizador: string; nomeDoTorneio: string; aberta: boolean; limiteDeTimes: number | null; torneio?: string | null }
+/** Quem entrou no time pelo link (`id` = a conta, ou o celular de quem usou só o nome). */
+export type JogadorInscrito = { id: string; nome: string; comConta: boolean; em: number; goleiro?: boolean; camisa?: number }
+export type TimeInscrito = { id: string; capitao: string; nomeDoCapitao: string; nome: string; cor: string; em: number; jogadores: JogadorInscrito[] }
 
 /** De onde vem o time de um lado do jogo (no mata-mata ele só é conhecido depois). */
 export type Origem =
@@ -74,6 +87,7 @@ export type ResultadoJogo = {
   goleiros: Record<Lado, string | null>
   jogaram: Record<Lado, string[]> // ids de quem entrou em campo
   titulares?: Record<Lado, string[]> // quem começou o jogo (sugere a escalação do próximo jogo do time)
+  noGol?: Record<Lado, string | null> // quem começou no gol (sugere o goleiro do próximo jogo do time)
   sequencia: number // ordem em que os jogos foram de fato jogados (1, 2, 3…)
   encerradoEm?: number // hora em que acabou (na nuvem define a ordem entre celulares)
 }
@@ -101,6 +115,7 @@ export type Escalacao = {
   substituicoes: Record<Lado, number>
   jogaram: Record<Lado, string[]> // todo mundo que entrou em campo no jogo
   titulares?: Record<Lado, string[]> // quem estava em campo no apito inicial (antes dele, acompanha `emCampo`)
+  noGol?: Record<Lado, string | null> // quem estava no gol no apito inicial (antes dele, acompanha o gol da partida)
 }
 
 /** Um jogo que está sendo jogado agora (fica salvo: sobrevive a fechar o app). */
@@ -149,5 +164,7 @@ export type Torneio = {
   sorteado: boolean // grupos/chave/jogos já sorteados
   emAndamento: PartidaTorneio[] // jogos acontecendo agora (um por campo)
   nuvem?: { codigo: string; organizador: string } // torneio compartilhado
+  inscricao?: string // código do link de inscrição dos times (PLANO.md, seção 22)
+  melhorJogador?: string // id do jogador eleito o melhor do torneio pelo organizador (vai para a carta)
   limiteDeTimes?: number // torneio grátis: até 8 times (PLANO.md, seção 14.1)
 }

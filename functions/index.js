@@ -7,7 +7,7 @@ import { setGlobalOptions } from 'firebase-functions/v2'
 import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https'
 import { logger } from 'firebase-functions'
 import { defineSecret } from 'firebase-functions/params'
-import { idDaPeladaNaCarta, jogadoresValidos } from './carta.js'
+import { codigoValido, idDaPeladaNaCarta, jogadoresDoTorneioValidos, jogadoresValidos } from './carta.js'
 import { denunciaValida, deveRemover, idDaDenuncia } from './denuncia.js'
 import { aplicarEvento } from './plano.js'
 
@@ -78,6 +78,35 @@ export const registrarPeladaNaCarta = onCall(async (req) => {
       ...numeros, data, organizador: uid, turma: idDaTurma ?? `sem-turma-${uid}`, nomeDaTurma,
     })
   }
+  await lote.commit()
+  return { ok: true, jogadores: jogadores.length }
+})
+
+/**
+ * Torneio na carta (PLANO.md, seção 22.2): o celular do organizador manda o resumo de quem jogou com conta a cada
+ * jogo encerrado. Só o organizador daquele torneio manda; regravar o mesmo torneio só refaz os números dele (o id é o
+ * código). Quem saiu do resumo (tirado do time) sai da carta.
+ */
+export const registrarTorneioNaCarta = onCall(async (req) => {
+  const uid = req.auth?.uid
+  if (!uid || req.auth.token.firebase?.sign_in_provider === 'anonymous') throw new HttpsError('unauthenticated', 'Entre com a sua conta.')
+  const { codigo, nome, data } = req.data ?? {}
+  const jogadores = jogadoresDoTorneioValidos(req.data?.jogadores)
+  if (!codigoValido(codigo) || typeof nome !== 'string' || !nome.trim() || nome.length > 60 || !Number.isInteger(data) || data <= 0 || !jogadores) {
+    throw new HttpsError('invalid-argument', 'Resumo do torneio inválido.')
+  }
+  const torneio = await db.doc(`torneios/${codigo}`).get()
+  if (torneio.data()?.nuvem?.organizador !== uid) throw new HttpsError('permission-denied', 'Só o organizador do torneio.')
+  // quem já estava na carta por este torneio (para tirar quem saiu)
+  const registro = db.doc(`torneios/${codigo}/privado/carta`)
+  const antes = (await registro.get()).data()?.contas ?? []
+  const agora = jogadores.map((jogador) => jogador.conta)
+  const lote = db.batch()
+  for (const { conta, ...numeros } of jogadores) {
+    lote.set(db.doc(`cartas/${conta}/torneios/${codigo}`), { ...numeros, nome: nome.trim(), data, organizador: uid })
+  }
+  for (const conta of antes) if (!agora.includes(conta)) lote.delete(db.doc(`cartas/${conta}/torneios/${codigo}`))
+  lote.set(registro, { contas: agora })
   await lote.commit()
   return { ok: true, jogadores: jogadores.length }
 })

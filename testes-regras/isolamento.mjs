@@ -362,3 +362,89 @@ describe('dados da conta', () => {
     await assertFails(setDoc(doc(ana(), 'qualquer/coisa'), { a: 1 }))
   })
 })
+
+describe('inscrição dos times pelo link', () => {
+  const LINK = 'inscricoes/INS234'
+  const TIME = `${LINK}/times/T1`
+  const abrirLink = async (aberta = true) => {
+    await assertSucceeds(setDoc(doc(ana(), LINK), { organizador: 'ana', nomeDoTorneio: 'COPA', aberta, limiteDeTimes: 8 }))
+  }
+  const carlaInscreve = () => setDoc(doc(carla(), TIME), { capitao: 'carla', nomeDoCapitao: 'CARLA', nome: 'TIME DA CARLA', cor: '#D62828', em: 1 })
+
+  test('o capitão precisa de conta; ninguém inscreve no nome de outro capitão', async () => {
+    await abrirLink()
+    await assertFails(setDoc(doc(anonimo(), `${LINK}/times/T2`), { capitao: 'anonimo', nomeDoCapitao: 'X', nome: 'X', cor: '#000', em: 1 }))
+    await assertFails(setDoc(doc(beto(), `${LINK}/times/T2`), { capitao: 'carla', nomeDoCapitao: 'X', nome: 'X', cor: '#000', em: 1 }))
+    await assertSucceeds(carlaInscreve())
+    // anônimo vê o link e os times (o link do time abre sem conta)
+    await assertSucceeds(getDoc(doc(anonimo(), TIME)))
+  })
+
+  test('jogador entra só no próprio registro (até só com o nome); "com conta" só quem tem conta', async () => {
+    await abrirLink()
+    await assertSucceeds(carlaInscreve())
+    await assertSucceeds(setDoc(doc(anonimo(), `${TIME}/jogadores/anonimo`), { nome: 'ZÉ', comConta: false, em: 1, camisa: 10 }))
+    await assertFails(setDoc(doc(anonimo(), `${TIME}/jogadores/beto`), { nome: 'ZÉ', comConta: false, em: 1 }))
+    await assertFails(setDoc(doc(anonimo(), `${TIME}/jogadores/anonimo`), { nome: 'ZÉ', comConta: true, em: 1 }))
+    await assertFails(setDoc(doc(beto(), `${TIME}/jogadores/beto`), { nome: 'BETO', comConta: true, em: 1, camisa: 100 }))
+    await assertSucceeds(setDoc(doc(beto(), `${TIME}/jogadores/beto`), { nome: 'BETO', comConta: true, em: 1, goleiro: true }))
+    // em time que não existe, não
+    await assertFails(setDoc(doc(beto(), `${LINK}/times/NAOTEM/jogadores/beto`), { nome: 'BETO', comConta: true, em: 1 }))
+  })
+
+  test('tira o jogador: ele mesmo, o capitão ou o organizador; estranho não', async () => {
+    await abrirLink()
+    await assertSucceeds(carlaInscreve())
+    await assertSucceeds(setDoc(doc(anonimo(), `${TIME}/jogadores/anonimo`), { nome: 'ZÉ', comConta: false, em: 1 }))
+    await assertFails(deleteDoc(doc(beto(), `${TIME}/jogadores/anonimo`)))
+    await assertSucceeds(deleteDoc(doc(carla(), `${TIME}/jogadores/anonimo`)))
+  })
+
+  test('time: estranho não muda nem apaga; o organizador muda o nome e tira', async () => {
+    await abrirLink()
+    await assertSucceeds(carlaInscreve())
+    await assertFails(updateDoc(doc(beto(), TIME), { nome: 'HACK' }))
+    await assertFails(deleteDoc(doc(beto(), TIME)))
+    await assertFails(updateDoc(doc(carla(), TIME), { capitao: 'beto' }))
+    await assertSucceeds(updateDoc(doc(ana(), TIME), { nome: 'OUTRO NOME' }))
+    await assertSucceeds(deleteDoc(doc(ana(), TIME)))
+  })
+
+  test('inscrições fechadas: ninguém inscreve time nem entra; só o organizador mexe no link', async () => {
+    await abrirLink()
+    await assertSucceeds(carlaInscreve())
+    await assertFails(updateDoc(doc(carla(), LINK), { aberta: false }))
+    await assertSucceeds(updateDoc(doc(ana(), LINK), { aberta: false }))
+    await assertFails(setDoc(doc(beto(), `${LINK}/times/T2`), { capitao: 'beto', nomeDoCapitao: 'BETO', nome: 'B', cor: '#000', em: 1 }))
+    await assertFails(setDoc(doc(anonimo(), `${TIME}/jogadores/anonimo`), { nome: 'ZÉ', comConta: false, em: 1 }))
+    await assertFails(getDocs(collection(beto(), 'inscricoes')))
+  })
+})
+
+describe('carta do torneio', () => {
+  test('o dono lê a carta do torneio; ninguém grava (só o servidor); estranho não lê', async () => {
+    await servidor((db) => setDoc(doc(db, 'cartas/ana/torneios/L9QZ7X'), { nome: 'COPA', jogos: 1 }))
+    await assertSucceeds(getDoc(doc(ana(), 'cartas/ana/torneios/L9QZ7X')))
+    await assertFails(getDoc(doc(beto(), 'cartas/ana/torneios/L9QZ7X')))
+    await assertFails(setDoc(doc(ana(), 'cartas/ana/torneios/L9QZ7X'), { nome: 'COPA', jogos: 99 }))
+    await assertFails(getDoc(doc(ana(), 'torneios/L9QZ7X/privado/carta')))
+  })
+})
+
+describe('esse sou eu (pedido para ser um jogador digitado)', () => {
+  const TORNEIO = 'torneios/ESSE23'
+  const criar = () => servidor((db) => setDoc(doc(db, TORNEIO), { nome: 'COPA', nuvem: { codigo: 'ESSE23', organizador: 'ana' } }))
+  const pedido = { jogador: 'j1', nomeDoJogador: 'JOÃO', nomeDaConta: 'BETO', em: 1 }
+
+  test('cada um pede só no próprio nome (com conta); o organizador vê e tira; estranho não vê', async () => {
+    await criar()
+    await assertSucceeds(setDoc(doc(beto(), `${TORNEIO}/pedidos/beto`), pedido))
+    await assertFails(setDoc(doc(beto(), `${TORNEIO}/pedidos/carla`), pedido))
+    await assertFails(setDoc(doc(anonimo(), `${TORNEIO}/pedidos/anonimo`), pedido))
+    await assertFails(setDoc(doc(beto(), `${TORNEIO}/pedidos/beto`), { ...pedido, conta: 'hack' }))
+    await assertFails(getDoc(doc(carla(), `${TORNEIO}/pedidos/beto`)))
+    await assertFails(getDocs(collection(carla(), `${TORNEIO}/pedidos`)))
+    await assertSucceeds(getDocs(collection(ana(), `${TORNEIO}/pedidos`)))
+    await assertSucceeds(deleteDoc(doc(ana(), `${TORNEIO}/pedidos/beto`)))
+  })
+})

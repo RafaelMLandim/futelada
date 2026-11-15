@@ -14,7 +14,8 @@ const CHAVE_ATIVO = 'torneio:ativo'
 const CHAVE_GUARDADOS = 'torneio:guardados'
 
 /** Torneio compartilhado que este celular está acompanhando. */
-export type Ativo = { codigo: string; campo: number | null; nome?: string; campeao?: string }
+/** `jogador`: aberto por quem joga nele (pré-tela "Torneios", Jogando): só acompanha, sem marcar jogos nem pegar campo. */
+export type Ativo = { codigo: string; campo: number | null; nome?: string; campeao?: string; jogador?: boolean }
 
 /**
  * Completa torneios salvos por versões antigas (antes dos jogos simultâneos, dos tempos, da prorrogação
@@ -65,12 +66,12 @@ const nomeDoCampeao = (t: Torneio) => {
 type TorneioGuardado = { tipo: 'local'; torneio: Torneio } | { tipo: 'nuvem'; ativo: Ativo }
 
 /** Um torneio da lista (pré-tela "Torneios"). */
-export type ResumoDoTorneio = { id: string; nome: string; campeao?: string; codigo?: string; aberto: boolean }
+export type ResumoDoTorneio = { id: string; nome: string; campeao?: string; codigo?: string; aberto: boolean; jogador?: boolean }
 
 const idDoGuardado = (guardado: TorneioGuardado) => (guardado.tipo === 'local' ? `local:${guardado.torneio.id}` : `nuvem:${guardado.ativo.codigo}`)
 const resumoDoGuardado = (guardado: TorneioGuardado, aberto: boolean): ResumoDoTorneio => guardado.tipo === 'local'
   ? { id: idDoGuardado(guardado), nome: guardado.torneio.nome, campeao: nomeDoCampeao(completar(guardado.torneio)) ?? undefined, aberto }
-  : { id: idDoGuardado(guardado), nome: guardado.ativo.nome ?? 'Torneio compartilhado', campeao: guardado.ativo.campeao, codigo: guardado.ativo.codigo, aberto }
+  : { id: idDoGuardado(guardado), nome: guardado.ativo.nome ?? 'Torneio compartilhado', campeao: guardado.ativo.campeao, codigo: guardado.ativo.codigo, aberto, jogador: guardado.ativo.jogador }
 
 /** O que está nos lugares de sempre: o compartilhado aberto e o local (que fica por baixo enquanto um compartilhado está aberto). */
 function torneiosNosLugares(): { aberto: TorneioGuardado | null; porBaixo: TorneioGuardado | null } {
@@ -113,6 +114,15 @@ export function abrirTorneio(id: string): void {
   escrever(CHAVE_GUARDADOS, lista.filter((guardado) => guardado !== escolhido))
   if (escolhido.tipo === 'local') escrever(CHAVE, escolhido.torneio)
   else escrever(CHAVE_ATIVO, escolhido.ativo)
+}
+
+/** Abre para acompanhar um torneio em que joga (pré-tela "Torneios", Jogando): o que estava aberto vai para a lista. */
+export function abrirParaAcompanhar(codigo: string, nome: string): void {
+  const id = `nuvem:${codigo}`
+  if (listaDeTorneios().some((resumo) => resumo.id === id)) abrirTorneio(id)
+  else guardarTorneioAberto()
+  const ativo = ler<Ativo>(CHAVE_ATIVO)
+  escrever(CHAVE_ATIVO, { ...(ativo?.codigo === codigo ? ativo : { codigo, campo: null }), nome: ativo?.nome ?? nome, jogador: true })
 }
 
 export type StatusNuvem = 'carregando' | 'ok' | 'nao-encontrado' | 'erro'
@@ -277,6 +287,8 @@ export function useTorneio() {
     compartilhar, entrar, sair,
     /** Organizador faz tudo; mesário só marca os jogos do campo dele. */
     souOrganizador,
+    /** Aberto por quem joga nele: só acompanha (sem marcar jogos nem pegar campo). */
+    soAcompanha: !!ativo?.jogador && !souOrganizador,
     /** O campo deste mesário (só vale enquanto a trava na nuvem for dele). */
     meuCampo: ativo?.campo != null && (campos === null || campos[ativo.campo]?.uid === usuario) ? ativo.campo : null,
     campos: campos ?? {},

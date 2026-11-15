@@ -4,8 +4,8 @@ import { CartaDoJogador } from '../components/CartaDoJogador'
 import { Carrossel } from '../components/CarrosselDeTurmas'
 import { Icone } from '../components/Icone'
 import { Insignias } from '../components/Insignias'
-import { conquistaLendaria, conquistasDaCarta, nivelDaCarta, numerosDaCarta, peladasDaTemporada, temporadasDaCarta, turmasDaCarta } from '../logic/carta'
-import { primeiroNome, useCarta, useDadosDoJogador } from '../store/carta'
+import { conquistaLendaria, conquistasDaCarta, conquistasDosTorneios, nivelDaCarta, nivelDoTorneio, notaDaCarta, notaDoTorneio, numerosDaCarta, numerosDosTorneios, peladasDaTemporada, temporadaDaPelada, temporadasDaCarta, torneiosDaTemporada, turmasDaCarta } from '../logic/carta'
+import { primeiroNome, useCarta, useCartaDosTorneios, useDadosDoJogador } from '../store/carta'
 import { useConta } from '../store/conta'
 import { fotoDoJogador } from '../utils/foto'
 import { AjustarFoto } from '../components/AjustarFoto'
@@ -14,9 +14,16 @@ import { compartilharImagem, imagemDaCarta, nomeDoArquivo, type InsigniaNaImagem
 
 
 // Perfil de quem entrou: a carta da temporada (ou de uma turma), as conquistas e a foto. As temporadas passadas ficam guardadas.
-export function Perfil() {
+/** `carta`: qual perfil é: o da pelada ou o do torneio (são separados; cada grupo da tela inicial abre o seu). */
+export function Perfil({ carta = 'pelada' }: { carta?: 'pelada' | 'torneio' } = {}) {
   const { perfil } = useConta()
   const peladas = useCarta()
+  const torneios = useCartaDosTorneios()
+  // a carta da pelada e a do torneio ficam separadas (PLANO.md, seção 22.2)
+  const modo = carta
+  // a nuvem ainda não respondeu e não tinha carta guardada no celular
+  // (a carta das peladas também espera os torneios: a cor dela conta as conquistas dos dois)
+  const carregando = modo === 'torneio' ? torneios === null : peladas === null || torneios === null
   const { foto, apelido, carregado, fotoRemovida, salvar } = useDadosDoJogador()
   // até saber a foto escolhida, nenhuma: a da conta do Google piscava antes da certa
   const fotoDaCarta = carregado ? (foto ?? perfil?.foto ?? null) : null
@@ -30,24 +37,45 @@ export function Perfil() {
   const [compartilhando, setCompartilhando] = useState(false)
   const seletor = useRef<HTMLInputElement>(null)
   const nome = apelido ?? (primeiroNome(perfil?.nome) || 'Jogador')
-  const temporadas = temporadasDaCarta(peladas ?? [], anoAtual)
+  const temporadas = [...new Set([...temporadasDaCarta(peladas ?? [], anoAtual), ...(torneios ?? []).map(temporadaDaPelada)])].sort((x, y) => y - x)
   const daTemporada = peladasDaTemporada(peladas ?? [], temporada)
+  const torneiosDoAno = torneiosDaTemporada(torneios ?? [], temporada)
+  const conquistasDoTorneio = conquistasDosTorneios(torneiosDoAno)
   const turmas = turmasDaCarta(daTemporada)
-  // uma carta por turma (cor e conquistas só daquela turma) e a de todas as peladas; com uma turma só, uma carta
-  const cartas = turmas.length > 1 ? [null, ...turmas.map((item) => item.id)] : [null]
+  // pelada: uma carta por turma (cor e conquistas só daquela turma) e a de todas as peladas; com uma turma só, uma carta.
+  // torneio: uma carta por torneio (sem a de todos), deslizando do mesmo jeito
+  const cartas = modo === 'torneio'
+    ? (torneiosDoAno.length ? torneiosDoAno.map((item) => item.id) : [null])
+    : turmas.length > 1 ? [null, ...turmas.map((item) => item.id)] : [null]
+  const daCartaDoTorneio = (id: string | null) => {
+    const escolhido = id ? torneiosDoAno.filter((item) => item.id === id) : torneiosDoAno
+    const conquistasDele = conquistasDosTorneios(escolhido)
+    return {
+      numeros: numerosDosTorneios(escolhido), conquistas: conquistasDele,
+      // a cor e o número da carta de cada torneio vêm do desempenho nele (campeão é ouro…)
+      nivel: escolhido.length === 1 ? nivelDoTorneio(escolhido[0]) : nivelDaCarta(conquistasDele),
+      nota: escolhido.length === 1 ? notaDoTorneio(escolhido[0]) : notaDaCarta(conquistasDele),
+      nomeDaTurma: (id && escolhido[0]?.nome) || 'Torneios',
+    }
+  }
   const daCarta = (id: string | null) => {
+    if (modo === 'torneio') return daCartaDoTorneio(id)
     const peladasDaCarta = id ? daTemporada.filter((pelada) => pelada.turma === id) : daTemporada
     const conquistasDaTurma = conquistasDaCarta(peladasDaCarta)
+    // a carta de todas as peladas tem a cor contando também as conquistas do torneio
     return {
-      numeros: numerosDaCarta(daTemporada, id), conquistas: conquistasDaTurma, nivel: nivelDaCarta(conquistasDaTurma),
+      numeros: numerosDaCarta(daTemporada, id), conquistas: conquistasDaTurma,
+      nivel: nivelDaCarta(id ? conquistasDaTurma : [...conquistasDaTurma, ...conquistasDoTorneio]),
+      nota: notaDaCarta(id ? conquistasDaTurma : [...conquistasDaTurma, ...conquistasDoTorneio]),
       nomeDaTurma: (id && turmas.find((item) => item.id === id)?.nome) || 'Todas as peladas',
     }
   }
-  const atual = daCarta(turma)
-  const { numeros, conquistas, nivel } = atual
+  const atual = daCarta(cartas.includes(turma) ? turma : cartas[0])
+  const { numeros, conquistas, nivel, nota } = atual
   const rotulo = `${temporada} · ${atual.nomeDaTurma}`
+  const contagem = modo === 'torneio' ? 'TOR' : 'PEL'
   const podeFiltrar = temporadas.length > 1
-  const indiceAtual = Math.max(0, cartas.indexOf(turma))
+  const indiceAtual = Math.max(0, cartas.indexOf(cartas.includes(turma) ? turma : cartas[0]))
   const trilho = useRef<HTMLDivElement>(null)
   /** Deslizou: a carta mais perto do meio passa a ser a escolhida. */
   const aoDeslizar = () => {
@@ -91,7 +119,7 @@ export function Perfil() {
   const compartilhar = async () => {
     setErro(null)
     setCompartilhando(true)
-    await imagemDaCarta({ nome, foto: fotoDaCarta, numeros, rotulo, nivel, titulo: atual.nomeDaTurma, subtitulo: `Temporada ${temporada}`, insignias: melhoresInsignias() })
+    await imagemDaCarta({ nome, foto: fotoDaCarta, numeros, rotulo, nivel, contagem, nota, titulo: atual.nomeDaTurma, subtitulo: `Temporada ${temporada}`, insignias: melhoresInsignias() })
       .then((imagem) => compartilharImagem(imagem, nomeDoArquivo('minha-carta')))
       .catch(() => setErro('Não deu para gerar a imagem. Tente de novo.'))
     setCompartilhando(false)
@@ -135,7 +163,7 @@ export function Perfil() {
 
   return (
     <div className="scr" style={{ height: 'var(--altura-tela)' }}>
-      <Barra titulo="Meu perfil" sub={`Temporada ${temporada} · ${numeros.peladas} ${numeros.peladas === 1 ? 'pelada' : 'peladas'}`} />
+      <Barra titulo="Meu perfil" sub={`${modo === 'torneio' ? 'Torneio' : 'Pelada'} · ${temporada} · ${modo === 'torneio' ? torneiosDoAno.length : numeros.peladas} ${modo === 'torneio' ? (torneiosDoAno.length === 1 ? 'torneio' : 'torneios') : (numeros.peladas === 1 ? 'pelada' : 'peladas')}`} />
       <div className="conteudo">
         <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
           <span style={{ color: '#fff', fontWeight: 700, fontSize: 15, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -151,8 +179,14 @@ export function Perfil() {
 
         <input ref={seletor} className="vh" type="file" accept="image/*" aria-label="Escolher foto" tabIndex={-1}
           onChange={(ev) => { aoEscolher(ev.target.files?.[0]); ev.target.value = '' }} />
-        {cartas.length === 1
-          ? <CartaDoJogador nome={nome} foto={fotoDaCarta} numeros={numeros} rotulo={rotulo} nivel={nivel} />
+        {/* primeira vez, sem a carta guardada no celular: espera os números (não mostra zerada e depois muda de cor) */}
+        {carregando ? (
+          <div className="panel pb" style={{ display: 'grid', gap: 12, justifyItems: 'center', textAlign: 'center', color: 'var(--navy)', padding: '40px 16px' }}>
+            <span className="carregando" aria-hidden="true" />
+            <b className="num" style={{ fontSize: 20 }}>Carregando sua carta…</b>
+          </div>
+        ) : cartas.length === 1
+          ? <CartaDoJogador nome={nome} foto={fotoDaCarta} numeros={numeros} rotulo={rotulo} nivel={nivel} nota={nota} contagem={contagem} />
           : (
             <>
               <div ref={trilho} className="cartas-deslizar" onScroll={aoDeslizar} aria-label="Cartas por turma">
@@ -160,7 +194,7 @@ export function Perfil() {
                   const carta = daCarta(id)
                   return (
                     <div key={id ?? 'todas'} className={'carta-da-turma' + (indice === indiceAtual ? ' atual' : '')} onClick={() => indice !== indiceAtual && irParaCarta(indice)}>
-                      <CartaDoJogador nome={nome} foto={fotoDaCarta} numeros={carta.numeros} rotulo={`${temporada} · ${carta.nomeDaTurma}`} nivel={carta.nivel} />
+                      <CartaDoJogador nome={nome} foto={fotoDaCarta} numeros={carta.numeros} rotulo={`${temporada} · ${carta.nomeDaTurma}`} nivel={carta.nivel} nota={carta.nota} contagem={contagem} />
                     </div>
                   )
                 })}
@@ -199,10 +233,13 @@ export function Perfil() {
           </div>
         )}
 
-        <Insignias conquistas={[...conquistas, conquistaLendaria(peladas ?? [])]} />
+        {!carregando && <Insignias tipo={modo} conquistas={modo === 'torneio' ? conquistas : [...conquistas, conquistaLendaria(peladas ?? [])]} />}
 
-        {peladas?.length === 0 && (
+        {modo === 'pelada' && peladas?.length === 0 && (
           <div className="panel pb mut" style={{ textAlign: 'center' }}>Sua carta começa no primeiro jogo com a conta.</div>
+        )}
+        {modo === 'torneio' && torneiosDoAno.length === 0 && (
+          <div className="panel pb mut" style={{ textAlign: 'center' }}>Sua carta do torneio começa quando você entra num time pelo link, com a conta.</div>
         )}
       </div>
       {editando && (

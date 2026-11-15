@@ -6,9 +6,16 @@ import { ICONES_DAS_CONQUISTAS } from './iconesDasConquistas'
 const NOME_DO_NIVEL = { bronze: 'Bronze', prata: 'Prata', ouro: 'Ouro' }
 const NIVEIS_DA_INSIGNIA: NivelDaConquista[] = ['bronze', 'prata', 'ouro']
 // a carta em cada nível, com os pontos que ela pede
-const NIVEIS_DA_CARTA: [NivelDaCarta, string, string][] = [
-  ['bronze', 'Bronze', '0 a 5'], ['prata', 'Prata', '6 a 11'], ['ouro', 'Ouro', '12 a 15'], ['diamante', 'Diamante', '16 a 18'],
-  ['lendaria', 'Lendária', '18 e 8 no ouro'],
+// pelada: os pontos das insígnias (no máximo 18) e o número da carta (a porcentagem deles, até 99)
+const NIVEIS_DA_CARTA: [NivelDaCarta, string, string, string][] = [
+  ['bronze', 'Bronze', '0 a 5 pontos', 'Geral 0 a 28'], ['prata', 'Prata', '6 a 11 pontos', 'Geral 33 a 61'],
+  ['ouro', 'Ouro', '12 a 15 pontos', 'Geral 66 a 83'], ['diamante', 'Diamante', '16 a 18 pontos', 'Geral 88 a 99'],
+  ['lendaria', 'Lendária', '18 pontos e 8 no ouro', 'a coroa'],
+]
+// torneio: cada torneio é uma carta, pelo que o jogador fez nele
+const NIVEIS_DA_CARTA_DO_TORNEIO: [NivelDaCarta, string, string, string][] = [
+  ['bronze', 'Bronze', 'Jogou', 'Geral 20'], ['prata', 'Prata', '1 ponto', 'Geral 50'], ['ouro', 'Ouro', '2 pontos', 'Geral 75'],
+  ['diamante', 'Diamante', '3 pontos', 'Geral 92'], ['lendaria', 'Lendária', '4 ou mais', 'a coroa'],
 ]
 // números só para a miniatura da legenda
 const NUMEROS_DE_EXEMPLO = { ...numerosDaCarta([]), jogos: 21, vitorias: 12, gols: 16, assistencias: 9, empates: 3, peladas: 3, aproveitamento: 62 }
@@ -24,6 +31,9 @@ const CORES: Record<string, [string, string]> = {
   'dia-inspirado': ['#c8352b', '#ffd23f'], rodado: ['#0f7c8a', '#ffffff'], aproveitamento: ['#3d4a57', '#7ee08f'], muralha: ['#10223a', '#c9d4e3'],
   paredao: ['#d9730d', '#ffffff'], 'rei-do-camarote': ['#7a1f3d', '#ffd23f'], 'artilheiro-do-dia': ['#0b6b4f', '#ffd23f'], imortal: ['#2b2f77', '#ffd23f'],
   'luva-de-ouro': ['#5b3a0e', '#ffd23f'], 'pe-de-anjo': ['#2f8fd1', '#ffffff'], 'pe-trocado': ['#5a1a14', '#ff9d8f'], lenda: ['#0c1016', '#f5d77a'],
+  // torneio
+  campeao: ['#b8860b', '#ffffff'], vice: ['#5c6b78', '#ffffff'], 'artilheiro-do-torneio': ['#14532d', '#ffd23f'],
+  'garcom-do-torneio': ['#173f7a', '#ffd23f'], 'luva-de-ouro-do-torneio': ['#3d2708', '#ffd23f'], competidor: ['#4b2a8c', '#ffd23f'], 'melhor-jogador': ['#7a1f3d', '#ffffff'],
 }
 
 /** A flâmula: o prata ganha listra e 2 franjas; o ouro, listra dupla e 4 franjas. Sem nível, fica apagada. */
@@ -55,7 +65,8 @@ function Flamula({ id, nivel }: { id: string; nivel: NivelDaConquista | null }) 
 }
 
 // Insígnias do perfil: cada conquista tem a sua flâmula, com bronze, prata e ouro; sem nível, fica apagada mostrando a primeira meta.
-export function Insignias({ conquistas }: { conquistas: Conquista[] }) {
+/** `tipo`: a carta da pelada ou a do torneio (a legenda explica a regra de cada uma). */
+export function Insignias({ conquistas, tipo = 'pelada' }: { conquistas: Conquista[]; tipo?: 'pelada' | 'torneio' }) {
   const positivas = conquistas.filter((conquista) => !conquista.negativa && !conquista.especial)
   const ganhas = positivas.filter((conquista) => conquista.nivel).length
   const [legenda, setLegenda] = useState(false)
@@ -84,7 +95,7 @@ export function Insignias({ conquistas }: { conquistas: Conquista[] }) {
           </button>
         ))}
       </div>
-      {legenda && <Legenda conquistas={conquistas} onFechar={() => setLegenda(false)} />}
+      {legenda && <Legenda conquistas={conquistas} tipo={tipo} onFechar={() => setLegenda(false)} />}
       {aberta && <NiveisDaConquista conquista={aberta} onFechar={() => setAberta(null)} />}
     </section>
   )
@@ -132,7 +143,8 @@ function NiveisDaConquista({ conquista, onFechar }: { conquista: Conquista; onFe
 }
 
 /** O que é cada insígnia, as metas de cada nível e como a cor da carta sobe. */
-function Legenda({ conquistas, onFechar }: { conquistas: Conquista[]; onFechar: () => void }) {
+function Legenda({ conquistas, tipo, onFechar }: { conquistas: Conquista[]; tipo: 'pelada' | 'torneio'; onFechar: () => void }) {
+  const niveis = tipo === 'torneio' ? NIVEIS_DA_CARTA_DO_TORNEIO : NIVEIS_DA_CARTA
   return (
     <div className="modal" role="dialog" aria-modal="true" aria-label="Legenda das conquistas" onClick={onFechar}>
       <section className="panel legenda" onClick={(ev) => ev.stopPropagation()}>
@@ -143,17 +155,28 @@ function Legenda({ conquistas, onFechar }: { conquistas: Conquista[]; onFechar: 
         <div className="legenda-lista">
           <div className="legenda-texto">
             <b>Como a carta sobe</b>
-            Cada insígnia vale pontos: bronze 1, prata 2 e ouro 3. Somamos as suas 6 melhores da temporada.
+            {tipo === 'torneio' ? (
+              <>
+                Cada torneio é uma carta, com a cor do que você fez nele: <span style={{ fontWeight: 800 }}>campeão vale 2 pontos</span> (ou vice, 1) e cada
+                prêmio vale mais 1 (artilheiro, garçom, luva de ouro e melhor jogador).
+              </>
+            ) : (
+              <>Cada insígnia vale pontos: bronze 1, prata 2 e ouro 3. Somamos as suas 6 melhores da temporada (no máximo 18).</>
+            )}
             <div className="legenda-cartas">
-              {NIVEIS_DA_CARTA.map(([nivel, nome, pontos]) => (
+              {niveis.map(([nivel, nome, pontos, geral]) => (
                 <div key={nivel}>
                   <CartaDoJogador nome="Jogador" foto={null} numeros={NUMEROS_DE_EXEMPLO} rotulo="" nivel={nivel} exemplo />
                   <b>{nome}</b>
                   <span>{pontos}</span>
+                  <span className="mut">{geral}</span>
                 </div>
               ))}
             </div>
-            A temporada é o ano: em janeiro tudo recomeça, e as cartas passadas ficam guardadas.
+            {tipo === 'torneio'
+              ? <>O número grande da carta (Geral) acompanha a cor; a lendária mostra a coroa. As insígnias abaixo somam os torneios da temporada.</>
+              : <>O número grande da carta (Geral) é a porcentagem dos pontos: 18 pontos dá 99, o máximo. A lendária mostra a coroa.</>}
+            <br />A temporada é o ano: em janeiro tudo recomeça, e as cartas passadas ficam guardadas.
           </div>
           {conquistas.map((conquista) => (
             <div key={conquista.id} className="legenda-item">

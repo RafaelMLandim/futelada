@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  bancoSugerido, cronoDaPartida, encerrarPartida, iniciarPartida, jogadoresDeLinha, jogosParaComecar, numerosDasCamisas, reservasDoJogo, substituirNaPartida, timesDoJogo,
+  bancoSugerido, golSugerido, goleirosDoJogo, cronoDaPartida, encerrarPartida, iniciarPartida, jogadoresDeLinha, jogosParaComecar, numerosDasCamisas, reservasDoJogo, substituirNaPartida, timesDoJogo,
 } from '..'
 import type { Torneio } from '../../../types/torneio'
 import { sorteado, torneioCom } from './utils'
@@ -65,6 +65,57 @@ describe('escalação do jogo do torneio', () => {
     const proximo = jogosParaComecar(torneio).find((candidato) => Object.values(timesDoJogo(torneio, candidato)).includes(time.id))!
     const lado = timesDoJogo(torneio, proximo).A === time.id ? 'A' : 'B'
     expect(bancoSugerido(torneio, proximo)[lado]).toEqual([linha[0].id, linha[1].id])
+  })
+})
+
+describe('vários goleiros', () => {
+  // 5 na linha, 6 jogadores de linha e 2 goleiros por time: o goleiro reserva conta como reserva
+  const comDoisGoleiros = () => {
+    const torneio = torneioCom(4, 'pontos', { linha: 5 }, 6)
+    for (const time of torneio.times) time.jogadores.splice(1, 0, { id: `${time.id}-goleiro2`, nome: `Goleiro 2 ${time.nome}`, goleiro: true })
+    return sorteado(torneio)
+  }
+
+  it('o primeiro goleiro começa no gol; o reserva vai para o banco e conta como reserva', () => {
+    let torneio = comDoisGoleiros()
+    const jogo = jogosParaComecar(torneio)[0]
+    const time = timeDoLado(torneio, jogo.id, 'A')
+    expect(reservasDoJogo(torneio, jogo).A).toBe(2)
+    expect(goleirosDoJogo(torneio, jogo).A).toBe(2)
+    expect(golSugerido(torneio, jogo).A).toBe(`${time.id}-goleiro`)
+    expect(bancoSugerido(torneio, jogo).A).toEqual([jogadoresDeLinha(time)[5].id, `${time.id}-goleiro2`])
+    torneio = iniciarPartida(torneio, jogo.id)
+    expect(torneio.emAndamento[0].goleiros!.A).toBe(`${time.id}-goleiro`)
+    expect(torneio.emAndamento[0].escalacao.emCampo.A).toHaveLength(6)
+  })
+
+  it('escolhe quem começa no gol (o titular de sempre vai para o banco) e o próximo jogo sugere o mesmo', () => {
+    let torneio = comDoisGoleiros()
+    const jogo = jogosParaComecar(torneio)[0]
+    const time = timeDoLado(torneio, jogo.id, 'A')
+    const reserva = `${time.id}-goleiro2`
+    torneio = iniciarPartida(torneio, jogo.id, undefined, undefined, { A: reserva, B: golSugerido(torneio, jogo).B })
+    const { escalacao, goleiros } = torneio.emAndamento[0]
+    expect(goleiros!.A).toBe(reserva)
+    expect(escalacao.emCampo.A[0]).toBe(reserva)
+    expect(escalacao.banco.A).toContain(`${time.id}-goleiro`)
+    torneio = encerrarPartida(torneio, jogo.id)
+    const proximo = jogosParaComecar(torneio).find((candidato) => Object.values(timesDoJogo(torneio, candidato)).includes(time.id))!
+    const lado = timesDoJogo(torneio, proximo).A === time.id ? 'A' : 'B'
+    expect(golSugerido(torneio, proximo)[lado]).toBe(reserva)
+  })
+
+  it('não trava a posição: um jogador de linha pode começar no gol e o goleiro joga na linha', () => {
+    // sem reservas: 1 goleiro e 5 de linha para 5 na linha
+    let torneio = sorteado(torneioCom(4, 'pontos', { linha: 5 }, 5))
+    const jogo = jogosParaComecar(torneio)[0]
+    const time = timeDoLado(torneio, jogo.id, 'A')
+    const atacante = jogadoresDeLinha(time)[0].id
+    torneio = iniciarPartida(torneio, jogo.id, undefined, undefined, { A: atacante, B: golSugerido(torneio, jogo).B })
+    const { escalacao, goleiros } = torneio.emAndamento[0]
+    expect(goleiros!.A).toBe(atacante)
+    expect(escalacao.emCampo.A).toContain(`${time.id}-goleiro`)
+    expect(escalacao.banco.A).toEqual([])
   })
 })
 

@@ -117,6 +117,7 @@ button.tr:nth-child(even) { background: var(--zebra); }
 .carta-lado { position: absolute; top: 12%; left: 10%; width: 26%; display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .carta-lado svg { width: 14cqw; height: 14cqw; }
 .carta-nota { font-size: 21cqw; line-height: .95; letter-spacing: 0; }
+.carta-coroa { width: 19cqw; height: auto; margin-bottom: 1cqw; }
 .carta-sigla { font-size: 3.2cqw; font-weight: 700; letter-spacing: .5px; margin-bottom: 6px; white-space: nowrap; }
 .carta-moldura { position: absolute; top: 9.5%; right: 10%; width: 51%; aspect-ratio: 1; }
 .carta-foto { width: 100%; height: 100%; border-radius: 12px; overflow: hidden; background: #10223a; border: 2px solid var(--tinta); display: grid; place-items: center; color: var(--amarelo); }
@@ -628,4 +629,17 @@ label { min-width: 0; }
 .inp.camisa.repetida { border-color: var(--vermelho); }
 /* número da camisa ao lado do nome (torneio), do tamanho da ordem; sem-numero = o jogador não tem número */
 .no.numero-camisa.reserva { background: #9aa4ae; }
+.no.numero-camisa { font-size: 15px; }
 .no.numero-camisa.sem-numero { background: transparent; border: 1.5px dashed #9aa4ae; }
+
+/* Braçadeira de capitão (torneio): faixa suave da altura toda da linha, logo depois do nome */
+.tr .nome.nome-capitao { align-self: stretch; display: flex; align-items: center; gap: 10px; }
+.nome-capitao .texto { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bracadeira {
+  align-self: stretch; flex: none; width: 18px; display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 210, 63, 0.38); color: var(--navy);
+  border-left: 2px solid rgba(201, 154, 18, 0.5); border-right: 2px solid rgba(201, 154, 18, 0.5);
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 11px; line-height: 1;
+}
+.bracadeira.diagonal { transform: skewX(-22deg); margin: 0 4px; }
+.bracadeira.diagonal > span { transform: skewX(22deg); }

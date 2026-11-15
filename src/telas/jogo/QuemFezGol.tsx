@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { LuvaDoGoleiro } from '../../components/LuvaDoGoleiro'
 import { Camisa } from '../../components/Camisa'
 import { buscarGoleiro, jogadorGoleiro, outro } from '../../logic'
 import { useJogadoresDaTurma } from '../../store/turmas'
@@ -46,8 +47,8 @@ function BuscaDoGoleiro({ pelada, pergunta, excluir, onEscolher, onVoltar }: {
  * Modal "Quem fez?": os jogadores do time do gol (ou do outro, no gol contra), o goleiro e "Não sei".
  * `goleiros` = goleiro fixo de cada time (null = não fixo: tocar em "Goleiro" abre a busca de quem estava no gol).
  */
-export function EscolherAutor({ pelada, titulo, colete, time, adversario, goleiros, contraInicial = false, naoSei, onEscolher, onFechar }: {
-  pelada: Pelada; titulo: string; colete: Colete; time: Time; adversario: Time; goleiros: { time: string | null; adversario: string | null }
+export function EscolherAutor({ pelada, titulo, colete, coleteDoAdversario, time, adversario, goleiros, contraInicial = false, naoSei, onEscolher, onFechar }: {
+  pelada: Pelada; titulo: string; colete: Colete; coleteDoAdversario?: Colete; time: Time; adversario: Time; goleiros: { time: string | null; adversario: string | null }
   contraInicial?: boolean; naoSei: string; onEscolher: (autor: Jogador | null, contra: boolean) => void; onFechar: () => void
 }) {
   // Gol contra: a lista mostra os jogadores do outro time
@@ -59,6 +60,8 @@ export function EscolherAutor({ pelada, titulo, colete, time, adversario, goleir
   }
   const goleiroFixo = contra ? goleiros.adversario : goleiros.time
   const doGol = contra ? adversario : time
+  // a luva do goleiro na cor do colete de quem está no gol (no gol contra, o do outro time)
+  const corDaLuva = (contra ? coleteDoAdversario ?? colete : colete).cor
 
   return (
     <div className="modal" role="dialog" aria-modal="true" aria-label={titulo} onClick={onFechar}>
@@ -88,7 +91,7 @@ export function EscolherAutor({ pelada, titulo, colete, time, adversario, goleir
               ))}
               <button className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }}
                 onClick={() => goleiroFixo ? escolher(jogadorGoleiro(goleiroFixo)) : setBusca(true)}>
-                🧤 {goleiroFixo ?? 'Goleiro'}
+                <LuvaDoGoleiro cor={corDaLuva} tamanho={26} rotulo="goleiro" /> {goleiroFixo ?? 'Goleiro'}
               </button>
             </div>
             <button className="btn sm" onClick={() => escolher(null)}>{naoSei}</button>
@@ -110,7 +113,7 @@ export function QuemFezGol({ pelada, lado, onGol, onFechar }: {
   if (!estado.emCampo) return null
   const time = estado.emCampo[lado]
   return (
-    <EscolherAutor pelada={pelada} titulo={`Gol do Time ${time.numero}`} colete={estado.config.coletes[lado]} time={time} adversario={estado.emCampo[outro(lado)]}
+    <EscolherAutor pelada={pelada} titulo={`Gol do Time ${time.numero}`} colete={estado.config.coletes[lado]} coleteDoAdversario={estado.config.coletes[outro(lado)]} time={time} adversario={estado.emCampo[outro(lado)]}
       goleiros={{ time: estado.goleiros[lado], adversario: estado.goleiros[outro(lado)] }}
       naoSei="Não sei · só marcar o gol" onEscolher={(autor, contra) => onGol(lado, autor, contra)} onFechar={onFechar} />
   )
@@ -148,11 +151,11 @@ export function QuemDeuOPasse({ pelada, lado, autorId, onPasse, onFechar }: {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
             {companheiros.map((j) => (
               <button key={j.id} className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }} onClick={() => escolher(j)}>
-                {j.id.startsWith('goleiro:') ? `🧤 ${j.nome}` : j.nome}
+                {j.id.startsWith('goleiro:') ? <><LuvaDoGoleiro cor={estado.config.coletes[lado].cor} tamanho={26} rotulo="goleiro" /> {j.nome}</> : j.nome}
               </button>
             ))}
             {goleiroNaoFixo && (
-              <button className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }} onClick={() => setBusca(true)}>🧤 Goleiro</button>
+              <button className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }} onClick={() => setBusca(true)}><LuvaDoGoleiro cor={estado.config.coletes[lado].cor} tamanho={26} rotulo="goleiro" /> Goleiro</button>
             )}
           </div>
           <button className="btn sm" onClick={() => escolher(null)}>Ninguém · não sei</button>

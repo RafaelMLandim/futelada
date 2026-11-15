@@ -23,7 +23,7 @@ export function GolsCorrigiveis({ pelada, partida, gols, times, coletes, goleiro
         onAutor={somenteLeitura ? undefined : setAutorDe}
         onRemover={partida === null && !somenteLeitura ? (i) => pelada.aplicar((e) => removerGol(e, i)) : undefined} />
       {g && autorDe !== null && (
-        <EscolherAutor pelada={pelada} titulo={`Gol do Time ${times[g.lado].numero}`} colete={coletes[g.lado]} time={times[g.lado]} adversario={times[outro(g.lado)]}
+        <EscolherAutor pelada={pelada} titulo={`Gol do Time ${times[g.lado].numero}`} colete={coletes[g.lado]} coleteDoAdversario={coletes[outro(g.lado)]} time={times[g.lado]} adversario={times[outro(g.lado)]}
           goleiros={{ time: goleiros[g.lado], adversario: goleiros[outro(g.lado)] }}
           contraInicial={!!g.contra} naoSei="Não sei · deixar sem autor"
           onEscolher={(autor, contra) => pelada.aplicar((e) => definirAutorDoGol(e, partida, autorDe, autor, contra))}

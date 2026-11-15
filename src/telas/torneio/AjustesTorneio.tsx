@@ -47,17 +47,17 @@ export function AjustesTorneio({ hook, onInicio }: { hook: TorneioHook; onInicio
       <div className="conteudo">
         {codigo ? (
           <section className="panel">
-            <div className="ph">Torneio compartilhado<span className="sub">{org ? 'você é o organizador' : 'você é mesário'}</span></div>
+            <div className="ph">Torneio compartilhado<span className="sub">{org ? 'você é o organizador' : hook.soAcompanha ? 'você joga nele' : 'você é mesário'}</span></div>
             <div className="pb" style={{ display: 'grid', gap: 10 }}>
               <div className="led num" style={{ textAlign: 'center', padding: 10 }}>
                 <div style={{ fontSize: 14, color: 'var(--texto-no-escuro)', letterSpacing: 1 }}>CÓDIGO PARA ENTRAR</div>
                 <div style={{ fontSize: 40, letterSpacing: 6 }}>{codigo}</div>
               </div>
-              <button className="btn sm" onClick={convidar}><Icone nome="times" /> Convidar mesários</button>
+              {!hook.soAcompanha && <button className="btn sm" onClick={convidar}><Icone nome="times" /> Convidar mesários</button>}
               {aviso && <div role="status" className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>{aviso}</div>}
             </div>
             {/* cada campo tem um mesário: quem pega trava o campo para os outros (PLANO.md, seção 10) */}
-            {!org && (
+            {!org && !hook.soAcompanha && (
               <div className="pb" style={{ borderTop: '2px solid var(--divisoria)', display: 'grid', gap: 8 }}>
                 <div style={{ fontWeight: 700 }}>Meu campo <span className="mut">· você marca os jogos dele</span></div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>

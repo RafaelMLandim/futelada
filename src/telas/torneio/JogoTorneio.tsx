@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { LuvaDoGoleiro } from '../../components/LuvaDoGoleiro'
 import { Barra } from '../../components/Barra'
 import { Bola } from '../../components/Bola'
 import { Camisa } from '../../components/Camisa'
@@ -137,7 +138,8 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou, seletor
   const jogador = (time: TimeTorneio, id: string) => time.jogadores.find((j) => j.id === id)!
   // quem está no gol de cada lado (um jogador em campo; null = gol vazio)
   const goleiros = { A: goleiroNaPartida(t, p, 'A'), B: goleiroNaPartida(t, p, 'B') }
-  const nomeComLuva = (lado: Lado, id: string) => `${id === goleiros[lado]?.id ? '🧤 ' : ''}${jogador(times[lado], id).nome}`
+  const luva = (lado: Lado, tamanho = 26) => <LuvaDoGoleiro cor={times[lado].cor} segunda={times[lado].uniforme?.segunda} tamanho={tamanho} rotulo="goleiro" />
+  const nomeComLuva = (lado: Lado, id: string) => <>{id === goleiros[lado]?.id && luva(lado)}{jogador(times[lado], id).nome}</>
   const irAoGol = (lado: Lado, jogadorId: string) => {
     setEscolha(null)
     hook.aplicar((torneio) => irParaOGol(torneio, jogoId, lado, jogadorId))
@@ -232,10 +234,12 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou, seletor
             <button key={id} className="tr linha-jogador" style={{ minHeight: 40, fontSize: 14, opacity: fora ? 0.55 : 1 }} disabled={!editavel}
               aria-label={`Ações de ${j.nome}`} onClick={() => setEscolha({ tipo: 'jogador', lado, jogador: j })}>
               {/* o número da camisa (sem número, vazio); quem está no gol fica amarelo (com o G se não tem número) */}
-              <NumeroDaCamisa numero={j.camisa} goleiro={noGol} />
+              <NumeroDaCamisa numero={j.camisa} goleiro={noGol} cor={time.cor} />
               <span className="nome" style={{ flex: '0 1 auto', textDecoration: fora ? 'line-through' : undefined }}>{j.nome}</span>
               <CartoesDoJogador cores={p.cartoes.filter((c) => c.jogadorId === id).map((c) => c.cor)} expulso={fora} />
               {azul > 0 && !fora && <span className="tag" style={{ background: 'var(--azul)', color: '#fff', height: 20, fontSize: 13 }}>{formatarTempo(azul)}</span>}
+              {/* quem está no gol: a luva no fim da linha, como na aba Times */}
+              {noGol && <span style={{ marginLeft: 'auto', display: 'flex' }}>{luva(lado, 22)}</span>}
             </button>
           )
         })}
@@ -392,7 +396,7 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou, seletor
             {opcao('Cartão amarelo', <Cartao cor="amarelo" tamanho={20} />, () => darCartao(lado, j, 'amarelo'))}
             {opcao('Cartão vermelho · expulso', <Cartao cor="vermelho" tamanho={20} />, () => darCartao(lado, j, 'vermelho'))}
             {opcao(`Cartão azul · ${regras.minutosAzul} min fora`, <Cartao cor="azul" tamanho={20} />, () => darCartao(lado, j, 'azul'))}
-            {!fora && goleiros[lado]?.id !== j.id && opcao('Ir para o gol · vira o goleiro', <span style={{ fontSize: 20 }}>🧤</span>, () => irAoGol(lado, j.id))}
+            {!fora && goleiros[lado]?.id !== j.id && opcao('Ir para o gol · vira o goleiro', luva(lado, 28), () => irAoGol(lado, j.id))}
             {/* cartão dado por engano: tira (o 2º amarelo leva junto o vermelho dele; sem o vermelho, volta ao jogo) */}
             {p.cartoes.map((cartao, indice) => {
               if (cartao.jogadorId !== j.id || cartao.porDoisAmarelos) return null
@@ -429,14 +433,14 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou, seletor
 
       {escolha?.tipo === 'entrar' && (() => {
         const { lado, jogador: reserva } = escolha
-        const botao = (chave: string, texto: string, onClick: () => void) => (
+        const botao = (chave: string, texto: ReactNode, onClick: () => void) => (
           <button key={chave} className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }} onClick={onClick}>{texto}</button>
         )
         // gol vazio (goleiro suspenso): entrar no gol não é substituição
         const golVazio = !goleiros[lado] && !golVazioPorExpulsao(p, lado)
         return (
           <Escolher titulo={`Entra ${reserva.nome}`} pergunta="No lugar de quem?" cor={times[lado].cor} onFechar={() => setEscolha(null)}>
-            {golVazio && botao('gol', '🧤 No gol (está vazio)', () => irAoGol(lado, reserva.id))}
+            {golVazio && botao('gol', <>{luva(lado)}No gol (está vazio)</>, () => irAoGol(lado, reserva.id))}
             {!podeSubstituir(lado)
               ? <div className="mut" style={{ gridColumn: '1 / -1' }}>Limite de substituições atingido.</div>
               : p.escalacao.emCampo[lado].filter((id) => !expulsos.has(id))

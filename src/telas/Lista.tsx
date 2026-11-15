@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react'
+import { LuvaDoGoleiro } from '../components/LuvaDoGoleiro'
 import {
   adicionarJogador, blocosDaFila, comecar, sortearPrimeirosTimes, novoJogador, podeComecar, removerJogador,
   LADOS, parecidoNaTurma, resumoPagamentos, subiuDe, sugestoes, todosOsJogadores, type JogadorDaTurma, definirGoleiros, contaNaLista, incluirConta, ligarConta, passarParaALinha, passarParaOGol, quemFoiEmbora, voltouParaALista,
@@ -326,7 +327,7 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
               <button key={confirmado.id} className="tr" style={{ width: '100%', border: 0, font: 'inherit', color: 'var(--navy)', textAlign: 'left', cursor: 'pointer' }}
                 aria-label={`${confirmado.nome} chegou`} onClick={() => tocouEmQuemChegou(confirmado)}>
                 <span className="nome">{confirmado.nome}</span>
-                {confirmado.goleiro && <span className="tag">Goleiro</span>}
+                {confirmado.goleiro && <LuvaDoGoleiro tamanho={26} rotulo="goleiro" />}
                 <span className="tag t-y">Chegou</span>
               </button>
             ))}
@@ -338,7 +339,9 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
             <div className="ph">Goleiros fixos<span className="sub">{estado.config.goleiros.length}</span></div>
             {estado.config.goleiros.map((goleiro) => (
               <div key={goleiro} className="tr">
-                <span className="no g">G</span>
+                {/* no gol: a luva na cor do colete do lado dele; esperando, a amarela */}
+                <LuvaDoGoleiro tamanho={26} rotulo="goleiro"
+                  cor={estado.goleiros.A === goleiro ? estado.config.coletes.A.cor : estado.goleiros.B === goleiro ? estado.config.coletes.B.cor : undefined} />
                 <span className="nome" style={{ flex: '0 1 auto' }}>{goleiro}</span>
                 <span className="mut" style={{ flex: 1, fontSize: 12 }}>{estado.goleiros.A === goleiro || estado.goleiros.B === goleiro ? 'no gol' : 'esperando'}</span>
                 {!somenteLeitura && (
@@ -408,7 +411,7 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
             <div className="pb" style={{ display: 'grid', gap: 10 }}>
               <div className="opcoes-lado-a-lado">
                 {opcoes.tipo === 'jogador'
-                  ? <button className="btn sm" onClick={() => { setOpcoes(null); irParaOGol(opcoes.id, opcoes.nome) }}><Icone nome="luva" tamanho={20} /> Vai para o gol</button>
+                  ? <button className="btn sm" onClick={() => { setOpcoes(null); irParaOGol(opcoes.id, opcoes.nome) }}><LuvaDoGoleiro tamanho={26} /> Vai para o gol</button>
                   : <button className="btn sm" onClick={() => { setOpcoes(null); irParaALinha(opcoes.nome) }}><Icone nome="times" tamanho={20} /> Vai para a linha</button>}
                 <button className="btn sm r" onClick={() => { setOpcoes(null); if (opcoes.tipo === 'jogador') remover(opcoes.id, opcoes.nome); else goleiroFoiEmbora(opcoes.nome) }}>
                   <Icone nome="saiu" tamanho={20} /> Foi embora

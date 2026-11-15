@@ -25,9 +25,15 @@ describe('criação e sorteio', () => {
     const t = torneioCom(3, 'pontos', {}, 3)
     t.times[0].fechado = false
     expect(problemasParaSortear(t)).toEqual([
-      'Feche o time Time 1', 'Time 1 precisa de pelo menos 4 jogadores de linha',
-      'Time 2 precisa de pelo menos 4 jogadores de linha', 'Time 3 precisa de pelo menos 4 jogadores de linha',
+      'Feche o time Time 1', 'Time 1 precisa de pelo menos 5 jogadores (4 na linha e o goleiro)',
+      'Time 2 precisa de pelo menos 5 jogadores (4 na linha e o goleiro)', 'Time 3 precisa de pelo menos 5 jogadores (4 na linha e o goleiro)',
     ])
+  })
+
+  it('um goleiro reserva completa a linha (no jogo, qualquer um joga em qualquer posição)', () => {
+    const t = torneioCom(2, 'pontos', {}, 3)
+    for (const time of t.times) time.jogadores.push({ id: `${time.id}-goleiro2`, nome: `Reserva ${time.nome}`, goleiro: true })
+    expect(problemasParaSortear(t)).toEqual([])
   })
 })
 

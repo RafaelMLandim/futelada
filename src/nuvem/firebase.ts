@@ -11,14 +11,14 @@ import {
   limit, persistentMultipleTabManager, setDoc, updateDoc, where, writeBatch, type DocumentReference,
 } from 'firebase/firestore'
 import type { DadosNuvem, Operacao } from '../logic/torneio'
-import type { PartidaTorneio, ResultadoJogo } from '../types/torneio'
+import type { InscricaoDoTorneio, JogadorInscrito, PartidaTorneio, ResultadoJogo, TimeInscrito } from '../types/torneio'
 import { nativo, noIphone } from '../utils/nativo'
 import { baseDaNuvem, baseParaNuvem } from './formato'
 import { entrarComUmToque, prepararUmToque } from './umToque'
 import { CONTADORES_ZERADOS, PLANO_VAZIO, type Contadores, type DadosDoPlano, type Plano } from '../logic/plano'
-import type { PeladaDaCarta } from '../logic/carta'
+import type { PeladaDaCarta, TorneioDaCarta } from '../logic/carta'
 import type { JogadorDaTurma } from '../logic/turma'
-import type { AvisoPagamento, CobrancaNuvem, ConfirmadoNaLista, Lancamento, ListaDaPelada, MesarioNoCampo, Nuvem, PeladaCompartilhada, PeladaNoHistorico, Perfil, TelaDoTelao, Turma } from './tipos'
+import type { ParticipacaoNoTorneio, PedidoEsseSouEu, AvisoPagamento, CobrancaNuvem, ConfirmadoNaLista, Lancamento, ListaDaPelada, MesarioNoCampo, Nuvem, PeladaCompartilhada, PeladaNoHistorico, Perfil, TelaDoTelao, Turma } from './tipos'
 import type { Caixinha } from '../logic/caixinha'
 
 export const configFirebase = {
@@ -94,7 +94,7 @@ export function criarNuvemFirebase(): Nuvem {
   const app = initializeApp(configFirebase)
   // Quem só abriu um link do grupo (lista, pagar, acompanhar) não precisa guardar nada no aparelho: sem o cache no
   // armazenamento do navegador, que é o que falha no iPhone (aba privada, navegador de dentro do WhatsApp/Instagram)
-  const paginaDoLink = !nativo() && /[?&](lista|pagar|ver|controle)=/.test(location.search)
+  const paginaDoLink = !nativo() && /[?&](lista|pagar|ver|controle|inscricao)=/.test(location.search)
   const db = initializeFirestore(app, { localCache: paginaDoLink ? memoryLocalCache() : persistentLocalCache({ tabManager: persistentMultipleTabManager() }) })
   // No iPhone o app roda em capacitor://, onde o "popup/redirect" do login do navegador nunca termina de carregar e
   // deixava o app preso na tela de abertura. Lá o login já é o nativo (o token vem do celular), então fica sem ele.
@@ -139,8 +139,14 @@ export function criarNuvemFirebase(): Nuvem {
   const historico = (dono: string) => collection(db, 'usuarios', dono, 'peladas')
   const turmas = (dono: string) => collection(db, 'usuarios', dono, 'turmas')
   const peladasDaCarta = (dono: string) => collection(db, 'cartas', dono, 'peladas')
+  const torneiosDaCarta = (dono: string) => collection(db, 'cartas', dono, 'torneios')
   const listaDaPelada = (codigo: string) => doc(db, 'listas', codigo)
   const confirmados = (codigo: string) => collection(db, 'listas', codigo, 'confirmados')
+  const inscricao = (codigo: string) => doc(db, 'inscricoes', codigo)
+  const participacoes = (dono: string) => collection(db, 'usuarios', dono, 'participacoes')
+  const pedidosDoTorneio = (torneio: string) => collection(db, 'torneios', torneio, 'pedidos')
+  const timesInscritos = (codigo: string) => collection(db, 'inscricoes', codigo, 'times')
+  const jogadoresInscritos = (codigo: string, time: string) => collection(db, 'inscricoes', codigo, 'times', time, 'jogadores')
   const jogadoresDaTurma = (dono: string, turma: string) => collection(db, 'usuarios', dono, 'turmas', turma, 'jogadores')
   /** Acompanha uma coleção do perfil de quem está logado (refaz ao entrar/sair; vazio sem login). */
   function ouvirDoPerfil<T>(colecao: (dono: string) => ReturnType<typeof collection>, aoMudar: (itens: T[]) => void, aoErro?: (e: Error) => void) {
@@ -239,7 +245,8 @@ export function criarNuvemFirebase(): Nuvem {
     },
     async apagar(codigo) {
       await logado
-      for (const sub of [partidas(codigo), resultados(codigo), campos(codigo)]) {
+      // a carta de quem jogou fica (cartas/{conta}/torneios: é do jogador, não do torneio)
+      for (const sub of [partidas(codigo), resultados(codigo), campos(codigo), pedidosDoTorneio(codigo)]) {
         for (const d of (await getDocs(sub)).docs) await deleteDoc(d.ref)
       }
       await deleteDoc(torneio(codigo))
@@ -408,6 +415,104 @@ export function criarNuvemFirebase(): Nuvem {
       await deleteDoc(listaDaPelada(codigo))
     },
 
+    // ---- inscrição dos times pelo link ----
+    async publicarInscricao(codigo, dados) {
+      const organizador = await uid()
+      await setDoc(inscricao(codigo), { organizador, ...dados })
+    },
+    ouvirInscricao(codigo, aoMudar, aoErro) {
+      let dados: InscricaoDoTorneio | null = null
+      let times: Omit<TimeInscrito, 'jogadores'>[] = []
+      const jogadores = new Map<string, JogadorInscrito[]>()
+      // cada time tem os jogadores numa coleção: ouve a de cada time que aparece (e para a do que sai)
+      const ouvindoTime = new Map<string, () => void>()
+      const prontos = new Set<string>()
+      const emitir = () => {
+        if (!prontos.has('inscricao') || !prontos.has('times') || times.some((time) => !jogadores.has(time.id))) return
+        aoMudar(dados, times.map((time) => ({ ...time, jogadores: jogadores.get(time.id)! })))
+      }
+      const paradas: (() => void)[] = []
+      let parou = false
+      void logado.then(() => {
+        if (parou) return
+        paradas.push(onSnapshot(inscricao(codigo), (documento) => { dados = (documento.data() as InscricaoDoTorneio | undefined) ?? null; prontos.add('inscricao'); emitir() }, (erro) => aoErro?.(erro)))
+        paradas.push(onSnapshot(query(timesInscritos(codigo), orderBy('em')), (consulta) => {
+          times = consulta.docs.map((documento) => ({ ...(documento.data() as Omit<TimeInscrito, 'id' | 'jogadores'>), id: documento.id }))
+          const ids = new Set(times.map((time) => time.id))
+          for (const [id, parar] of ouvindoTime) if (!ids.has(id)) { parar(); ouvindoTime.delete(id); jogadores.delete(id) }
+          for (const time of times) {
+            if (ouvindoTime.has(time.id)) continue
+            ouvindoTime.set(time.id, onSnapshot(query(jogadoresInscritos(codigo, time.id), orderBy('em')), (lista) => {
+              jogadores.set(time.id, lista.docs.map((documento) => ({ ...(documento.data() as Omit<JogadorInscrito, 'id'>), id: documento.id })))
+              emitir()
+            }, (erro) => aoErro?.(erro)))
+          }
+          prontos.add('times')
+          emitir()
+        }, (erro) => aoErro?.(erro)))
+      })
+      return () => { parou = true; paradas.forEach((parar) => parar()); ouvindoTime.forEach((parar) => parar()) }
+    },
+    async inscreverTime(codigo, { id, ...time }) {
+      const capitao = await uid()
+      await setDoc(doc(timesInscritos(codigo), id), { ...time, capitao, em: Date.now() })
+    },
+    async mudarTimeInscrito(codigo, timeId, dados) {
+      await logado
+      await updateDoc(doc(timesInscritos(codigo), timeId), puro(dados))
+    },
+    async tirarTimeInscrito(codigo, timeId) {
+      await logado
+      for (const documento of (await getDocs(jogadoresInscritos(codigo, timeId))).docs) await deleteDoc(documento.ref)
+      await deleteDoc(doc(timesInscritos(codigo), timeId))
+    },
+    async entrarNoTime(codigo, timeId, jogador) {
+      const id = await uid()
+      await setDoc(doc(jogadoresInscritos(codigo, timeId), id), { ...puro(jogador), em: Date.now() })
+    },
+    async sairDoTime(codigo, timeId, jogadorId) {
+      await logado
+      await deleteDoc(doc(jogadoresInscritos(codigo, timeId), jogadorId))
+    },
+    async pedirEsseSouEu(torneio, pedido) {
+      const conta = await uid()
+      const ref = doc(pedidosDoTorneio(torneio), conta)
+      await (pedido ? setDoc(ref, { ...puro(pedido), em: Date.now() }) : deleteDoc(ref))
+    },
+    ouvirMeuPedido(torneio, aoMudar) {
+      let parar = () => {}
+      let parou = false
+      void uid().then((conta) => {
+        if (parou) return
+        parar = onSnapshot(doc(pedidosDoTorneio(torneio), conta),
+          (documento) => aoMudar(documento.exists() ? { ...(documento.data() as Omit<PedidoEsseSouEu, 'id'>), id: documento.id } : null), () => aoMudar(null))
+      })
+      return () => { parou = true; parar() }
+    },
+    ouvirPedidos(torneio, aoMudar) {
+      let parar = () => {}
+      let parou = false
+      void logado.then(() => {
+        if (parou) return
+        parar = onSnapshot(query(pedidosDoTorneio(torneio), orderBy('em')),
+          (consulta) => aoMudar(consulta.docs.map((documento) => ({ ...(documento.data() as Omit<PedidoEsseSouEu, 'id'>), id: documento.id }))), () => aoMudar([]))
+      })
+      return () => { parou = true; parar() }
+    },
+    async tirarPedido(torneio, conta) {
+      await logado
+      await deleteDoc(doc(pedidosDoTorneio(torneio), conta))
+    },
+    ouvirParticipacoes(aoMudar) {
+      return ouvirDoPerfil<ParticipacaoNoTorneio>(participacoes, aoMudar)
+    },
+    async guardarParticipacao(id, participacao) {
+      const dono = await uid()
+      if (!auth.currentUser || auth.currentUser.isAnonymous) return
+      const ref = doc(participacoes(dono), id)
+      await (participacao ? setDoc(ref, puro(participacao)) : deleteDoc(ref))
+    },
+
     // ---- conta e caixa ----
     ouvirPerfil(aoMudar) {
       if (!nativo()) prepararUmToque()
@@ -469,6 +574,9 @@ export function criarNuvemFirebase(): Nuvem {
     },
     ouvirCarta(aoMudar) {
       return ouvirDoPerfil<PeladaDaCarta>(peladasDaCarta, aoMudar)
+    },
+    ouvirCartaDosTorneios(aoMudar) {
+      return ouvirDoPerfil<TorneioDaCarta>(torneiosDaCarta, aoMudar)
     },
     ouvirDadosDoJogador(aoMudar) {
       const vazio = { foto: null, apelido: null }
@@ -607,6 +715,10 @@ export function criarNuvemFirebase(): Nuvem {
       if (!jogadores.length) return
       await (await funcaoDoServidor('registrarPeladaNaCarta'))({ data, turma, jogadores })
     },
+    async registrarTorneioNaCarta(codigo, nome, data, jogadores) {
+      await logado
+      await (await funcaoDoServidor('registrarTorneioNaCarta'))({ codigo, nome, data, jogadores })
+    },
     async denunciarFoto(conta, motivo) {
       await logado
       await (await funcaoDoServidor('denunciarFoto'))({ conta, motivo })
@@ -647,14 +759,18 @@ export function criarNuvemFirebase(): Nuvem {
       }
       const dono = u.uid
       const docs = async (q: Parameters<typeof getDocs>[0]) => (await getDocs(q)).docs.map((d) => d.ref as DocumentReference)
-      const refs: DocumentReference[] = [...await docs(caixa(dono)), ...await docs(caixinhas(dono)), ...await docs(historico(dono)), doc(db, 'perfis', dono)]
+      const refs: DocumentReference[] = [...await docs(caixa(dono)), ...await docs(caixinhas(dono)), ...await docs(historico(dono)), ...await docs(participacoes(dono)), doc(db, 'perfis', dono)]
       for (const t of await docs(turmas(dono))) refs.push(...await docs(jogadoresDaTurma(dono, t.id)), t)
       for (const t of await docs(query(collection(db, 'torneios'), where('nuvem.organizador', '==', dono)))) {
-        for (const sub of [partidas(t.id), resultados(t.id), campos(t.id)]) refs.push(...await docs(sub))
+        for (const sub of [partidas(t.id), resultados(t.id), campos(t.id), pedidosDoTorneio(t.id)]) refs.push(...await docs(sub))
         refs.push(t)
       }
       for (const c of await docs(query(collection(db, 'cobrancas'), where('organizador', '==', dono)))) refs.push(...await docs(avisos(c.id)), c)
       for (const lista of await docs(query(collection(db, 'listas'), where('organizador', '==', dono)))) refs.push(...await docs(confirmados(lista.id)), lista)
+      for (const link of await docs(query(collection(db, 'inscricoes'), where('organizador', '==', dono)))) {
+        for (const time of await docs(timesInscritos(link.id))) refs.push(...await docs(jogadoresInscritos(link.id, time.id)), time)
+        refs.push(link)
+      }
       await apagarTudo(refs)
       // os contadores de uso (sem nome nem e-mail) e o plano comprado ficam (PLANO.md, seção 14)
       if (codigoDaApple) {
