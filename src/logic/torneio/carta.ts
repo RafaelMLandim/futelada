@@ -121,3 +121,47 @@ export function resumoDoTorneioParaAsCartas(torneio: Torneio): ResumoDoTorneioNa
   }
   return [...resumos.values()].filter((resumo) => resumo.jogos > 0)
 }
+
+/** O resumo do campeão para a imagem de compartilhar (PLANO.md, seção 22.5). null = o torneio ainda não acabou. */
+export type ResumoDoCampeao = {
+  torneio: string
+  time: { nome: string; cor: string }
+  jogadores: { id: string; nome: string; gols: number; conta?: string }[] // os de linha do campeão que jogaram
+  goleiro: { id: string; nome: string; conta?: string } | null
+  // os prêmios individuais podem ser de qualquer time (`time` = o nome do time de quem ganhou)
+  artilheiro: { nome: string; gols: number; time: string } | null
+  garcom: { nome: string; assistencias: number; time: string } | null
+  luva: { nome: string; sofridos: number; jogos: number; time: string } | null
+  melhor: { nome: string; time: string } | null
+  jogos: number
+  gols: number
+}
+
+export function resumoDoCampeao(torneio: Torneio): ResumoDoCampeao | null {
+  const idCampeao = campeao(torneio)
+  const time = torneio.times.find((candidato) => candidato.id === idCampeao)
+  if (!time) return null
+  const resultados = torneio.jogos.flatMap((jogo) => (jogo.resultado ? [jogo.resultado] : []))
+  const jogaram = new Set(resultados.flatMap((resultado) => [...resultado.jogaram.A, ...resultado.jogaram.B]))
+  const golsDe = (id: string) => resultados.flatMap((resultado) => resultado.gols).filter((gol) => gol.autorId === id && !gol.contra).length
+  const goleiro = time.jogadores.find((jogador) => jogador.goleiro) ?? null
+  const artilheiro = artilhariaDoTorneio(torneio)[0]
+  const garcom = assistenciasDoTorneio(torneio)[0]
+  const luva = goleirosDoTorneio(torneio)[0]
+  const nomeDoTime = (id: string) => torneio.times.find((item) => item.id === id)?.nome ?? ''
+  const timeDoMelhor = torneio.times.find((item) => item.jogadores.some((jogador) => jogador.id === torneio.melhorJogador))
+  const melhor = timeDoMelhor?.jogadores.find((jogador) => jogador.id === torneio.melhorJogador)
+  return {
+    torneio: torneio.nome,
+    time: { nome: time.nome, cor: time.cor },
+    jogadores: time.jogadores.filter((jogador) => jogador !== goleiro && jogaram.has(jogador.id))
+      .map((jogador) => ({ id: jogador.id, nome: jogador.nome, gols: golsDe(jogador.id), ...(jogador.conta && { conta: jogador.conta }) })),
+    goleiro: goleiro ? { id: goleiro.id, nome: goleiro.nome, ...(goleiro.conta && { conta: goleiro.conta }) } : null,
+    artilheiro: artilheiro ? { nome: artilheiro.nome, gols: artilheiro.gols, time: nomeDoTime(artilheiro.time) } : null,
+    garcom: garcom ? { nome: garcom.nome, assistencias: garcom.assistencias, time: nomeDoTime(garcom.time) } : null,
+    luva: luva ? { nome: luva.nome, sofridos: luva.sofridos, jogos: luva.jogos, time: nomeDoTime(luva.time) } : null,
+    melhor: melhor && timeDoMelhor ? { nome: melhor.nome, time: timeDoMelhor.nome } : null,
+    jogos: resultados.length,
+    gols: resultados.reduce((total, resultado) => total + resultado.placar[0] + resultado.placar[1], 0),
+  }
+}

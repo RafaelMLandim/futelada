@@ -21,7 +21,7 @@ export { artilhariaDoTorneio, assistenciasDoTorneio, goleirosDoTorneio, cartoesD
 export { cartoesAoRemover, removerCartaoDaPartida, substituicaoParaDesfazer, desfazerSubstituicao, impedimentoParaCorrigir, placarDosGols, placarTravado,
   corrigirResultado } from './correcoes'
 export { siglaDoTime, siglaAutomatica } from './sigla'
-export { resumoDoTorneioParaAsCartas, type ResumoDoTorneioNaCarta } from './carta'
+export { resumoDoTorneioParaAsCartas, resumoDoCampeao, type ResumoDoTorneioNaCarta, type ResumoDoCampeao } from './carta'
 export { juntarInscricoes, vagasDaInscricao, ehCapitao, ligarContaAoJogador } from './inscricao'
 export { separar, juntar, diferencas, aplicarOperacoes, novoCodigo, type BaseTorneio, type DadosNuvem, type Operacao } from './sincronia'
 export { periodoDaPartida, temposDaFase, duracaoDoPeriodo, decorridoNoPeriodo, ultimoPeriodo, nomeDoPeriodo, rotuloDoPeriodo, vaiParaProrrogacao,

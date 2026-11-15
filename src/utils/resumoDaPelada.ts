@@ -5,6 +5,7 @@
 import { imagemDaLuva } from './luva'
 import { artilharia, criterioDoArtilheiro, garcons, goleiroDaSelecao, goleirosMenosVazados, jogadorGoleiro, selecaoDaPelada, tabelaDaPelada } from '../logic'
 import type { RelatorioDoAno } from '../logic'
+import type { ResumoDoCampeao } from '../logic/torneio'
 import { FORMA_DA_CARTA, FORMA_DE_DENTRO_DA_CARTA, METAIS_DA_CARTA, type NivelDaCarta, type NumerosDaCarta } from '../logic/carta'
 import type { Estado } from '../types/pelada'
 import { fotoSemFundo } from './foto'
@@ -77,20 +78,22 @@ function carregarImagem(src: string, deOutroSite = false): Promise<HTMLImageElem
 type Recursos = {
   logo: HTMLImageElement | null
   artilheiro: HTMLImageElement | null; goleiro: HTMLImageElement | null; garcom: HTMLImageElement | null // silhuetas dos troféus (public/silhuetas)
+  chuteira: HTMLImageElement | null // a chuteira de ouro do artilheiro (SVG Repo, CC0)
 }
 
 async function prepararTela(altura: number): Promise<{ c: Ctx; tela: HTMLCanvasElement; r: Recursos }> {
   await Promise.all([`800 72px ${CONDENSADA}`, `600 30px ${NORMAL}`, `700 30px ${NORMAL}`].map((f) => document.fonts.load(f).catch(() => null)))
-  const [logo, artilheiro, goleiro, garcom] = await Promise.all([
+  const [logo, artilheiro, goleiro, garcom, chuteira] = await Promise.all([
     carregarImagem(`${import.meta.env.BASE_URL}logo.png`),
     carregarImagem(`${import.meta.env.BASE_URL}silhuetas/artilheiro.svg`),
     carregarImagem(`${import.meta.env.BASE_URL}silhuetas/goleiro.svg`),
     carregarImagem(`${import.meta.env.BASE_URL}silhuetas/garcom.png`),
+    carregarImagem(`${import.meta.env.BASE_URL}silhuetas/chuteira.svg`),
   ])
   const tela = document.createElement('canvas')
   tela.width = L
   tela.height = altura
-  return { c: tela.getContext('2d')!, tela, r: { logo, artilheiro, goleiro, garcom } }
+  return { c: tela.getContext('2d')!, tela, r: { logo, artilheiro, goleiro, garcom, chuteira } }
 }
 
 function cabecalho(c: Ctx, r: Recursos, titulo: string, sub = dataHoje().toUpperCase()) {
@@ -153,7 +156,8 @@ function estadio(c: Ctx, topo: number, base: number) {
  * No gol, o goleiro fixo que mais venceu (o mesmo critério da linha).
  */
 /** O que vai no campo: os jogadores da seleção (com a plaquinha e os gols) e o goleiro. */
-type SelecaoParaDesenhar = { jogadores: { id: string; nome: string; gols: number }[]; goleiro: string | null; vazio: string }
+/** `goleiroId`: para achar a foto do goleiro (torneio); sem ele, a do goleiro fixo da pelada (pelo nome). */
+type SelecaoParaDesenhar = { jogadores: { id: string; nome: string; gols: number }[]; goleiro: string | null; goleiroId?: string; vazio: string }
 
 const selecaoDoDia = (estado: Estado): SelecaoParaDesenhar => ({
   jogadores: selecaoDaPelada(estado), goleiro: goleiroDaSelecao(estado)?.nome ?? null,
@@ -335,7 +339,7 @@ function selecaoNoCampo(c: Ctx, sel: SelecaoParaDesenhar, topo: number, base: nu
       peca(x, v, j.nome, '', j.gols, AMARELO, NAVY, espaco, j.id) // foto (ou silhueta); ao lado, os gols
     }
   })
-  if (selecao.length) peca(L / 2, vs[linhas.length], sel.goleiro ?? '', 'G', 0, '#fff', NAVY, 999, sel.goleiro ? jogadorGoleiro(sel.goleiro).id : '')
+  if (selecao.length) peca(L / 2, vs[linhas.length], sel.goleiro ?? '', 'G', 0, '#fff', NAVY, 999, sel.goleiro ? sel.goleiroId ?? jogadorGoleiro(sel.goleiro).id : '')
   c.restore()
 }
 
@@ -355,6 +359,7 @@ const paraPng = (tela: HTMLCanvasElement): Promise<Blob> =>
 type Premio = { nome: string; detalhe: string } | null
 type Premios = {
   chuteira: Premio; luva: Premio; garcom: Premio
+  melhor?: Premio // torneio: o melhor jogador (escolhido pelo organizador)
   tituloChuteira?: string; tituloLuva?: string; tituloGarcom?: string; semChuteira?: string
 }
 
@@ -384,12 +389,15 @@ function trofeusNaFaixa(c: Ctx, premios: Premios, r: Recursos, y: number, altura
   const { chuteira, luva, garcom } = premios
   const trofeus = [
     { titulo: premios.tituloChuteira ?? 'CHUTEIRA DE OURO', nome: chuteira?.nome ?? '—', detalhe: chuteira?.detalhe ?? premios.semChuteira ?? 'Nenhum gol com autor',
-      silhueta: r.artilheiro, largura: 240, altura: 180, ajuste: 4 },
-    ...(luva ? [{ titulo: premios.tituloLuva ?? 'LUVA DE OURO', nome: luva.nome, detalhe: luva.detalhe, silhueta: r.goleiro, largura: 320, altura: 180, ajuste: 8 }] : []),
+      silhueta: r.chuteira, largura: 220, altura: 140, ajuste: 0, inclinacao: -0.3 },
+    ...(luva ? [{ titulo: premios.tituloLuva ?? 'LUVA DE OURO', nome: luva.nome, detalhe: luva.detalhe, silhueta: r.goleiro, largura: 300, altura: 110, ajuste: 0, inclinacao: -0.45, deslocamento: 40 }] : []),
     ...(garcom ? [{ titulo: premios.tituloGarcom ?? 'TROFÉU GARÇOM', nome: garcom.nome, detalhe: garcom.detalhe, silhueta: r.garcom, largura: 240, altura: 190, ajuste: 4 }] : []),
-  ]
+    ...(premios.melhor ? [{ titulo: 'MELHOR JOGADOR', nome: premios.melhor.nome, detalhe: premios.melhor.detalhe, silhueta: r.artilheiro, largura: 240, altura: 180, ajuste: 4 }] : []),
+  ] as { titulo: string; nome: string; detalhe: string; silhueta: HTMLImageElement | null; largura: number; altura: number; ajuste: number; inclinacao?: number; deslocamento?: number }[]
   const coluna = L / trofeus.length
-  const tres = trofeus.length === 3 // três troféus: tudo um pouco menor para caber
+  const quatro = trofeus.length === 4
+  const tres = trofeus.length >= 3 // três ou quatro troféus: tudo um pouco menor para caber
+  const escala = quatro ? 0.66 : tres ? 0.8 : 1
   const base = y + 214 // topo do pedestal
   trofeus.forEach((trofeu, indice) => {
     const x = coluna * indice + coluna / 2
@@ -397,12 +405,12 @@ function trofeusNaFaixa(c: Ctx, premios: Premios, r: Recursos, y: number, altura
     const luz = c.createRadialGradient(x, base - 70, 10, x, base - 70, 190)
     luz.addColorStop(0, 'rgba(255,210,63,.28)'); luz.addColorStop(1, 'rgba(255,210,63,0)')
     c.fillStyle = luz; c.fillRect(x - coluna / 2, y + 10, coluna, 300)
-    silhuetaDourada(c, trofeu.silhueta, x, base - trofeu.ajuste, tres ? trofeu.largura * 0.8 : trofeu.largura, trofeu.altura)
-    pedestal(c, x, base, tres ? 160 : 190)
-    const maximo = coluna - 40
-    texto(c, trofeu.titulo, x, base + 118, { tam: tres ? 28 : 32, cor: AMARELO, alinha: 'center', max: maximo })
-    texto(c, trofeu.nome, x, base + 168, { tam: tres ? 44 : 52, alinha: 'center', max: maximo })
-    texto(c, trofeu.detalhe, x, base + 202, { tam: tres ? 22 : 26, cor: CINZA, peso: 600, fonte: NORMAL, alinha: 'center', max: maximo })
+    silhuetaDourada(c, trofeu.silhueta, x + (trofeu.deslocamento ?? 0) * escala, base - trofeu.ajuste, trofeu.largura * escala, trofeu.altura * (quatro ? 0.8 : 1), trofeu.inclinacao ?? 0)
+    pedestal(c, x, base, quatro ? 130 : tres ? 160 : 190)
+    const maximo = coluna - 24
+    texto(c, trofeu.titulo, x, base + 118, { tam: quatro ? 22 : tres ? 28 : 32, cor: AMARELO, alinha: 'center', max: maximo })
+    texto(c, trofeu.nome, x, base + 168, { tam: quatro ? 36 : tres ? 44 : 52, alinha: 'center', max: maximo })
+    texto(c, trofeu.detalhe, x, base + 202, { tam: quatro ? 19 : tres ? 22 : 26, cor: CINZA, peso: 600, fonte: NORMAL, alinha: 'center', max: maximo })
   })
 }
 
@@ -421,6 +429,28 @@ export async function imagemDoResumo(estado: Estado, fotos: Record<string, strin
   selecaoNoCampo(c, selecaoDoDia(estado), 220, faixa, false, fotosDosJogadores)
   trofeusNaFaixa(c, premiosDoDia(estado), r, faixa, 430)
   rodape(c, ALTURA - 98, 98, numerosDoDia(estado))
+  return paraPng(tela)
+}
+
+/**
+ * Imagem do campeão do torneio (1080×1920, PLANO.md, seção 22.5): o time campeão no campo (quem jogou, com os gols e a
+ * foto de quem tem conta), o goleiro no gol e, embaixo, artilheiro, Troféu Garçom e luva de ouro. O melhor jogador
+ * (escolhido pelo organizador) vai no rodapé. `fotos`: id do jogador → foto.
+ */
+export async function imagemDoCampeao(resumo: ResumoDoCampeao, fotos: Record<string, string> = {}): Promise<Blob> {
+  const { c, tela, r } = await prepararTela(ALTURA)
+  const fotosDosJogadores = await carregarFotos(fotos)
+  cabecalho(c, r, resumo.time.nome.toUpperCase(), `CAMPEÃO · ${resumo.torneio.toUpperCase()}`)
+  const faixa = ALTURA - 98 - 430
+  selecaoNoCampo(c, { jogadores: resumo.jogadores, goleiro: resumo.goleiro?.nome ?? null, goleiroId: resumo.goleiro?.id, vazio: 'O time campeão aparece aqui' }, 220, faixa, false, fotosDosJogadores)
+  trofeusNaFaixa(c, {
+    tituloChuteira: 'ARTILHEIRO', tituloLuva: 'GOLEIRO MENOS VAZADO', tituloGarcom: 'TROFÉU GARÇOM',
+    chuteira: resumo.artilheiro ? { nome: resumo.artilheiro.nome, detalhe: `${plural(resumo.artilheiro.gols, 'gol', 'gols')} · ${resumo.artilheiro.time}` } : null,
+    luva: resumo.luva ? { nome: resumo.luva.nome, detalhe: `${plural(resumo.luva.sofridos, 'gol', 'gols')} em ${plural(resumo.luva.jogos, 'jogo', 'jogos')} · ${resumo.luva.time}` } : null,
+    garcom: resumo.garcom && resumo.garcom.assistencias > 0 ? { nome: resumo.garcom.nome, detalhe: `${plural(resumo.garcom.assistencias, 'assistência', 'assistências')} · ${resumo.garcom.time}` } : null,
+    melhor: resumo.melhor ? { nome: resumo.melhor.nome, detalhe: resumo.melhor.time } : null,
+  }, r, faixa, 430)
+  rodape(c, ALTURA - 98, 98, `${plural(resumo.jogos, 'jogo', 'jogos')} · ${plural(resumo.gols, 'gol', 'gols')}`)
   return paraPng(tela)
 }
 
@@ -528,25 +558,60 @@ function pedestal(c: Ctx, x: number, y: number, l: number) {
   retangulo(c, x - l * 0.26, y + a * 0.32, l * 0.52, a * 0.4, 4); c.fillStyle = ouro(c, x - l * 0.26, y + a * 0.32, l * 0.52, a * 0.4); c.fill()
 }
 
+/** Onde o desenho está de fato dentro da imagem (sem a margem transparente), em pixels da imagem. */
+const margens = new WeakMap<HTMLImageElement, { x: number; y: number; l: number; a: number }>()
+function margemDoDesenho(img: HTMLImageElement) {
+  const guardada = margens.get(img)
+  if (guardada) return guardada
+  const largura = img.naturalWidth || img.width, altura = img.naturalHeight || img.height
+  const tela = document.createElement('canvas'); tela.width = largura; tela.height = altura
+  const t = tela.getContext('2d')!
+  t.drawImage(img, 0, 0, largura, altura)
+  let x0 = largura, y0 = altura, x1 = -1, y1 = -1
+  try {
+    const { data } = t.getImageData(0, 0, largura, altura)
+    for (let y = 0; y < altura; y++) for (let x = 0; x < largura; x++) {
+      if (data[(y * largura + x) * 4 + 3] > 10) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y }
+    }
+  } catch { /* imagem de fora sem permissão: usa inteira */ }
+  const recorte = x1 < 0 ? { x: 0, y: 0, l: largura, a: altura } : { x: x0, y: y0, l: x1 - x0 + 1, a: y1 - y0 + 1 }
+  margens.set(img, recorte)
+  return recorte
+}
+
 /**
  * Silhueta dourada (jogador chutando ou goleiro voando, de public/silhuetas) em cima do pedestal:
  * cabe em `larg` × `alt`, centrada em x, com a base em y. A imagem preta vira dourada.
  */
-function silhuetaDourada(c: Ctx, img: HTMLImageElement | null, x: number, y: number, larg: number, alt: number) {
+function silhuetaDourada(c: Ctx, img: HTMLImageElement | null, x: number, y: number, larg: number, alt: number, inclinacao = 0) {
   if (!img) return
-  const e = Math.min(larg / img.width, alt / img.height)
-  const l = Math.round(img.width * e)
-  const a = Math.round(img.height * e)
+  // corta a margem vazia do desenho (os SVGs vêm com folga em volta): assim ele encosta no pedestal
+  const recorte = margemDoDesenho(img)
+  const e = Math.min(larg / recorte.l, alt / recorte.a)
+  const l = Math.round(recorte.l * e)
+  const a = Math.round(recorte.a * e)
   const tinta = document.createElement('canvas')
   tinta.width = l; tinta.height = a
   const t = tinta.getContext('2d')!
-  t.drawImage(img, 0, 0, l, a)
+  t.drawImage(img, recorte.x, recorte.y, recorte.l, recorte.a, 0, 0, l, a)
   t.globalCompositeOperation = 'source-in'
   t.fillStyle = ouro(t, 0, 0, l, a)
   t.fillRect(0, 0, l, a)
   c.save()
   c.shadowColor = 'rgba(0,0,0,.55)'; c.shadowBlur = 16; c.shadowOffsetY = 6
-  c.drawImage(tinta, x - l / 2, y - a, l, a)
+  // `inclinacao`: gira em volta do meio da base e desce até o ponto mais baixo encostar no pedestal (o pé do goleiro)
+  let maisBaixo = 0
+  if (inclinacao) {
+    const seno = Math.sin(inclinacao), cosseno = Math.cos(inclinacao)
+    try {
+      const { data } = t.getImageData(0, 0, l, a)
+      for (let py = 0; py < a; py += 2) for (let px = 0; px < l; px += 2) {
+        if (data[(py * l + px) * 4 + 3] > 40) maisBaixo = Math.max(maisBaixo, (px - l / 2) * seno + (py - a) * cosseno)
+      }
+    } catch { /* segue sem acertar */ }
+  }
+  c.translate(x, y - maisBaixo); c.rotate(inclinacao)
+  c.drawImage(tinta, -l / 2, -a, l, a)
   c.restore()
 }
 

@@ -10,6 +10,7 @@ import {
 import type { JogoTorneio, Torneio } from '../../types/torneio'
 import { SEM_COLETE } from '../../utils/cores'
 import { ChaveCompleta } from './ChaveCompleta'
+import { CompartilharCampeao } from './CompartilharCampeao'
 import { descreverOrigem, timePorId } from './nomes'
 
 const COL = { width: 24, textAlign: 'center' as const, flex: 'none' }
@@ -37,6 +38,7 @@ export function TabelaTorneio({ torneio, onEscolherMelhor }: { torneio: Torneio;
             </div>
           </section>
         )}
+        {vencedorTorneio && <CompartilharCampeao torneio={torneio} />}
         {/* melhor jogador: título que o organizador dá no fim do torneio (vira conquista na carta de quem tem conta) */}
         {vencedorTorneio && (melhor || onEscolherMelhor) && (
           <section className="panel">

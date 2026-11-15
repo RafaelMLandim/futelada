@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resumoDoTorneioParaAsCartas, timesDoJogo } from '..'
+import { resumoDoCampeao, resumoDoTorneioParaAsCartas, timesDoJogo } from '..'
 import { conquistasDosTorneios, nivelDoTorneio, notaDaCarta, notaDoTorneio, numerosDosTorneios, type TorneioDaCarta } from '../../carta'
 import type { Torneio } from '../../../types/torneio'
 import type { Lado } from '../../../types/pelada'
@@ -92,5 +92,15 @@ describe('carta do torneio', () => {
     const torneio = (extra: Partial<TorneioDaCarta>): TorneioDaCarta => ({ id: 'T', nome: 'Copa', data: 1, jogos: 3, vitorias: 2, empates: 0, gols: 4, assistencias: 1, amarelos: 0, vermelhos: 0, ...extra })
     expect(nivelDoTorneio(torneio({ campeao: true, melhorJogador: true }))).toBe('diamante')
     expect(conquistasDosTorneios([torneio({ melhorJogador: true })]).find((conquista) => conquista.id === 'melhor-jogador')!.nivel).toBe('bronze')
+  })
+
+  it('o resumo do campeão: o time no campo e os prêmios (de qualquer time); sem fim, nada', () => {
+    const { torneio } = torneioComContas()
+    const resumo = resumoDoCampeao(torneio)!
+    expect(resumo.time.nome).toBe(torneio.times[0].nome)
+    expect(resumo.jogadores.map((jogador) => jogador.gols)).toContain(2)
+    expect(resumo.artilheiro).toMatchObject({ gols: 2, time: torneio.times[0].nome })
+    expect(resumo.jogos).toBe(1)
+    expect(resumoDoCampeao({ ...torneio, jogos: [...torneio.jogos, { ...torneio.jogos[0], id: 'outro', resultado: null }] })).toBeNull()
   })
 })

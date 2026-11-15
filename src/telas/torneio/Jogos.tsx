@@ -12,6 +12,7 @@ import type { JogoTorneio, Torneio } from '../../types/torneio'
 import { useConfirmar } from '../../utils/confirmacao'
 import { SEM_COLETE } from '../../utils/cores'
 import { ChaveCompleta } from './ChaveCompleta'
+import { CompartilharCampeao } from './CompartilharCampeao'
 import { CorrigirResultado } from './CorrigirResultado'
 import { EscolherEscalacao, precisaEscalar } from './EscolherEscalacao'
 import { EncontrarMeuNome } from './EsseSouEu'
@@ -109,6 +110,7 @@ export function Jogos({ hook, onJogar, onVerTimes }: { hook: TorneioHook; onJoga
             </div>
           </section>
         )}
+        {vencedor && <CompartilharCampeao torneio={torneio} />}
         {temMata && (
           <button className="btn w sm" style={{ flex: 'none' }} onClick={() => setChaveAberta(true)}>
             <Icone nome="trofeu" tamanho={20} /> Ver chave do mata-mata

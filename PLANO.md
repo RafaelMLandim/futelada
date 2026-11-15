@@ -1307,3 +1307,11 @@ Decidido: a carta do torneio fica **separada** da pelada; quem foi digitado pelo
   a da pelada explica o Geral (porcentagem dos pontos, 18 = 99).
 - **Chave na aba Tabela (15/11/2026):** saiu o quadro pequeno "Mata-mata" (colunas rolando de lado); no lugar, o botão
   "Ver chave do mata-mata", que abre a mesma chave completa da aba Jogos (`ChaveCompleta`).
+
+### 22.5 Resumo do campeão para compartilhar (15/11/2026)
+- Com o torneio acabado, o botão **"Compartilhar o resumo"** fica junto do campeão (abas Jogos e Tabela, para todos).
+- A imagem (`imagemDoCampeao`, 1080×1920, no estilo da seleção da pelada): o **time campeão** no campo (quem jogou,
+  com os gols e a foto de quem tem conta), o goleiro dele no gol e, embaixo, os prêmios individuais, que podem ser de
+  **qualquer time** (com o nome do time): Artilheiro, Goleiro menos vazado, Troféu Garçom (se teve assistência) e
+  Melhor jogador (a coroa; se o organizador escolheu). Rodapé: jogos e gols do torneio. Dados em
+  `resumoDoCampeao` (`logic/torneio/carta.ts`).
