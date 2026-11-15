@@ -13,9 +13,17 @@ import { duracaoDoPeriodo, rotuloDoPeriodo } from './periodos'
 
 export const partidaDoJogo = (t: Torneio, jogoId: string) => t.emAndamento.find((p) => p.jogoId === jogoId)
 
+/** O jogo ainda não começou: ninguém apitou o 1º tempo (o relógio nunca andou). */
+export const jogoNaoComecou = (p: PartidaTorneio) =>
+  !p.crono.rodando && p.crono.acumulado === 0 && (p.periodo ?? 1) === 1 && !p.prorrogacao
+
+/** Antes do apito inicial, os titulares acompanham quem está em campo; depois, ficam guardados como estavam. */
+const comTitulares = (p: PartidaTorneio): PartidaTorneio =>
+  jogoNaoComecou(p) ? { ...p, escalacao: { ...p.escalacao, titulares: { A: [...p.escalacao.emCampo.A], B: [...p.escalacao.emCampo.B] } } } : p
+
 const comPartida = (t: Torneio, jogoId: string, mudar: (p: PartidaTorneio) => PartidaTorneio): Torneio => {
   if (!partidaDoJogo(t, jogoId)) throw new Error('Esse jogo não está em andamento')
-  return { ...t, emAndamento: t.emAndamento.map((p) => (p.jogoId === jogoId ? mudar(p) : p)) }
+  return { ...t, emAndamento: t.emAndamento.map((p) => (p.jogoId === jogoId ? comTitulares(mudar(p)) : p)) }
 }
 
 const timeDoLado = (t: Torneio, jogoId: string, lado: Lado) =>
@@ -100,14 +108,17 @@ export function proximosPorCampo(t: Torneio): { campo: number; jogo: JogoTorneio
   return lista
 }
 
-/** Começa um jogo: no campo do grupo dele, ou no primeiro campo livre. */
-export function iniciarPartida(t: Torneio, jogoId: string, campo?: number): Torneio {
+/**
+ * Começa um jogo: no campo do grupo dele, ou no primeiro campo livre. `bancoEscolhido`: quem cada time deixa no
+ * banco (sem ele, o banco sugerido: quem ficou de fora no último jogo do time).
+ */
+export function iniciarPartida(t: Torneio, jogoId: string, campo?: number, bancoEscolhido?: Record<Lado, string[]>): Torneio {
   if (camposLivres(t).length === 0) throw new Error('Todos os campos estão em uso')
   const jogo = jogosParaComecar(t).find((j) => j.id === jogoId)
   if (!jogo) throw new Error('Esse jogo não pode começar agora')
   const escolhido = campo ?? campoParaJogo(t, jogo)!
   if (!camposLivres(t).includes(escolhido) || !serveNoCampo(t, jogo, escolhido)) throw new Error('Esse campo não está livre para esse jogo')
-  const escalacao = iniciarEscalacao(t, jogo)
+  const escalacao = iniciarEscalacao(t, jogo, bancoEscolhido)
   // o goleiro do time começa no gol (é o primeiro em campo); suspenso, o gol começa vazio
   const goleiroInicial = (lado: Lado) => {
     const time = timeDoLado(t, jogoId, lado)
@@ -230,6 +241,8 @@ export function expulsosNaPartida(p: PartidaTorneio): Set<string> {
 
 export function substituirNaPartida(t: Torneio, jogoId: string, lado: Lado, saiId: string, entraId: string): Torneio {
   return comPartida(t, jogoId, (p) => {
+    // antes do apito inicial é acerto da escalação: não conta como substituição e quem saiu não "jogou"
+    if (jogoNaoComecou(p)) return trocarAntesDoApito(p, lado, saiId, entraId)
     const escalacao = substituir(p.escalacao, lado, saiId, entraId, t.regras.maxSubstituicoes, expulsosNaPartida(p), t.regras.reentrada !== false)
     // guarda a troca (para dar para desfazer a última)
     const feita = { lado, saiId, entraId, primeiraVez: !p.escalacao.jogaram[lado].includes(entraId), goleiroAntes: p.goleiros?.[lado] ?? null }
@@ -240,18 +253,35 @@ export function substituirNaPartida(t: Torneio, jogoId: string, lado: Lado, saiI
   })
 }
 
-/** Encerra o jogo e guarda o resultado. No mata-mata empatado, passe o placar dos pênaltis. */
+/** Troca na escalação antes do apito: quem sai volta para o banco como se não tivesse começado. */
+function trocarAntesDoApito(p: PartidaTorneio, lado: Lado, saiId: string, entraId: string): PartidaTorneio {
+  const { escalacao } = p
+  if (!escalacao.emCampo[lado].includes(saiId)) throw new Error('Quem sai precisa estar em campo')
+  if (!escalacao.banco[lado].includes(entraId)) throw new Error('Quem entra precisa estar no banco')
+  const jogaram = escalacao.jogaram[lado].filter((id) => id !== saiId)
+  const novaEscalacao = {
+    ...escalacao,
+    emCampo: { ...escalacao.emCampo, [lado]: escalacao.emCampo[lado].map((id) => (id === saiId ? entraId : id)) },
+    banco: { ...escalacao.banco, [lado]: [...escalacao.banco[lado].filter((id) => id !== entraId), saiId] },
+    jogaram: { ...escalacao.jogaram, [lado]: jogaram.includes(entraId) ? jogaram : [...jogaram, entraId] },
+  }
+  if (p.goleiros?.[lado] !== saiId) return { ...p, escalacao: novaEscalacao }
+  return { ...p, escalacao: novaEscalacao, goleiros: { A: p.goleiros.A, B: p.goleiros.B, [lado]: entraId } }
+}
+
 /** Grava a disputa de pênaltis no jogo em andamento (null = volta para antes dos pênaltis). */
 export function penaltisNaPartida(t: Torneio, jogoId: string, penaltis: Penaltis | null): Torneio {
   return comPartida(t, jogoId, (p) => ({ ...p, penaltis }))
 }
 
+/** Encerra o jogo e guarda o resultado. No mata-mata empatado, passe o placar dos pênaltis. */
 export function encerrarPartida(t: Torneio, jogoId: string, penaltis: Placar | null = null, agora = Date.now()): Torneio {
   const p = partidaDoJogo(t, jogoId)
   if (!p) throw new Error('Esse jogo não está em andamento')
   const goleiros = { A: goleiroNaPartida(t, p, 'A')?.nome ?? null, B: goleiroNaPartida(t, p, 'B')?.nome ?? null }
   const salvo = registrarResultado(t, jogoId, {
     placar: p.placar, penaltis, gols: p.gols, cartoes: p.cartoes, goleiros, jogaram: p.escalacao.jogaram, sequencia: 0,
+    ...(p.escalacao.titulares && { titulares: p.escalacao.titulares }),
     encerradoEm: agora,
   })
   return { ...salvo, emAndamento: salvo.emAndamento.filter((x) => x.jogoId !== jogoId) }

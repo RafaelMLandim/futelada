@@ -1,6 +1,6 @@
 // Regras do torneio (ver PLANO.md, seção 9). Funções puras, como as da pelada.
 
-export { regrasPadrao, novoTorneio, novoTime, adicionarTime, editarTime, removerTime, adicionarJogadorAoTime,
+export { regrasPadrao, novoTorneio, novoTime, adicionarTime, editarTime, numerosDasCamisas, removerTime, adicionarJogadorAoTime,
   removerJogadorDoTime, titularesEReservas, goleiroDoTime, jogadoresDeLinha, converterGoleirosAntigos, problemasParaSortear, sortear,
   nomeDoGrupo } from './criar'
 export { embaralhar, type Aleatorio } from './sorteio'
@@ -12,10 +12,10 @@ export { jogoPorId, vencedor, placarDecisivo, precisaDePenaltis, resolverOrigem,
 export { novaDisputa, quemBate, placarDosPenaltis, vencedorDosPenaltis, cobrar, voltarCobranca,
   type Penaltis, type Cobranca } from './penaltis'
 export { situacaoDisciplinar, type SituacaoDisciplinar } from './suspensoes'
-export { iniciarEscalacao, substituir, impedimentoDaSubstituicao, saiuDoJogo } from './escalacao'
+export { iniciarEscalacao, substituir, impedimentoDaSubstituicao, saiuDoJogo, bancoSugerido, reservasDoJogo } from './escalacao'
 export { iniciarPartida, cancelarPartida, cronoDaPartida, fimDoTempoDaPartida, acrescimosNaPartida, golNaPartida, passeNaPartida, removerGolDaPartida, cartaoNaPartida,
   expulsosNaPartida, goleiroNaPartida, golVazioPorExpulsao, irParaOGol, substituirNaPartida, encerrarPartida, penaltisNaPartida, partidaDoJogo, timesJogando, camposLivres,
-  jogosParaComecar, campoDoJogo, campoLiberadoDosGrupos, campoParaJogo, proximosPorCampo, podeComecarNoCampo } from './partida'
+  jogosParaComecar, campoDoJogo, campoLiberadoDosGrupos, campoParaJogo, proximosPorCampo, podeComecarNoCampo, jogoNaoComecou } from './partida'
 export { artilhariaDoTorneio, assistenciasDoTorneio, goleirosDoTorneio, cartoesDoTorneio, type ArtilheiroTorneio, type GarcomTorneio,
   type GoleiroTorneio, type CartoesTorneio } from './estatisticas'
 export { cartoesAoRemover, removerCartaoDaPartida, substituicaoParaDesfazer, desfazerSubstituicao, impedimentoParaCorrigir, placarDosGols, placarTravado,

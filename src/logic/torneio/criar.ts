@@ -57,6 +57,20 @@ export function editarTime(torneio: Torneio, id: string, mudar: (t: TimeTorneio)
   return { ...torneio, times: torneio.times.map((t) => (t.id === id ? mudar(t) : t)) }
 }
 
+/**
+ * Troca só os números das camisas do time (`numeros`: id do jogador → número; sem número, tira). Não mexe em quem
+ * está no time nem na ordem: dá para usar com o time em campo.
+ */
+export function numerosDasCamisas(torneio: Torneio, id: string, numeros: Record<string, number | undefined>): Torneio {
+  return editarTime(torneio, id, (time) => ({
+    ...time,
+    jogadores: time.jogadores.map(({ camisa: camisaAntiga, ...jogador }) => {
+      const numero = jogador.id in numeros ? numeros[jogador.id] : camisaAntiga
+      return numero === undefined ? jogador : { ...jogador, camisa: numero }
+    }),
+  }))
+}
+
 export function removerTime(torneio: Torneio, id: string): Torneio {
   if (torneio.sorteado) throw new Error('Não dá para remover time depois do sorteio')
   return { ...torneio, times: torneio.times.filter((t) => t.id !== id) }

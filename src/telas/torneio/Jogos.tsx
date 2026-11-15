@@ -4,14 +4,16 @@ import { Camisa } from '../../components/Camisa'
 import { Icone } from '../../components/Icone'
 import {
   campoDoJogo, camposLivres, campeao, iniciarPartida, jogosParaComecar, nomeDoGrupo, podeComecarNoCampo, problemasParaSortear,
-  proximosPorCampo, sortear,
+  proximosPorCampo, reservasDoJogo, sortear,
 } from '../../logic/torneio'
 import type { TorneioHook } from '../../store/torneio'
+import type { Lado } from '../../types/pelada'
 import type { JogoTorneio, Torneio } from '../../types/torneio'
 import { useConfirmar } from '../../utils/confirmacao'
 import { SEM_COLETE } from '../../utils/cores'
 import { ChaveCompleta } from './ChaveCompleta'
 import { CorrigirResultado } from './CorrigirResultado'
+import { EscolherEscalacao } from './EscolherEscalacao'
 import { descreverOrigem, nomeDoJogo, timePorId } from './nomes'
 
 const NOME_FORMATO = { pontos: 'Pontos corridos', 'mata-mata': 'Mata-mata', grupos: 'Grupos + mata-mata' }
@@ -23,6 +25,8 @@ export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: 
   const [chaveAberta, setChaveAberta] = useState(false) // mata-mata em tela cheia
   const [corrigindo, setCorrigindo] = useState<string | null>(null) // jogo encerrado que o organizador está corrigindo
   const comecou = torneio.jogos.some((j) => j.resultado)
+  // jogo esperando a escalação (algum time tem reserva: antes de começar, escolhe quem fica no banco)
+  const [escalando, setEscalando] = useState<{ jogoId: string; campo?: number } | null>(null)
 
   if (!torneio.sorteado) {
     const problemas = problemasParaSortear(torneio)
@@ -76,10 +80,18 @@ export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: 
   const variosCampos = torneio.regras.campos > 1
   const vencedor = campeao(torneio)
   const temMata = torneio.jogos.some((j) => j.fase === 'mata')
-  const jogar = (jogoId: string, campo?: number) => {
-    hook.aplicar((t) => iniciarPartida(t, jogoId, campo))
+  const comecarJogo = (jogoId: string, campo?: number, banco?: Record<Lado, string[]>) => {
+    setEscalando(null)
+    hook.aplicar((t) => iniciarPartida(t, jogoId, campo, banco))
     onJogar(jogoId)
   }
+  const jogar = (jogoId: string, campo?: number) => {
+    const jogo = torneio.jogos.find((candidato) => candidato.id === jogoId)
+    const reservas = jogo ? reservasDoJogo(torneio, jogo) : { A: 0, B: 0 }
+    if (reservas.A > 0 || reservas.B > 0) return setEscalando({ jogoId, campo })
+    comecarJogo(jogoId, campo)
+  }
+  const jogoEscalando = escalando ? torneio.jogos.find((candidato) => candidato.id === escalando.jogoId) : undefined
 
   return (
     <div className="scr">
@@ -100,6 +112,10 @@ export function Jogos({ hook, onJogar }: { hook: TorneioHook; onJogar: (jogoId: 
         )}
         {chaveAberta && <ChaveCompleta torneio={torneio} onFechar={() => setChaveAberta(false)} />}
         {corrigindo && <CorrigirResultado hook={hook} jogoId={corrigindo} onFechar={() => setCorrigindo(null)} />}
+        {escalando && jogoEscalando && (
+          <EscolherEscalacao torneio={torneio} jogo={jogoEscalando} onCancelar={() => setEscalando(null)}
+            onConfirmar={(banco) => comecarJogo(escalando.jogoId, escalando.campo, banco)} />
+        )}
         {[...torneio.emAndamento].sort((a, b) => a.campo - b.campo).map((p) => (
           <button key={p.jogoId} className="panel destaque row" style={{ padding: '10px 12px', cursor: 'pointer', font: 'inherit', color: 'inherit', textAlign: 'left' }}
             onClick={() => onJogar(p.jogoId)}>

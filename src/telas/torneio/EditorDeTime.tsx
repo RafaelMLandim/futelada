@@ -1,8 +1,9 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Aviso } from '../../components/Aviso'
 import { Barra } from '../../components/Barra'
 import { Camisa, CamisaQueTroca, type TrocaDeModelo } from '../../components/Camisa'
 import { Icone } from '../../components/Icone'
+import { NumeroDaCamisa } from '../../components/NumeroDaCamisa'
 import { novoJogador } from '../../logic'
 import { goleiroDoTime, jogadoresDeLinha, siglaAutomatica } from '../../logic/torneio'
 import { MODELOS_DE_UNIFORME, type ModeloDeUniforme, type TimeTorneio, type Torneio } from '../../types/torneio'
@@ -31,6 +32,7 @@ export function EditorDeTime({ torneio, inicial, onSalvar, onExcluir, onCancelar
   // na edição, `time.jogadores` fica só com os de linha; o goleiro é editado à parte e volta para a lista ao salvar
   const [time, setTime] = useState<TimeTorneio>({ ...inicial, jogadores: jogadoresDeLinha(inicial) })
   const [nomeDoGoleiro, setNomeDoGoleiro] = useState(goleiroDoTime(inicial)?.nome ?? '')
+  const [camisaDoGoleiro, setCamisaDoGoleiro] = useState<number | undefined>(goleiroDoTime(inicial)?.camisa)
   const [nomeJogador, setNomeJogador] = useState('')
   const [aviso, setAviso] = useState<string | null>(null)
   const campo = useRef<HTMLInputElement>(null)
@@ -88,6 +90,48 @@ export function EditorDeTime({ torneio, inicial, onSalvar, onExcluir, onCancelar
     ;[js[i - 1], js[i]] = [js[i], js[i - 1]]
     return { ...t, jogadores: js }
   })
+  /** Número da camisa (opcional): só dígitos, até 2; vazio tira o número. */
+  const lerCamisa = (texto: string) => {
+    const digitos = texto.replace(/\D/g, '').slice(0, 2)
+    return digitos === '' ? undefined : Number(digitos)
+  }
+  const mudarCamisa = (id: string, texto: string) => setTime((t) => ({
+    ...t, jogadores: t.jogadores.map((jogador) => (jogador.id === id ? { ...jogador, camisa: lerCamisa(texto) } : jogador)),
+  }))
+  // número repetido no time: o campo fica vermelho (não impede salvar)
+  const camisas = [camisaDoGoleiro, ...time.jogadores.map((jogador) => jogador.camisa)].filter((numero) => numero !== undefined)
+  const camisaRepetida = (numero: number | undefined) => numero !== undefined && camisas.filter((outro) => outro === numero).length > 1
+  /** Enter no número: vai para o número do próximo jogador (no último, só fecha o teclado). */
+  const passarParaOProximo = (evento: KeyboardEvent<HTMLInputElement>) => {
+    if (evento.key !== 'Enter') return
+    evento.preventDefault()
+    const campos = [...document.querySelectorAll<HTMLInputElement>('.numerando .inp.camisa')]
+    const proximo = campos[campos.indexOf(evento.currentTarget) + 1]
+    if (proximo) proximo.focus()
+    else evento.currentTarget.blur()
+  }
+  // `alto`: na linha do goleiro, o campo tem a altura do campo do nome
+  const campoDaCamisa = (rotulo: string, numero: number | undefined, mudar: (texto: string) => void, alto = false) => (
+    <label style={{ display: 'flex', flex: 'none' }}>
+      <span className="vh">{rotulo}</span>
+      <input className={'inp camisa' + (camisaRepetida(numero) ? ' repetida' : '')} inputMode="numeric" placeholder="Nº" maxLength={2}
+        style={alto ? { height: 52 } : undefined} enterKeyHint="next" onKeyDown={passarParaOProximo} onFocus={(evento) => evento.currentTarget.select()}
+        value={numero ?? ''} onChange={(evento) => mudar(evento.target.value)} />
+    </label>
+  )
+  const descer = (i: number) => subir(i + 1)
+  // colocando os números nas camisas: um campo na frente de cada nome, até confirmar
+  const [numerando, setNumerando] = useState(false)
+  const comecarNumeros = () => {
+    setNumerando(true)
+    // já abre o teclado no primeiro sem número (ou no primeiro da lista)
+    setTimeout(() => {
+      const campos = [...document.querySelectorAll<HTMLInputElement>('.numerando .inp.camisa')]
+      ;(campos.find((campoDoNumero) => campoDoNumero.value === '') ?? campos[0])?.focus()
+    }, 0)
+  }
+  // jogador com as ações abertas (subir, descer, tirar)
+  const [acoesDe, setAcoesDe] = useState<string | null>(null)
   const tirar = (id: string) => setTime((t) => ({ ...t, jogadores: t.jogadores.filter((j) => j.id !== id) }))
 
   const faltam = Math.max(0, linha - time.jogadores.length)
@@ -100,8 +144,13 @@ export function EditorDeTime({ torneio, inicial, onSalvar, onExcluir, onCancelar
       return setAviso(`Já tem um ${nomeDoGoleiro.trim()} no torneio. Use outro nome para o goleiro.`)
     }
     // o goleiro é um jogador do time marcado como goleiro (mantém o id ao editar)
-    const goleiro = { id: goleiroDoTime(inicial)?.id ?? novoJogador(nomeDoGoleiro).id, nome: nomeDoGoleiro.trim(), goleiro: true }
-    onSalvar({ ...time, nome: time.nome.trim(), jogadores: [goleiro, ...time.jogadores], fechado: true })
+    const goleiro = {
+      id: goleiroDoTime(inicial)?.id ?? novoJogador(nomeDoGoleiro).id, nome: nomeDoGoleiro.trim(), goleiro: true,
+      ...(camisaDoGoleiro !== undefined && { camisa: camisaDoGoleiro }),
+    }
+    // sem número, o campo `camisa` nem vai (a nuvem não aceita valor vazio)
+    const jogadores = time.jogadores.map(({ camisa, ...jogador }) => (camisa === undefined ? jogador : { ...jogador, camisa }))
+    onSalvar({ ...time, nome: time.nome.trim(), jogadores: [goleiro, ...jogadores], fechado: true })
   }
 
   return (
@@ -193,16 +242,17 @@ export function EditorDeTime({ torneio, inicial, onSalvar, onExcluir, onCancelar
             <span className="row" style={{ gap: 8 }}>Goleiro <span className="tag t-y">G</span></span>
             {semGoleiro && <span className="tag t-warn">falta o goleiro</span>}
           </div>
-          <div className="pb" style={{ display: 'flex' }}>
-            <label style={{ display: 'flex', flex: 1 }}>
+          <div className="pb" style={{ display: 'flex', gap: 8 }}>
+            <label style={{ display: 'flex', flex: 1, minWidth: 0 }}>
               <span className="vh">Nome do goleiro</span>
               <input className="inp" placeholder="Nome do goleiro" value={nomeDoGoleiro} autoCapitalize="characters"
                 onChange={(evento) => setNomeDoGoleiro(maiusculas(evento.target.value))} />
             </label>
+            {campoDaCamisa('Número da camisa do goleiro', camisaDoGoleiro, (texto) => setCamisaDoGoleiro(lerCamisa(texto)), true)}
           </div>
         </section>
 
-        <section className="panel">
+        <section className={'panel' + (numerando ? ' numerando' : '')}>
           <div className="ph">
             <span className="row" style={{ gap: 8 }}><Camisa cor={time.cor} uniforme={time.uniforme} contorno="#fff" />Jogadores</span>
             <span className={'tag ' + (faltam ? 't-warn' : 't-ok')}>{faltam ? `faltam ${faltam} titulares` : `${time.jogadores.length} jogadores`}</span>
@@ -225,15 +275,40 @@ export function EditorDeTime({ torneio, inicial, onSalvar, onExcluir, onCancelar
                   {i === 0 ? `TITULARES (${linha} NA LINHA)` : 'RESERVAS'}
                 </div>
               )}
-              <div className="tr" style={{ background: i >= linha ? '#f6f7f2' : undefined }}>
-                <span className="no" style={i >= linha ? { background: '#9aa4ae' } : undefined}>{i + 1}</span>
-                <span className="nome">{j.nome}</span>
-                <button className="ib g" aria-label={`Subir ${j.nome}`} disabled={i === 0} onClick={() => subir(i)}>↑</button>
-                <button className="ib g" aria-label={`Tirar ${j.nome}`} onClick={() => tirar(j.id)}><Icone nome="lixo" tamanho={18} /></button>
-              </div>
+              {numerando ? (
+                // colocando os números: o campo na frente de cada nome (Enter passa para o próximo)
+                <div className="tr" style={{ background: i >= linha ? '#f6f7f2' : undefined, minHeight: 48 }}>
+                  {campoDaCamisa(`Número da camisa de ${j.nome}`, j.camisa, (texto) => mudarCamisa(j.id, texto))}
+                  <span className="nome">{j.nome}</span>
+                </div>
+              ) : (
+                <div className="tr" style={{ background: i >= linha ? '#f6f7f2' : undefined, paddingLeft: 0 }}>
+                  {/* tocar no jogador abre subir, descer e tirar */}
+                  <button className="linha-jogador" aria-label={`Opções de ${j.nome}`} onClick={() => setAcoesDe(j.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, minHeight: 42, padding: '0 0 0 10px', background: 'transparent' }}>
+                    <NumeroDaCamisa numero={j.camisa} reserva={i >= linha} />
+                    <span className="nome">{j.nome}</span>
+                  </button>
+                  <button className="ib g" style={{ color: 'var(--navy)', marginLeft: -4 }} aria-label={`Mais opções de ${j.nome}`} onClick={() => setAcoesDe(j.id)}>
+                    <Icone nome="opcoes" tamanho={24} />
+                  </button>
+                </div>
+              )}
             </div>
           ))}
           {time.jogadores.length === 0 && <div className="pb mut">Adicione os jogadores em ordem: os primeiros {linha} são titulares.</div>}
+          {time.jogadores.length > 0 && (
+            <div className="pb" style={{ display: 'grid', gap: 8 }}>
+              {numerando
+                ? <button className="btn sm" onClick={() => setNumerando(false)}><Icone nome="certo" tamanho={20} /> Confirmar números</button>
+                : <>
+                  <button className="btn w sm" onClick={comecarNumeros}>
+                    <Camisa cor={time.cor} uniforme={time.uniforme} tamanho={22} /> Colocar números nas camisas
+                  </button>
+                  <div className="mut" style={{ fontSize: 13 }}>O número é opcional. Nos 3 pontinhos: mudar a ordem ou tirar do time.</div>
+                </>}
+            </div>
+          )}
         </section>
 
         {onExcluir && (
@@ -250,6 +325,41 @@ export function EditorDeTime({ torneio, inicial, onSalvar, onExcluir, onCancelar
           </button>
         </div>
       </div>
+      {acoesDe && (() => {
+        const posicao = time.jogadores.findIndex((jogador) => jogador.id === acoesDe)
+        const jogador = time.jogadores[posicao]
+        if (!jogador) return null
+        const fechar = () => setAcoesDe(null)
+        return (
+          <div className="modal" role="dialog" aria-modal="true" aria-label={jogador.nome} onClick={fechar}>
+            <section className="panel" onClick={(evento) => evento.stopPropagation()}>
+              <div className="ph">
+                <span className="row" style={{ gap: 8, minWidth: 0 }}>
+                  <Camisa cor={time.cor} uniforme={time.uniforme} tamanho={30} contorno="#fff" numero={jogador.camisa} />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{jogador.nome}</span>
+                </span>
+                <span className="sub">{posicao < linha ? `titular · ${posicao + 1}º` : 'reserva'}</span>
+              </div>
+              <div className="pb" style={{ display: 'grid', gap: 10 }}>
+                <button className="btn w sm" disabled={posicao === 0} onClick={() => subir(posicao)}>
+                  <span style={{ display: 'flex', transform: 'rotate(-90deg)' }}><Icone nome="seta" tamanho={20} /></span> Subir
+                </button>
+                <button className="btn w sm" disabled={posicao === time.jogadores.length - 1} onClick={() => descer(posicao)}>
+                  <span style={{ display: 'flex', transform: 'rotate(90deg)' }}><Icone nome="seta" tamanho={20} /></span> Descer
+                </button>
+                <button className="btn r sm" onClick={() => {
+                  fechar()
+                  confirmar({
+                    titulo: `Tirar ${jogador.nome}?`, mensagem: `${jogador.nome} sai da lista do ${time.nome || 'time'}.`,
+                    botao: 'Tirar', perigo: true, aoConfirmar: () => tirar(jogador.id),
+                  })
+                }}><Icone nome="lixo" tamanho={20} /> Tirar do time</button>
+                <button className="btn w sm" onClick={fechar}>Pronto</button>
+              </div>
+            </section>
+          </div>
+        )
+      })()}
       {aviso && <Aviso titulo="Nome repetido" onFechar={() => setAviso(null)}>{aviso}</Aviso>}
     </div>
   )

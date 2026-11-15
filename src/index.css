@@ -623,3 +623,9 @@ label { min-width: 0; }
   .silhueta-goleiro { width: min(58%, calc(var(--altura-tela) * 1.25)); right: -4%; top: 2%; }
   .silhueta-chute { width: min(46%, calc(var(--altura-tela) * .92)); left: 0; bottom: -2%; }
 }
+/* número da camisa no cadastro do time (opcional): no goleiro e na janela do jogador */
+.inp.camisa { flex: none; width: 52px; height: 40px; padding: 0; text-align: center; font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 700; }
+.inp.camisa.repetida { border-color: var(--vermelho); }
+/* número da camisa ao lado do nome (torneio), do tamanho da ordem; sem-numero = o jogador não tem número */
+.no.numero-camisa.reserva { background: #9aa4ae; }
+.no.numero-camisa.sem-numero { background: transparent; border: 1.5px dashed #9aa4ae; }

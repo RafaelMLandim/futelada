@@ -34,7 +34,8 @@ export type RegrasTorneio = {
 }
 
 /** Jogador do time do torneio. `goleiro`: é o goleiro do time (um por time; nos outros fica vazio). */
-export type JogadorDoTime = Jogador & { goleiro?: boolean }
+/** `camisa`: número da camisa (opcional; sem ele o jogador aparece só pelo nome). */
+export type JogadorDoTime = Jogador & { goleiro?: boolean; camisa?: number }
 
 /**
  * Time do torneio: o goleiro (marcado com `goleiro`) e os jogadores de linha. Dos jogadores de linha,
@@ -72,6 +73,7 @@ export type ResultadoJogo = {
   cartoes: Cartao[]
   goleiros: Record<Lado, string | null>
   jogaram: Record<Lado, string[]> // ids de quem entrou em campo
+  titulares?: Record<Lado, string[]> // quem começou o jogo (sugere a escalação do próximo jogo do time)
   sequencia: number // ordem em que os jogos foram de fato jogados (1, 2, 3…)
   encerradoEm?: number // hora em que acabou (na nuvem define a ordem entre celulares)
 }
@@ -98,6 +100,7 @@ export type Escalacao = {
   suspensos: Record<Lado, string[]>
   substituicoes: Record<Lado, number>
   jogaram: Record<Lado, string[]> // todo mundo que entrou em campo no jogo
+  titulares?: Record<Lado, string[]> // quem estava em campo no apito inicial (antes dele, acompanha `emCampo`)
 }
 
 /** Um jogo que está sendo jogado agora (fica salvo: sobrevive a fechar o app). */

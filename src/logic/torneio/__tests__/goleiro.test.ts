@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  cronoDaPartida,
   cartaoNaPartida, converterGoleirosAntigos, encerrarPartida, goleiroDoTime, goleiroNaPartida, golNaPartida, golVazioPorExpulsao, iniciarPartida,
   irParaOGol, jogadoresDeLinha, jogosDisponiveis, jogosParaComecar, situacaoDisciplinar, substituirNaPartida, timesDoJogo,
 } from '..'
@@ -9,7 +10,7 @@ import { sorteado, torneioCom } from './utils'
 /** Começa o próximo jogo do torneio; `timeA` e `timeB` são os times de cada lado. */
 function comecarProximoJogo(torneioAntes: Torneio) {
   const jogo = jogosParaComecar(torneioAntes)[0]
-  const torneio = iniciarPartida(torneioAntes, jogo.id)
+  const torneio = cronoDaPartida(iniciarPartida(torneioAntes, jogo.id), jogo.id, true) // apitado: as trocas contam
   const ids = timesDoJogo(torneio, jogo)
   const timeDoLado = (lado: 'A' | 'B') => torneio.times.find((time) => time.id === ids[lado])!
   return { torneio, jogoId: jogo.id, timeA: timeDoLado('A'), timeB: timeDoLado('B') }

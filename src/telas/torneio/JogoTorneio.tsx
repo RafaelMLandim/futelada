@@ -4,6 +4,7 @@ import { Bola } from '../../components/Bola'
 import { Camisa } from '../../components/Camisa'
 import { Cartao, CartoesDoJogador } from '../../components/Cartao'
 import { Icone } from '../../components/Icone'
+import { NumeroDaCamisa } from '../../components/NumeroDaCamisa'
 import { ResumoDeGols } from '../../components/ResumoDeGols'
 import { PlacarLed } from '../../components/PlacarLed'
 import { LADOS, outro, restanteAzulNaLista } from '../../logic'
@@ -12,7 +13,7 @@ import { EscolherAcrescimos } from '../../components/EscolherAcrescimos'
 import {
   acrescimosNaPartida, cancelarPartida, cartaoNaPartida, comecarIntervalo, cronoDaPartida, fimDoTempoDaPartida, decorridoNoPeriodo, duracaoDoPeriodo, nomeDoPeriodo,
   passeNaPartida, periodoDaPartida, placarDecisivo, proximoTempo, expulsosNaPartida, goleiroNaPartida, golNaPartida, golVazioPorExpulsao, irParaOGol, jogoPorId, partidaDoJogo, removerGolDaPartida,
-  substituirNaPartida, timesDoJogo, ultimoPeriodo, saiuDoJogo, removerCartaoDaPartida, substituicaoParaDesfazer, desfazerSubstituicao, siglaDoTime,
+  substituirNaPartida, timesDoJogo, jogoNaoComecou, ultimoPeriodo, saiuDoJogo, removerCartaoDaPartida, substituicaoParaDesfazer, desfazerSubstituicao, siglaDoTime,
 } from '../../logic/torneio'
 import type { TorneioHook } from '../../store/torneio'
 import type { CorCartao, Jogador, Lado } from '../../types/pelada'
@@ -197,7 +198,9 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou, seletor
   // "desfazer" só quando quem saiu não pode voltar: com a volta permitida, é só substituir de novo
   const podeDesfazer = (lado: Lado) => regras.reentrada === false && !!substituicaoParaDesfazer(p, lado)
   const limite = regras.maxSubstituicoes
-  const podeSubstituir = (lado: Lado) => limite === null || p.escalacao.substituicoes[lado] < limite
+  // antes do apito inicial, trocar é acertar a escalação: não conta e não tem limite
+  const antesDoApito = jogoNaoComecou(p)
+  const podeSubstituir = (lado: Lado) => antesDoApito || limite === null || p.escalacao.substituicoes[lado] < limite
 
   const coluna = (lado: Lado) => {
     const time = times[lado]
@@ -220,7 +223,7 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou, seletor
             <span className="no g">G</span><span className="nome" style={{ color: 'var(--vermelho)' }}>Escolher goleiro</span>
           </button>
         )}
-        {[...(goleiros[lado] ? [goleiros[lado]!.id] : []), ...p.escalacao.emCampo[lado].filter((id) => id !== goleiros[lado]?.id)].map((id, indice) => {
+        {[...(goleiros[lado] ? [goleiros[lado]!.id] : []), ...p.escalacao.emCampo[lado].filter((id) => id !== goleiros[lado]?.id)].map((id) => {
           const j = jogador(time, id)
           const fora = expulsos.has(id)
           const noGol = id === goleiros[lado]?.id
@@ -228,7 +231,8 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou, seletor
           return (
             <button key={id} className="tr linha-jogador" style={{ minHeight: 40, fontSize: 14, opacity: fora ? 0.55 : 1 }} disabled={!editavel}
               aria-label={`Ações de ${j.nome}`} onClick={() => setEscolha({ tipo: 'jogador', lado, jogador: j })}>
-              {noGol ? <span className="no g">G</span> : <span className="no">{goleiros[lado] ? indice : indice + 1}</span>}
+              {/* o número da camisa (sem número, vazio); quem está no gol fica amarelo (com o G se não tem número) */}
+              <NumeroDaCamisa numero={j.camisa} goleiro={noGol} />
               <span className="nome" style={{ flex: '0 1 auto', textDecoration: fora ? 'line-through' : undefined }}>{j.nome}</span>
               <CartoesDoJogador cores={p.cartoes.filter((c) => c.jogadorId === id).map((c) => c.cor)} expulso={fora} />
               {azul > 0 && !fora && <span className="tag" style={{ background: 'var(--azul)', color: '#fff', height: 20, fontSize: 13 }}>{formatarTempo(azul)}</span>}
@@ -244,14 +248,14 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou, seletor
           if (!podeVoltar(lado, id)) {
             return (
               <div key={id} className="tr" style={{ minHeight: 36, fontSize: 13, color: 'var(--mut)' }}>
-                <span className="no" style={{ background: '#9aa4ae' }}>R</span><span className="nome">{j.nome}</span><span className="tag">saiu</span>
+                <NumeroDaCamisa numero={j.camisa} reserva /><span className="nome">{j.nome}</span><span className="tag">saiu</span>
               </div>
             )
           }
           return (
             <button key={id} className="tr linha-jogador" style={{ minHeight: 36, fontSize: 13, color: 'var(--mut)' }} disabled={!editavel}
               aria-label={`Colocar ${j.nome} em campo`} onClick={() => setEscolha({ tipo: 'entrar', lado, jogador: j })}>
-              <span className="no" style={{ background: '#9aa4ae' }}>R</span><span className="nome">{j.nome}</span>
+              <NumeroDaCamisa numero={j.camisa} reserva /><span className="nome">{j.nome}</span>
             </button>
           )
         })}
@@ -334,6 +338,11 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou, seletor
 
         <section className="panel">
           <div className="ph">Escalações<span className="sub">toque no jogador</span></div>
+          {antesDoApito && editavel && (
+            <div className="tr" style={{ minHeight: 32, fontSize: 13, color: 'var(--navy)', background: 'var(--divisoria)', whiteSpace: 'normal' }}>
+              Antes de apitar, as trocas acertam a escalação e não contam como substituição.
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>{LADOS.map(coluna)}</div>
         </section>
 
@@ -403,7 +412,7 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou, seletor
               : !p.escalacao.banco[lado].some((id) => podeVoltar(lado, id))
                 ? <div className="mut" style={{ gridColumn: '1 / -1' }}>Sem reservas no banco que possam entrar.</div>
                 : podeSubstituir(lado)
-                  ? opcao('Substituir', <Icone nome="times" />, () => setEscolha({ tipo: 'sair', lado, jogador: j }), 'btn sm')
+                  ? opcao(antesDoApito ? 'Trocar (não conta)' : 'Substituir', <Icone nome="times" />, () => setEscolha({ tipo: 'sair', lado, jogador: j }), 'btn sm')
                   : <div className="mut" style={{ gridColumn: '1 / -1' }}>Limite de substituições atingido.</div>}
           </Escolher>
         )
@@ -413,7 +422,7 @@ export function JogoTorneio({ hook, jogoId, editavel = true, onTerminou, seletor
         <Escolher titulo={`Sai ${escolha.jogador.nome}`} pergunta="Quem entra?" cor={times[escolha.lado].cor} onFechar={() => setEscolha(null)}>
           {p.escalacao.banco[escolha.lado].filter((id) => podeVoltar(escolha.lado, id)).map((id) => {
             const j = jogador(times[escolha.lado], id)
-            return <button key={id} className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }} onClick={() => trocar(escolha.lado, escolha.jogador.id, id)}>{j.nome}</button>
+            return <button key={id} className="btn w sm" style={{ textTransform: 'none', fontSize: 18 }} onClick={() => trocar(escolha.lado, escolha.jogador.id, id)}>{j.camisa !== undefined ? `${j.camisa} · ${j.nome}` : j.nome}</button>
           })}
         </Escolher>
       )}

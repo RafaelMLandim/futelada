@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  cronoDaPartida,
   campoDoJogo, campoLiberadoDosGrupos, camposLivres, cartaoNaPartida, proximosPorCampo, encerrarPartida, golNaPartida, iniciarPartida, jogosDisponiveis, jogosParaComecar,
   jogadoresDeLinha, removerGolDaPartida, situacaoDisciplinar, substituirNaPartida, timesDoJogo,
 } from '..'
@@ -8,7 +9,7 @@ import { sorteado, torneioCom } from './utils'
 
 function comecarPrimeiro(t: Torneio) {
   const jogo = jogosParaComecar(t)[0]
-  t = iniciarPartida(t, jogo.id)
+  t = cronoDaPartida(iniciarPartida(t, jogo.id), jogo.id, true) // apitado: as trocas contam
   const ids = timesDoJogo(t, jogo)
   const time = (l: 'A' | 'B') => t.times.find((x) => x.id === ids[l])!
   return { t, jogo, A: time('A'), B: time('B') }

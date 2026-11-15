@@ -3,6 +3,7 @@
 
 import { useId } from 'react'
 import type { Uniforme } from '../types/torneio'
+import { textoSobre } from '../utils/cores'
 
 const FORMA = 'M8 3L3 6l2 4 2-1v12h10V9l2 1 2-4-5-3c-.6 1.5-2.1 2.4-4 2.4S8.6 4.5 8 3z'
 
@@ -36,10 +37,12 @@ function detalhe(uniforme: Uniforme) {
  */
 export const espessuraDoContorno = (tamanho: number) => (tamanho >= 80 ? 0.6 : tamanho >= 30 ? 0.8 : 1)
 
-export function Camisa({ cor, tamanho = 22, contorno = '#0B1A2C', uniforme, espessura = espessuraDoContorno(tamanho) }: {
+export function Camisa({ cor, tamanho = 22, contorno = '#0B1A2C', uniforme, espessura = espessuraDoContorno(tamanho), numero }: {
   cor: string; tamanho?: number; contorno?: string; uniforme?: Uniforme
   /** grossura do contorno; sem ela, sai do tamanho (espessuraDoContorno) */
   espessura?: number
+  /** número da camisa, escrito no peito (com contorno, para ler em cima de listras e faixas) */
+  numero?: number
 }) {
   // o id do recorte só com letras e números (o do React traz sinais que alguns navegadores não aceitam em url(#…))
   const recorte = `camisa${useId().replace(/[^a-zA-Z0-9]/g, '')}`
@@ -50,6 +53,11 @@ export function Camisa({ cor, tamanho = 22, contorno = '#0B1A2C', uniforme, espe
       <path d={FORMA} fill={cor} />
       {desenho && <g clipPath={`url(#${recorte})`}>{desenho}</g>}
       <path d={FORMA} fill="none" stroke={contorno} strokeWidth={espessura} strokeLinejoin="round" />
+      {numero !== undefined && (
+        <text x="12" y="18.2" textAnchor="middle" fontFamily="'Barlow Condensed', sans-serif" fontWeight="800"
+          fontSize={numero > 9 ? 9.5 : 11} fill={textoSobre(cor)} stroke={textoSobre(cor) === '#FFFFFF' ? '#0B1A2C' : '#FFFFFF'}
+          strokeWidth="1.1" paintOrder="stroke" strokeLinejoin="round">{numero}</text>
+      )}
     </svg>
   )
 }

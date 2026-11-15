@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { Barra } from '../../components/Barra'
 import { Camisa } from '../../components/Camisa'
 import { Icone } from '../../components/Icone'
-import { adicionarTime, editarTime, goleiroDoTime, jogadoresDeLinha, novoTime, removerTime, timesJogando } from '../../logic/torneio'
+import { NumeroDaCamisa } from '../../components/NumeroDaCamisa'
+import { adicionarTime, editarTime, goleiroDoTime, jogadoresDeLinha, novoTime, numerosDasCamisas, removerTime, timesJogando } from '../../logic/torneio'
 import type { TorneioHook } from '../../store/torneio'
 import type { TimeTorneio } from '../../types/torneio'
 import { CORES_TORNEIO, textoSobre } from '../../utils/cores'
 import { EditorDeTime } from './EditorDeTime'
+import { NumerosDasCamisas } from './NumerosDasCamisas'
 import { TelaPremium } from '../../components/TelaPremium'
 import { usePlano } from '../../store/plano'
 
@@ -15,6 +17,7 @@ export function Times({ hook, onSorteio }: { hook: TorneioHook; onSorteio: () =>
   const torneio = hook.torneio!
   const [editando, setEditando] = useState<TimeTorneio | null>(null)
   const [premium, setPremium] = useState(false)
+  const [numerando, setNumerando] = useState<TimeTorneio | null>(null) // time em campo trocando só os números das camisas
   const plano = usePlano()
   const { linha } = torneio.regras
   // Time em campo não pode ser editado (a escalação do jogo depende dele)
@@ -55,15 +58,21 @@ export function Times({ hook, onSorteio }: { hook: TorneioHook; onSorteio: () =>
                 <Camisa cor={time.cor} uniforme={time.uniforme} tamanho={24} contorno={textoSobre(time.cor)} />{time.nome}
               </span>
               {!hook.souOrganizador ? null : emCampo.includes(time.id)
-                ? <span className="tag t-ok">Em campo</span>
+                // em campo: não edita o time (a escalação do jogo depende dele), mas o número da camisa pode
+                ? <span className="row" style={{ gap: 6, flex: 'none' }}>
+                  <span className="tag t-ok">Em campo</span>
+                  <button className="tag t-y" style={{ border: '1px solid #0b1a2c', cursor: 'pointer' }} onClick={() => setNumerando(time)}>Números</button>
+                </span>
                 : <button className="tag t-y" style={{ border: '1px solid #0b1a2c', cursor: 'pointer' }} onClick={() => setEditando(time)}>
                   <Icone nome="editar" tamanho={14} /> Editar
                 </button>}
             </div>
-            {goleiroDoTime(time) && <div className="tr"><span className="no g">G</span><span className="nome">{goleiroDoTime(time)!.nome}</span></div>}
+            {goleiroDoTime(time) && <div className="tr">
+              <NumeroDaCamisa numero={goleiroDoTime(time)!.camisa} goleiro />
+              <span className="nome">{goleiroDoTime(time)!.nome}</span>{goleiroDoTime(time)!.camisa !== undefined && <span className="tag t-y">Goleiro</span>}</div>}
             {jogadoresDeLinha(time).map((j, i) => (
               <div key={j.id} className="tr" style={{ minHeight: 36, fontSize: 14, color: i >= linha ? 'var(--mut)' : undefined }}>
-                <span className="no" style={i >= linha ? { background: '#9aa4ae' } : undefined}>{i + 1}</span>
+                <NumeroDaCamisa numero={j.camisa} reserva={i >= linha} />
                 <span className="nome">{j.nome}</span>
                 {i >= linha && <span className="tag" style={{ background: 'var(--divisoria)' }}>Reserva</span>}
               </div>
@@ -80,6 +89,10 @@ export function Times({ hook, onSorteio }: { hook: TorneioHook; onSorteio: () =>
         </div>
       )}
       {premium && <TelaPremium motivo="times" onFechar={() => setPremium(false)} />}
+      {numerando && (
+        <NumerosDasCamisas time={numerando} onCancelar={() => setNumerando(null)}
+          onSalvar={(numeros) => { hook.aplicar((t) => numerosDasCamisas(t, numerando.id, numeros)); setNumerando(null) }} />
+      )}
     </div>
   )
 }
