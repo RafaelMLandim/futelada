@@ -45,7 +45,8 @@ export function usePeladaNaNuvem(codigo: string | null) {
     void obterNuvem().then(async (nuvem) => {
       if (!nuvem) return
       const uid = await nuvem.usuario()
-      if (vivo) parar = nuvem.ouvirPerfil((perfil) => setEu({ uid, nome: perfil?.nome ?? perfil?.email ?? null }))
+      // só o nome: o e-mail não vai para a nuvem (quem tem o link de acompanhar veria o e-mail de quem organiza)
+      if (vivo) parar = nuvem.ouvirPerfil((perfil) => setEu({ uid, nome: perfil?.nome ?? null }))
     })
     return () => { vivo = false; parar() }
   }, [])

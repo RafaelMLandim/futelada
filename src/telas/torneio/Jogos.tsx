@@ -76,9 +76,11 @@ export function Jogos({ hook, onJogar, onVerTimes }: { hook: TorneioHook; onJoga
   const mesarioSemCampo = !hook.souOrganizador && hook.meuCampo === null
   const podemComecar = mesarioSemCampo ? []
     : meuCampo === null ? jogosParaComecar(torneio) : torneio.jogos.filter((j) => podeComecarNoCampo(torneio, j, meuCampo))
+  // o mesário vê o mesmo próximo jogo que o organizador vê para o campo dele (a divisão entre os campos é uma só:
+  // sem isso, o mesário de cada campo pegava o primeiro jogo da fila e os dois campos abriam o mesmo jogo)
   const proximos = mesarioSemCampo ? []
     : meuCampo === null ? proximosPorCampo(torneio)
-      : podemComecar.slice(0, 1).map((jogo) => ({ campo: meuCampo, jogo }))
+      : proximosPorCampo(torneio).filter(({ campo }) => campo === meuCampo)
   const livres = camposLivres(torneio)
   const variosCampos = torneio.regras.campos > 1
   const vencedor = campeao(torneio)

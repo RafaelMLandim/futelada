@@ -57,6 +57,13 @@ const nomeDoCampeao = (t: Torneio) => {
   return id ? t.times.find((x) => x.id === id)?.nome ?? null : null
 }
 
+/** Para a tela inicial e a lista: nome e campeão do compartilhado aberto (sem precisar carregar da nuvem). */
+function atualizarResumoDoAtivo(t: Torneio) {
+  const salvo = ler<Ativo>(CHAVE_ATIVO)
+  const ganhou = nomeDoCampeao(t) ?? undefined
+  if (salvo && (t.nome !== salvo.nome || ganhou !== salvo.campeao)) escrever(CHAVE_ATIVO, { ...salvo, nome: t.nome, campeao: ganhou })
+}
+
 
 // ---------- Vários torneios no mesmo celular ----------
 // O torneio aberto continua nos lugares de sempre (local em "torneio:v1", compartilhado em "torneio:ativo"); os outros
@@ -171,10 +178,7 @@ export function useTorneio() {
         atual.current = t
         setTorneio(t)
         setStatus(t ? 'ok' : 'nao-encontrado')
-        // para a tela inicial: nome e campeão (sem precisar carregar o torneio da nuvem)
-        const salvo = ler<Ativo>(CHAVE_ATIVO)
-        const ganhou = t ? nomeDoCampeao(t) ?? undefined : undefined
-        if (t && salvo && (t.nome !== salvo.nome || ganhou !== salvo.campeao)) escrever(CHAVE_ATIVO, { ...salvo, nome: t.nome, campeao: ganhou })
+        if (t) atualizarResumoDoAtivo(t)
       }, () => setStatus('erro'))
     })
     return () => { vivo = false; parar() }
@@ -199,6 +203,8 @@ export function useTorneio() {
       setTorneio(novo)
       if (codigo.current && nuvem.current && antes && novo) {
         void nuvem.current.gravar(codigo.current, diferencas(antes, novo))
+        // já no resumo: a final leva para a tela inicial antes de a nuvem devolver o campeão
+        atualizarResumoDoAtivo(novo)
       } else if (!codigo.current) {
         escrever(CHAVE, novo)
       }

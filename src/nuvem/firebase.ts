@@ -265,7 +265,7 @@ export function criarNuvemFirebase(): Nuvem {
     async pegarCampo(codigo, campo) {
       await logado
       const p = perfil(auth.currentUser!)
-      const gravar = setDoc(doc(campos(codigo), String(campo)), { uid: p.uid, nome: p.nome ?? p.email ?? 'Mesário', foto: p.foto, em: Date.now() })
+      const gravar = setDoc(doc(campos(codigo), String(campo)), { uid: p.uid, nome: p.nome ?? 'Mesário', foto: p.foto, em: Date.now() })
         .then(() => true, (e) => { if ((e as { code?: string }).code === 'permission-denied') return false; throw e })
       // sem internet a gravação só confirma quando voltar: segue com o campo e o Firebase confere depois
       return Promise.race([gravar, new Promise<boolean>((r) => setTimeout(() => r(true), 5000))])
