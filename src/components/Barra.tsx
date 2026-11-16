@@ -1,21 +1,28 @@
 import { useContext, useState, type ReactNode } from 'react'
 import { Avatar } from './Avatar'
 import { Logo } from './Logo'
-import { FaixaDaBateria, StatusDaBarra } from './navegacao'
+import { FaixaDaBateria, StatusDaBarra, VoltarAoInicio } from './navegacao'
 import { useSomenteLeitura } from '../utils/somenteLeitura'
 import { useBotaoDaMusica } from '../utils/musica'
 import { Icone } from './Icone'
 
 // Barra de título no topo de cada tela: a logo à esquerda do título e, à direita, a foto de quem entrou
 // (tocar na foto abre "Voltar ao início" e "Sair da conta"). Quem só acompanha a pelada não tem a foto.
+// Tocar na logo volta direto para a tela inicial (quando a tela tem para onde voltar).
 export function Barra({ titulo, sub, direita }: { titulo: ReactNode; sub?: ReactNode; direita?: ReactNode }) {
   const somenteLeitura = useSomenteLeitura()
   const status = useContext(StatusDaBarra)
   const bateriaFraca = useContext(FaixaDaBateria)
+  const voltarAoInicio = useContext(VoltarAoInicio)
   return (
     <>
     <header className="bar">
-      <Logo fundo={false} />
+      {voltarAoInicio ? (
+        <button aria-label="Voltar ao início" onClick={voltarAoInicio}
+          style={{ padding: 0, border: 0, background: 'transparent', cursor: 'pointer', flex: 'none', display: 'flex' }}>
+          <Logo fundo={false} />
+        </button>
+      ) : <Logo fundo={false} />}
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* título comprido ("Caixa da pelada") um pouco menor, para não quebrar em duas linhas */}
         <h1 className={'h1' + (typeof titulo === 'string' && titulo.length > 12 ? ' longo' : '')}>{titulo}</h1>
