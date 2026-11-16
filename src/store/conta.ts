@@ -5,10 +5,12 @@ import { saldoDoCaixa, type MovimentoDoCaixa, type PeladaGuardada } from '../log
 import { nuvemDisponivel, obterNuvem } from '../nuvem'
 import type { Lancamento, PeladaNoHistorico, Perfil } from '../nuvem/tipos'
 import { trocarDeConta } from './donoDoCelular'
+import { contaLembrada, esquecerTudo, lembrarConta, useLembrado } from './lembrado'
 
 /** Quem está usando o app. `perfil` undefined = carregando; anônimo = sem login. */
 export function useConta() {
-  const [perfil, setPerfil] = useState<Perfil | null | undefined>(nuvemDisponivel() ? undefined : null)
+  // começa com a conta lembrada: a tela abre já certa (sem trocar "entre com o Google" pelo logado)
+  const [perfil, setPerfil] = useState<Perfil | null | undefined>(() => (nuvemDisponivel() ? contaLembrada<Perfil | null>() : null))
   const [erro, setErro] = useState<string | null>(null)
   useEffect(() => {
     let parar = () => {}
@@ -16,7 +18,13 @@ export function useConta() {
     void obterNuvem().then((n) => {
       if (!n) { setPerfil(null); return }
       // separa a pelada e o torneio do celular por conta antes de as telas abrirem (outra pessoa não cai neles)
-      if (ativo) parar = n.ouvirPerfil((novo) => { trocarDeConta(novo); setPerfil(novo) })
+      if (ativo) parar = n.ouvirPerfil((novo) => {
+        trocarDeConta(novo)
+        // outra pessoa (ou saiu): o lembrado era da conta anterior
+        if ((contaLembrada<Perfil | null>()?.uid ?? null) !== (novo?.uid ?? null)) esquecerTudo()
+        lembrarConta(novo)
+        setPerfil(novo)
+      })
     })
     return () => { ativo = false; parar() }
   }, [])
@@ -97,7 +105,7 @@ function mensagemDeLogin(codigo?: string): string {
 
 /** Lançamentos e saldo do caixa (vazio sem login). */
 export function useCaixa() {
-  const [lancamentos, setLancamentos] = useState<Lancamento[] | null>(null)
+  const [lancamentos, setLancamentos] = useLembrado<Lancamento[] | null>('caixa', null, true)
   useEffect(() => {
     let parar = () => {}
     let ativo = true
@@ -114,7 +122,7 @@ export function useCaixa() {
 
 /** Peladas encerradas, da mais nova à mais antiga (vazio sem login). */
 export function useHistorico() {
-  const [peladas, setPeladas] = useState<PeladaNoHistorico[] | null>(null)
+  const [peladas, setPeladas] = useLembrado<PeladaNoHistorico[] | null>('historico', null)
   useEffect(() => {
     let parar = () => {}
     let ativo = true

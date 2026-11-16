@@ -9,10 +9,11 @@ import type { CobrancaNuvem, Lancamento } from '../nuvem/tipos'
 import type { StatusPagamento } from '../types/pelada'
 import { dataHoje } from '../utils/formatar'
 import { pixCopiaECola } from '../utils/pix'
+import { useLembrado } from './lembrado'
 
 /** Caixinhas de quem está logado (null = carregando). */
 export function useCaixinhas(): Caixinha[] | null {
-  const [caixinhas, setCaixinhas] = useState<Caixinha[] | null>(null)
+  const [caixinhas, setCaixinhas] = useLembrado<Caixinha[] | null>('caixinhas', null, true)
   useEffect(() => {
     let parar = () => {}
     let ativo = true

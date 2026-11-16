@@ -5,13 +5,14 @@ import { jogaramNaPelada, turmaDoHistorico, type JogadorDaTurma } from '../logic
 import { obterNuvem } from '../nuvem'
 import type { PeladaNoHistorico, Turma } from '../nuvem/tipos'
 import type { Estado } from '../types/pelada'
+import { useLembrado } from './lembrado'
 
 let seq = 0
 const novoId = () => `t${Date.now().toString(36)}${(seq++).toString(36)}`
 
 /** As turmas da conta (null = carregando). */
 export function useTurmas() {
-  const [turmas, setTurmas] = useState<Turma[] | null>(null)
+  const [turmas, setTurmas] = useLembrado<Turma[] | null>('turmas', null, true)
   useEffect(() => {
     let parar = () => {}
     let vivo = true

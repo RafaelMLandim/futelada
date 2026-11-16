@@ -4,6 +4,8 @@ import { Logo } from './Logo'
 import { fotoSemFundo } from '../utils/foto'
 
 const ESCOVADO = `${import.meta.env.BASE_URL}arte/escovado.webp`
+// já baixa e prepara os riscos ao abrir o app: a carta aparece pronta, sem o metal surgir depois
+if (typeof Image !== 'undefined') { const riscos = new Image(); riscos.src = ESCOVADO; void riscos.decode?.().catch(() => null) }
 
 /** Tracinho no lugar de um texto (carta de exemplo, como na legenda). */
 const Traco = ({ classe }: { classe: string }) => <i className={`traco ${classe}`} />

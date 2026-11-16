@@ -1,16 +1,17 @@
 // Plano pago da conta (PLANO.md, seção 14): o que a pessoa pode usar e o contador das peladas grátis.
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { situacaoDoPlano, type DadosDoPlano, type Situacao } from '../logic/plano'
 import { obterNuvem } from '../nuvem'
 import { codigoDoAparelho } from '../utils/nativo'
+import { useLembrado } from './lembrado'
 
 const SEM_DADOS: DadosDoPlano = { plano: null, contadores: null, aparelho: null, config: null }
 const agora = () => Date.now()
 
 /** Situação do plano (sem nuvem ou sem internet: tudo liberado). */
 export function usePlano(): Situacao {
-  const [dados, setDados] = useState<DadosDoPlano>(SEM_DADOS)
+  const [dados, setDados] = useLembrado<DadosDoPlano>('plano', SEM_DADOS, true)
   useEffect(() => {
     let parar = () => {}
     let vivo = true

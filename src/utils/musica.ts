@@ -2,7 +2,7 @@
 // começa (lá já tem apito e narração). Começa em volume médio, entra e sai devagar, e o botão no topo silencia
 // (fica lembrado no celular). O celular só deixa tocar som depois do primeiro toque na tela.
 
-import { useEffect, useSyncExternalStore } from 'react'
+import { useLayoutEffect, useState } from 'react'
 
 const ARQUIVO = `${import.meta.env.BASE_URL}sons/musica-de-fundo.mp3`
 const VOLUME_MAXIMO = 0.18 // de ambiente: mesmo com o celular no volume máximo, fica baixinha (o arquivo já vem nivelado, sem picos)
@@ -81,7 +81,8 @@ if (typeof window !== 'undefined') {
 
 /** A tela quer a música enquanto `ativa` (menus, preparação). */
 export function useMusicaDeFundo(ativa: boolean) {
-  useEffect(() => {
+  // antes de desenhar a tela: o botão da música já aparece junto (sem surgir depois e mexer o topo)
+  useLayoutEffect(() => {
     if (!ativa) return
     pedidos++
     atualizar()
@@ -96,11 +97,16 @@ export function useMusicaDeFundo(ativa: boolean) {
 
 /** Para o botão do topo: se a música está nesta tela e se está silenciada. */
 export function useBotaoDaMusica() {
-  const estado = useSyncExternalStore(
-    (ouvinte) => { ouvintes.add(ouvinte); return () => ouvintes.delete(ouvinte) },
-    () => (pedidos > 0 ? (mudo || nivel === 0 ? 'mudo' : 'tocando') : 'fora'),
-  )
-  const volume = useSyncExternalStore((ouvinte) => { ouvintes.add(ouvinte); return () => ouvintes.delete(ouvinte) }, () => nivel)
+  // ouve antes de a tela ser desenhada (useLayoutEffect): o pedido da música chega nesse mesmo instante e o botão
+  // já aparece junto com a tela, em vez de surgir logo depois e mexer o topo
+  const ler = () => ({ estado: pedidos > 0 ? (mudo || nivel === 0 ? 'mudo' : 'tocando') : 'fora', volume: nivel })
+  const [{ estado, volume }, setLido] = useState(ler)
+  useLayoutEffect(() => {
+    const ouvinte = () => setLido((atual) => { const novo = ler(); return novo.estado === atual.estado && novo.volume === atual.volume ? atual : novo })
+    ouvintes.add(ouvinte)
+    ouvinte()
+    return () => { ouvintes.delete(ouvinte) }
+  }, [])
   /** De 0 a 100 (100 = o volume de ambiente de sempre). Mexer no volume tira do mudo. */
   const mudarVolume = (novo: number) => {
     nivel = Math.min(100, Math.max(0, Math.round(novo)))
