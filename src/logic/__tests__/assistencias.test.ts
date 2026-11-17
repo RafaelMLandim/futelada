@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { comecar, configPadrao, definirAutorDoGol, garcons, gol, passe, peladaParaGuardar, removerGol, fecharPartidaEmAndamento, vitoria } from '..'
 import { relatorioDoAno } from '../relatorio'
 import { descreverMudanca } from '../../store/desfazer'
-import { LISTA, sessao } from './utils'
+import { comContas, LISTA, sessao } from './utils'
 
 // Assistências (quem deu o passe para o gol) e o Troféu Garçom.
 // T1 João Carlos Bruno Marcos x T2 Rafael Daniel Junior Landim; fila Mano Lucas
@@ -78,9 +78,9 @@ describe('assistências', () => {
       return vitoria(s, 'A')
     }
     const dia = (numero: number) => new Date(2026, 0, numero).getTime()
-    const r = relatorioDoAno([peladaParaGuardar(umaPelada(2), dia(1), 'x'), peladaParaGuardar(umaPelada(1), dia(8), 'x')], [], 2026)
+    const r = relatorioDoAno([peladaParaGuardar(comContas(umaPelada(2)), dia(1), 'x'), peladaParaGuardar(comContas(umaPelada(1)), dia(8), 'x')], [], 2026)
     expect(r.garcom).toMatchObject({ nome: 'Carlos', assistencias: 3 })
-    const semPasse = relatorioDoAno([peladaParaGuardar(umaPelada(0), dia(1), 'x')], [], 2026)
+    const semPasse = relatorioDoAno([peladaParaGuardar(comContas(umaPelada(0)), dia(1), 'x')], [], 2026)
     expect(semPasse.garcom).toBeNull()
   })
 

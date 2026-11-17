@@ -128,7 +128,13 @@ export function Perfil({ carta = 'pelada' }: { carta?: 'pelada' | 'torneio' } = 
   const salvarFoto = async (nova: string | null) => {
     setErro(null)
     setSalvando(true)
-    await salvar({ foto: nova }).catch(() => setErro('Não deu para salvar a foto. Confira a internet e tente de novo.'))
+    // A foto já aparece na carta na hora; a nuvem só confirma depois. Com internet fraca essa confirmação demora (ou
+    // nunca chega enquanto a tela está aberta) e a janela "Salvando a foto…" ficava presa: espera no máximo 8 s, e o
+    // resto segue sozinho (o app termina de enviar quando a internet voltar).
+    const demorou = new Promise<'demorou'>((resolver) => setTimeout(() => resolver('demorou'), 8000))
+    const resultado = await Promise.race([salvar({ foto: nova }).then(() => 'salvou' as const), demorou])
+      .catch(() => { setErro('Não deu para salvar a foto. Confira a internet e tente de novo.'); return 'falhou' as const })
+    if (resultado === 'demorou') setErro('A internet está lenta: a foto termina de salvar sozinha quando a conexão melhorar.')
     setSalvando(false)
   }
   const [dicaDaFoto, setDicaDaFoto] = useState(false)

@@ -15,6 +15,16 @@ export const MODELOS = {
 type Modelo = keyof typeof MODELOS
 
 const segmentadores = new Map<Modelo, Promise<ImageSegmenter>>()
+/** Tempo máximo para tirar o fundo (baixar os arquivos e recortar). Passou disso: a foto fica com fundo. */
+export const TEMPO_MAXIMO_DO_RECORTE = 20_000
+
+/** Rejeita se a promessa demorar mais que `milissegundos` (internet travada ou o celular não roda o recorte). */
+function comLimiteDeTempo<T>(promessa: Promise<T>, milissegundos: number): Promise<T> {
+  return new Promise<T>((resolver, rejeitar) => {
+    const relogio = setTimeout(() => rejeitar(new Error('O recorte demorou demais')), milissegundos)
+    promessa.then((valor) => { clearTimeout(relogio); resolver(valor) }, (erro) => { clearTimeout(relogio); rejeitar(erro) })
+  })
+}
 
 function segmentador(modelo: Modelo): Promise<ImageSegmenter> {
   const pronto = segmentadores.get(modelo) ?? (async () => {
@@ -35,7 +45,10 @@ function segmentador(modelo: Modelo): Promise<ImageSegmenter> {
  * (o recorte ficaria ruim): aí a carta usa a foto com fundo, na moldura.
  */
 export async function tirarFundo(foto: HTMLCanvasElement, modelo: Modelo = 'leve'): Promise<HTMLCanvasElement | null> {
-  const resultado = (await segmentador(modelo)).segment(foto)
+  // travou (o download parado ou o celular não roda o recorte): desiste, e a próxima foto tenta baixar de novo.
+  // Antes a espera era sem fim e a janela "Preparando sua foto" ficava girando para sempre.
+  const pronto = await comLimiteDeTempo(segmentador(modelo), TEMPO_MAXIMO_DO_RECORTE).catch((erro) => { segmentadores.delete(modelo); throw erro })
+  const resultado = pronto.segment(foto)
   const mascaras = resultado.confidenceMasks ?? []
   try {
     const mascara = mascaras[0]

@@ -17,6 +17,6 @@ export { pagantes, valorPorPessoa, marcarPagamento, resumoPagamentos, type Resum
 export { saldoDoCaixa, lancamentosDaPelada, lancamentosDoFiltro, SEM_TURMA, TODAS_AS_TURMAS, type MovimentoDoCaixa } from './caixa'
 export { artilharia, criterioDoArtilheiro, goleirosMenosVazados, goleiroDaSelecao, garcons, type Garcom, placarDosColetes, vitoriasPorJogador, selecaoDaPelada, tabelaDaPelada, type LinhaDaTabela, type Artilheiro, type CriterioDaArtilharia, type GoleiroStats, type PlacarDosColetes, type VitoriasDoJogador } from './estatisticas'
 export { peladaParaGuardar, soPartidasTerminadas, fecharPartidaEmAndamento, temporada, artilhariaDaTemporada, type PeladaGuardada, type Temporada, type LinhaDaTemporada, type GoleiroDaTemporada } from './historico'
-export { sugestoes, parecidoNaTurma, jogaramNaPelada, turmaDoHistorico, naTurma, resumoDasTurmas, textoDoDia, nomeSugerido, type JogadorDaTurma, type ResumoDaTurma } from './turma'
+export { sugestoes, parecidoNaTurma, quemChegouNaTurma, jogaramNaPelada, turmaDoHistorico, naTurma, resumoDasTurmas, textoDoDia, nomeSugerido, type JogadorDaTurma, type ResumoDaTurma } from './turma'
 export { relatorioDoAno, anosDasPeladas, peladasDaTurma, type RelatorioDoAno, type JogadorNoAno, type GoleiroNoAno } from './relatorio'
 export { entradasDesfeitas, entradasQueFaltam, resumoDaCaixinha, valorPorPessoaDaCaixinha, type Caixinha, type JogadorDaCaixinha, type ResumoDaCaixinha } from './caixinha'

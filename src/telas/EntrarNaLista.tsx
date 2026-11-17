@@ -147,7 +147,7 @@ export function EntrarNaLista({ codigo }: { codigo: string }) {
             )}
 
             <section className="panel">
-              <div className="ph">Confirmados<span className="sub">{confirmados.length}</span></div>
+              <div className="ph"><span>Confirmados <span className="num">({confirmados.length})</span></span></div>
               {confirmados.length === 0 && <div className="pb mut">Ninguém confirmou ainda. Seja o primeiro!</div>}
               {confirmados.map((confirmado) => <div key={confirmado.id} className="tr"><span className="nome">{confirmado.nome}</span>{confirmado.goleiro && <LuvaDoGoleiro tamanho={26} rotulo="goleiro" />}{confirmado.naFila && <span className="mut">{confirmado.goleiro ? 'no gol' : 'na fila'}</span>}</div>)}
             </section>

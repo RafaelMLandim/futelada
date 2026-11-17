@@ -2,7 +2,7 @@
 // organizador toca em quem chegou para pôr na fila. O link nunca mexe na fila sozinho.
 
 import { useCallback, useEffect, useState } from 'react'
-import { adicionarJogador, chegouGoleiro, contaNaLista, ligarConta, nomeSemRepetir, novoJogador, removerJogador, todosOsJogadores } from '../logic'
+import { adicionarJogador, chegouGoleiro, contaNaLista, ligarConta, nomeSemRepetir, novoJogador, quemChegouNaTurma, removerJogador, todosOsJogadores, type JogadorDaTurma } from '../logic'
 import { novoCodigo } from '../logic/torneio'
 import { obterNuvem } from '../nuvem'
 import type { ConfirmadoNaLista } from '../nuvem/tipos'
@@ -14,7 +14,7 @@ import type { Pelada } from './usePelada'
 /** Endereço do link da pelada (abre a tela "Entrar na lista"). */
 export const linkDaLista = (codigo: string) => `${enderecoDoSite()}/?lista=${codigo}`
 
-export function useListaDaPelada(pelada: Pelada, ativa: boolean) {
+export function useListaDaPelada(pelada: Pelada, ativa: boolean, turma: readonly JogadorDaTurma[] = []) {
   const { app, aplicar } = pelada
   const codigo = ativa ? (app.estado.listaDaPelada ?? null) : null
   const [confirmados, setConfirmados] = useState<ConfirmadoNaLista[]>([])
@@ -60,13 +60,16 @@ export function useListaDaPelada(pelada: Pelada, ativa: boolean) {
     }
     aplicar((estado) => {
       if (jaEsta(estado)) return estado
-      const nome = nomeSemRepetir(maiusculas(comoAparece ?? confirmado.nome), todosOsJogadores(estado).map((jogador) => jogador.nome))
-      const jogador = { ...novoJogador(nome), ...(confirmado.comConta && { conta: confirmado.id }) }
+      const naPelada = todosOsJogadores(estado)
+      const nome = nomeSemRepetir(maiusculas(comoAparece ?? confirmado.nome), naPelada.map((jogador) => jogador.nome))
+      // já é da turma: entra com o id dela (senão vira outro jogador no histórico a cada pelada)
+      const daTurma = quemChegouNaTurma(turma, naPelada.map((jogador) => jogador.id), nome, confirmado.comConta ? confirmado.id : null)
+      const jogador = { ...novoJogador(nome), ...(daTurma && { id: daTurma.id }), ...(confirmado.comConta && { conta: confirmado.id }) }
       // guarda de onde veio: se foi engano, volta para os Confirmados (antes da primeira partida)
       return { ...adicionarJogador(estado, jogador), vieramDoLink: { ...estado.vieramDoLink, [jogador.id]: confirmado.id } }
     })
     marcarNaFila(confirmado.id)
-  }, [aplicar, marcarNaFila])
+  }, [aplicar, marcarNaFila, turma])
 
   /** Era a mesma pessoa que já estava na lista: não cria outra; com conta, o jogador passa a ser dela. */
   const mesmaPessoa = useCallback((confirmado: ConfirmadoNaLista, jogadorId: string) => {

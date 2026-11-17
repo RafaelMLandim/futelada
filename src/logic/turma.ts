@@ -96,6 +96,23 @@ export function naTurma(turma: readonly JogadorDaTurma[], jogador: Jogador): Jog
   return turma.find((t) => t.id === jogador.id) ?? turma.find((t) => normalizarNome(t.nome) === normalizarNome(jogador.nome)) ?? null
 }
 
+/**
+ * Quem chegou pelo link da lista já é da turma? Pela conta (o mesmo jogador de sempre) ou, sem conta na turma, pelo
+ * nome igual. Assim entra com o id da turma e não vira um jogador novo a cada pelada. `idsNaPelada`: quem já está hoje
+ * (não reaproveita); um jogador da turma ligado a outra conta é outra pessoa.
+ */
+export function quemChegouNaTurma(turma: readonly JogadorDaTurma[], idsNaPelada: readonly string[], nome: string, conta: string | null): JogadorDaTurma | null {
+  const livres = turma.filter((jogador) => !idsNaPelada.includes(jogador.id))
+  if (conta) {
+    const pelaConta = livres.find((jogador) => jogador.conta === conta)
+    if (pelaConta) return pelaConta
+  }
+  const nomeNormalizado = normalizarNome(nome)
+  const iguais = livres.filter((jogador) => normalizarNome(jogador.nome) === nomeNormalizado && !(conta && jogador.conta && jogador.conta !== conta))
+  // repetido na turma (sobra de quando cada pelada criava outro): é a mesma pessoa; fica o que veio mais vezes
+  return [...iguais].sort((um, outro) => outro.peladas - um.peladas)[0] ?? null
+}
+
 // ---- Qual pelada é hoje? (escolher a turma ao criar a pelada) ----
 
 const DIAS_NO_PLURAL = ['domingos', 'segundas', 'terças', 'quartas', 'quintas', 'sextas', 'sábados']

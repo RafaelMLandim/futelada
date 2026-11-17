@@ -141,6 +141,7 @@ function Relatorio({ peladas, ano, turma }: { peladas: PeladaNoHistorico[]; ano:
 
       <section className="panel">
         <div className="ph">Vitórias<span className="sub">{r.peladas} {r.peladas === 1 ? 'pelada' : 'peladas'}</span></div>
+        <div className="pb mut" style={{ fontSize: 13 }}>Na temporada só conta quem joga com conta no app. Quem entrou só com o nome aparece no resultado de cada pelada.</div>
         <div className="tr mut" style={{ minHeight: 30, fontSize: 12 }}>
           <span style={{ width: 22 }} />{comFotos && <span className="foto-do-jogador espaco" aria-hidden="true" />}<span className="nome" style={{ flex: 1 }}>Jogador</span>
           <span style={col}>PEL</span><span style={col}>J</span><span style={col}>V</span>

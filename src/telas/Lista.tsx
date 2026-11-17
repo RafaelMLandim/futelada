@@ -72,7 +72,7 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
   // quem tem conta aparece com a foto (sem fundo) na sugestão: fica mais fácil saber quem é
   const fotosDasSugestoes = useFotosDasContas(sugeridos.flatMap((jogador) => (jogador.conta ? [jogador.conta] : [])))
   // link da pelada: quem confirmou e ainda não chegou (o organizador toca em quem chegou)
-  const link = useListaDaPelada(pelada, !somenteLeitura)
+  const link = useListaDaPelada(pelada, !somenteLeitura, turma)
   const { confirmados } = link
   // nome igual a alguém da lista ou a outro confirmado: o organizador decide quem é quem
   const [mesmoNome, setMesmoNome] = useState<{ confirmado: ConfirmadoNaLista; jogador: { id: string; nome: string } } | null>(null)
@@ -322,7 +322,7 @@ export function Lista({ pelada, cobranca, onApitar }: { pelada: Pelada; cobranca
       <div className="conteudo lado-a-lado">
         {!somenteLeitura && confirmados.length > 0 && (
           <section className="panel inteiro">
-            <div className="ph">Confirmados<span className="sub">toque em quem chegou</span></div>
+            <div className="ph"><span>Confirmados <span className="num">({confirmados.length})</span></span><span className="sub">toque em quem chegou</span></div>
             {confirmados.map((confirmado) => (
               <button key={confirmado.id} className="tr" style={{ width: '100%', border: 0, font: 'inherit', color: 'var(--navy)', textAlign: 'left', cursor: 'pointer' }}
                 aria-label={`${confirmado.nome} chegou`} onClick={() => tocouEmQuemChegou(confirmado)}>

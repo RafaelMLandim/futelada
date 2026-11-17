@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { comecar, configPadrao, gol, peladaParaGuardar, vitoria } from '..'
 import { anosDasPeladas, peladasDaTurma, relatorioDoAno } from '../relatorio'
-import type { JogadorDaTurma } from '../turma'
 import type { Estado } from '../../types/pelada'
-import { LISTA, sessao } from './utils'
+import { comContas, LISTA, sessao } from './utils'
 
 // Relatório da temporada (PLANO.md, seção 15.2).
 
@@ -15,7 +14,8 @@ function pelada(lista: string[], golsDoPrimeiro = 1, comGoleiros = false): Estad
   for (let i = 0; i < golsDoPrimeiro; i++) s = gol(s, 'A', s.emCampo!.A.jogadores[0])
   return vitoria(s, 'A')
 }
-const guardar = (estado: Estado, dia: number, turma = 't1') => ({ ...peladaParaGuardar(estado, em2026(dia), 'x'), turma })
+const guardar = (estado: Estado, dia: number, turma = 't1') => ({ ...peladaParaGuardar(comContas(estado), em2026(dia), 'x'), turma })
+const guardarSemConta = (estado: Estado, dia: number) => ({ ...peladaParaGuardar(estado, em2026(dia), 'x'), turma: 't1' })
 
 describe('relatório da temporada', () => {
   it('time do ano: quem mais veio (presença mínima de 65%); no empate, mais gols', () => {
@@ -32,14 +32,20 @@ describe('relatório da temporada', () => {
     expect(r.maisPresente?.peladas).toBe(8)
   })
 
-  it('reconhece o mesmo jogador pelo id da turma (mesmo se o nome mudou) e, nas antigas, pelo nome', () => {
-    const turma: JogadorDaTurma[] = [{ id: 'joao', nome: 'JOÃOZINHO', peladas: 3, ultimaPelada: 0 }]
-    const p1 = guardar(pelada(['João', ...LISTA.slice(1)]), 1) // antiga: pelo nome? não — nome diferente da turma
-    const comId = pelada(LISTA)
-    comId.historico[0].timeA.jogadores[0] = { id: 'joao', nome: 'JOÃOZINHO' }
-    comId.historico[0].gols.forEach((g) => { g.autorId = 'joao'; g.autor = 'JOÃOZINHO' })
-    const r = relatorioDoAno([p1, guardar(comId, 2)], turma, 2026)
-    expect(r.jogadores.find((j) => j.id === 'joao')).toMatchObject({ nome: 'JOÃOZINHO', peladas: 1, gols: 1 })
+  it('só entra quem tem conta; a mesma conta é a mesma pessoa, com qualquer id ou nome', () => {
+    const comId = (id: string, nome: string) => {
+      const estado = pelada(LISTA)
+      const antigo = estado.historico[0].timeA.jogadores[0].id
+      estado.historico[0].timeA.jogadores[0] = { id, nome, conta: 'conta-do-douglas' }
+      estado.historico[0].gols.forEach((g) => { if (g.autorId === antigo) { g.autorId = id; g.autor = nome } })
+      return estado
+    }
+    // a mesma conta com ids diferentes (entrou pelo link em cada pelada) e o nome trocado: uma linha só, com o nome mais recente
+    const r = relatorioDoAno([guardarSemConta(comId('d1', 'DOUGLAS'), 1), guardarSemConta(comId('d2', 'DOUGLAS S'), 2)], [], 2026)
+    expect(r.jogadores).toHaveLength(1)
+    expect(r.jogadores[0]).toMatchObject({ conta: 'conta-do-douglas', nome: 'DOUGLAS S', peladas: 2, gols: 2 })
+    // sem conta: fica no resultado da pelada, mas não no ano
+    expect(relatorioDoAno([guardarSemConta(pelada(LISTA), 1)], [], 2026).jogadores).toEqual([])
   })
 
   it('goleiro do ano: menor média, com presença mínima', () => {
@@ -61,7 +67,7 @@ describe('relatório da temporada', () => {
     const comConta = pelada(LISTA)
     const primeiro = comConta.historico[0].timeA.jogadores[0]
     const ligado = { ...comConta, historico: comConta.historico.map((partida) => ({ ...partida, timeA: { ...partida.timeA, jogadores: partida.timeA.jogadores.map((jogador) => (jogador.id === primeiro.id ? { ...jogador, conta: 'conta-dele' } : jogador)) } })) }
-    const r = relatorioDoAno([guardar(pelada(LISTA), 1), guardar(ligado, 2), guardar(pelada(LISTA), 3)], [], 2026)
+    const r = relatorioDoAno([guardarSemConta(pelada(LISTA), 1), guardarSemConta(ligado, 2), guardarSemConta(pelada(LISTA), 3)], [], 2026)
     expect(r.jogadores.find((j) => j.nome === primeiro.nome)?.conta).toBe('conta-dele')
     expect(r.jogadores.filter((j) => j.conta)).toHaveLength(1)
   })
@@ -77,4 +83,5 @@ describe('relatório da temporada', () => {
     expect(r.timeDoAno.some((j) => j.nome === 'João')).toBe(false)
     expect(r.timeDoAno.every((j) => j.peladas === 10)).toBe(true)
   })
+
 })

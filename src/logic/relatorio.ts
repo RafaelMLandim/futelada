@@ -1,9 +1,8 @@
 // Relatório da temporada de uma turma (PLANO.md, seção 15.2): artilheiro do ano, time do ano (quem
 // mais veio às peladas; no empate, mais gols), goleiro do ano, mais vitórias, mais presente.
 // A temporada é o ano. Para o Time do ano e o Goleiro do ano, presença mínima de 65% das peladas.
+// Só entra quem joga com conta no app (PLANO.md: incentivo para baixar o app).
 
-import type { Jogador } from '../types/pelada'
-import { normalizarNome } from '../utils/formatar'
 import { artilharia, garcons, goleirosMenosVazados, selecaoDaPelada, vitoriasPorJogador } from './estatisticas'
 import type { PeladaGuardada } from './historico'
 import { jogaramNaPelada, naTurma, type JogadorDaTurma } from './turma'
@@ -51,36 +50,42 @@ export function relatorioDoAno(peladas: readonly PeladaGuardada[], turma: readon
   const minimo = Math.max(1, Math.ceil(doAno.length * PRESENCA_MINIMA))
   const jogadores = new Map<string, JogadorNoAno>()
   const goleiros = new Map<string, GoleiroNoAno>()
-  /** Chave do jogador: o id da turma ou, se não está nela, o nome (sem acento/maiúsculas). */
-  const chave = (j: Jogador) => naTurma(turma, j)?.id ?? `nome:${normalizarNome(j.nome)}`
-  const linhaDe = (j: Jogador) => {
-    const k = chave(j)
-    const nome = naTurma(turma, j)?.nome ?? j.nome
-    return jogadores.get(k) ?? jogadores.set(k, { id: k, nome, peladas: 0, jogos: 0, vitorias: 0, gols: 0, assistencias: 0, vezesNaSelecao: 0, artilheiroDoDia: 0 }).get(k)!
-  }
-
+  // No histórico do ano só entra quem joga com conta no app (o "RG" de cada um, o mesmo de pelada para pelada, como na
+  // carta). Quem só foi digitado pelo nome fica no resultado de cada pelada, mas não no ranking da temporada.
   for (const { estado } of doAno) {
-    for (const j of jogaramNaPelada(estado)) {
-      const linha = linhaDe(j)
-      linha.peladas++
-      if (j.conta) linha.conta = j.conta
+    const contas = new Map<string, string>()
+    for (const jogador of jogaramNaPelada(estado)) {
+      const conta = jogador.conta ?? naTurma(turma, jogador)?.conta
+      if (conta) contas.set(jogador.id, conta)
     }
-    for (const v of vitoriasPorJogador(estado)) {
-      const l = linhaDe(v)
-      l.jogos += v.jogos
-      l.vitorias += v.vitorias
-      l.gols += v.gols
+    const linhaDe = (jogador: { id: string; nome: string }) => {
+      const conta = contas.get(jogador.id)
+      if (!conta) return null
+      const linha = jogadores.get(conta) ?? jogadores.set(conta, { id: conta, conta, nome: jogador.nome, peladas: 0, jogos: 0, vitorias: 0, gols: 0, assistencias: 0, vezesNaSelecao: 0, artilheiroDoDia: 0 }).get(conta)!
+      linha.nome = jogador.nome // o nome da pelada mais recente
+      return linha
     }
-    for (const s of selecaoDaPelada(estado)) linhaDe(s).vezesNaSelecao++
-    for (const garcom of garcons(estado)) linhaDe(garcom).assistencias += garcom.assistencias
+    for (const jogador of jogaramNaPelada(estado)) { const linha = linhaDe(jogador); if (linha) linha.peladas++ }
+    for (const resultado of vitoriasPorJogador(estado)) {
+      const linha = linhaDe(resultado)
+      if (!linha) continue
+      linha.jogos += resultado.jogos
+      linha.vitorias += resultado.vitorias
+      linha.gols += resultado.gols
+    }
+    for (const selecionado of selecaoDaPelada(estado)) { const linha = linhaDe(selecionado); if (linha) linha.vezesNaSelecao++ }
+    for (const garcom of garcons(estado)) { const linha = linhaDe(garcom); if (linha) linha.assistencias += garcom.assistencias }
     const artilheiro = artilharia(estado)[0]
-    if (artilheiro) linhaDe(artilheiro).artilheiroDoDia++
-    for (const g of goleirosMenosVazados(estado)) {
-      const k = normalizarNome(g.nome)
-      const l = goleiros.get(k) ?? goleiros.set(k, { nome: g.nome, peladas: 0, jogos: 0, sofridos: 0, media: 0 }).get(k)!
-      l.peladas++
-      l.jogos += g.jogos
-      l.sofridos += g.sofridos
+    const linhaDoArtilheiro = artilheiro && linhaDe(artilheiro)
+    if (linhaDoArtilheiro) linhaDoArtilheiro.artilheiroDoDia++
+    for (const goleiro of goleirosMenosVazados(estado)) {
+      const conta = estado.contasDosGoleiros?.[goleiro.nome]
+      if (!conta) continue
+      const linha = goleiros.get(conta) ?? goleiros.set(conta, { nome: goleiro.nome, peladas: 0, jogos: 0, sofridos: 0, media: 0 }).get(conta)!
+      linha.nome = goleiro.nome
+      linha.peladas++
+      linha.jogos += goleiro.jogos
+      linha.sofridos += goleiro.sofridos
     }
   }
 

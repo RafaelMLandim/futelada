@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { comecar, vitoria } from '..'
-import { jogaramNaPelada, naTurma, nomeSugerido, parecidoNaTurma, resumoDasTurmas, sugestoes, textoDoDia, turmaDoHistorico, type JogadorDaTurma } from '../turma'
+import { jogaramNaPelada, naTurma, nomeSugerido, parecidoNaTurma, quemChegouNaTurma, resumoDasTurmas, sugestoes, textoDoDia, turmaDoHistorico, type JogadorDaTurma } from '../turma'
 import { LISTA, sessao } from './utils'
 
 const jt = (id: string, nome: string, peladas: number, ultimaPelada = 0, arquivado = false): JogadorDaTurma => ({ id, nome, peladas, ultimaPelada, arquivado })
@@ -80,5 +80,29 @@ describe('qual pelada é hoje', () => {
 
   it('sugere o nome pelo dia de hoje', () => {
     expect(nomeSugerido(new Date('2026-11-07T10:00:00'))).toBe('PELADA DE SÁBADO')
+  })
+})
+
+describe('quem chegou pelo link já é da turma', () => {
+  const turma: JogadorDaTurma[] = [
+    { id: 'd1', nome: 'DOUGLAS', peladas: 4, ultimaPelada: 0, conta: 'conta-douglas' },
+    { id: 'j1', nome: 'JOSUÉ', peladas: 3, ultimaPelada: 0 },
+    { id: 'b1', nome: 'BRUNO', peladas: 3, ultimaPelada: 0 },
+    { id: 'b2', nome: 'BRUNO', peladas: 1, ultimaPelada: 0 },
+  ]
+  it('pela conta, mesmo com outro nome', () => {
+    expect(quemChegouNaTurma(turma, [], 'DOUGLAS SILVA', 'conta-douglas')?.id).toBe('d1')
+  })
+  it('pelo nome (sem acento), quando não tem conta ligada', () => {
+    expect(quemChegouNaTurma(turma, [], 'josue', null)?.id).toBe('j1')
+    expect(quemChegouNaTurma(turma, [], 'JOSUE', 'conta-nova')?.id).toBe('j1')
+  })
+  it('repetido na turma: fica com o que veio mais vezes', () => {
+    expect(quemChegouNaTurma(turma, [], 'BRUNO', null)?.id).toBe('b1')
+  })
+  it('não reaproveita: já está na pelada, outra conta ou nome que não está na turma', () => {
+    expect(quemChegouNaTurma(turma, ['j1'], 'JOSUÉ', null)).toBeNull()
+    expect(quemChegouNaTurma(turma, [], 'DOUGLAS', 'outra-conta')).toBeNull()
+    expect(quemChegouNaTurma(turma, [], 'MARCOS', null)).toBeNull()
   })
 })
