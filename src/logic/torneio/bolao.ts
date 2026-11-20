@@ -156,11 +156,8 @@ export function rankingDoBolao(torneio: Torneio, participantes: ParticipanteDoBo
     return { uid: participante.uid, nome: participante.nome, pontos, cravados, em: participante.em, posicao: 0 }
   })
   linhas.sort((primeiro, segundo) => segundo.pontos - primeiro.pontos || segundo.cravados - primeiro.cravados || primeiro.em - segundo.em)
-  // mesma posição para quem empata em pontos e placares cravados
-  linhas.forEach((linha, indice) => {
-    const anterior = linhas[indice - 1]
-    linha.posicao = anterior && anterior.pontos === linha.pontos && anterior.cravados === linha.cravados ? anterior.posicao : indice + 1
-  })
+  // o desempate vai até quem entrou primeiro: cada um tem a sua posição
+  linhas.forEach((linha, indice) => { linha.posicao = indice + 1 })
   return linhas
 }
 

@@ -113,7 +113,7 @@ describe('bolão no torneio', () => {
     }
     const ranking = rankingDoBolao(t, participantes, { caio: { ...certeiro } }, palpites)
     expect(ranking.map((linha) => [linha.nome, linha.posicao, linha.pontos, linha.cravados])).toEqual([
-      ['Caio', 1, 23, 0], ['Ana', 2, 3, 1], ['Duda', 2, 3, 1], ['Beto', 4, 3, 0],
+      ['Caio', 1, 23, 0], ['Ana', 2, 3, 1], ['Duda', 3, 3, 1], ['Beto', 4, 3, 0],
     ])
   })
 })

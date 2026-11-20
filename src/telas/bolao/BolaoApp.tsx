@@ -351,13 +351,17 @@ function AbaTorneio({ bolao, torneio }: { bolao: BolaoHook; torneio: Torneio }) 
   )
 }
 
+// quem não tem foto: as iniciais numa cor que é sempre a mesma para a mesma conta
+const CORES_DAS_PESSOAS = ['#1e5fbf', '#c8352b', '#2e9e44', '#6a1b9a', '#d9822b', '#00838f', '#5d4037', '#ad1457']
+const corDaPessoa = (uid: string) => CORES_DAS_PESSOAS[[...uid].reduce((soma, letra) => soma + letra.charCodeAt(0), 0) % CORES_DAS_PESSOAS.length]
+
 function AbaRanking({ bolao, torneio, eu }: { bolao: BolaoHook; torneio: Torneio; eu: string }) {
   const fotos = useFotosDasContas(bolao.ranking.map((linha) => linha.uid))
   const [aviso, setAviso] = useState<string | null>(null)
   const iniciais = (nome: string) => nome.split(/\s+/).map((parte) => parte[0]).join('').slice(0, 2).toUpperCase()
   const foto = (uid: string, nome: string, tamanho: number) => fotos[uid]
     ? <img src={fotos[uid]} alt="" style={{ width: tamanho, height: tamanho, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--borda)', background: '#fff', flex: 'none' }} />
-    : <span className="num" style={{ width: tamanho, height: tamanho, borderRadius: '50%', background: '#1e5fbf', color: '#fff', display: 'grid', placeItems: 'center', fontSize: tamanho * 0.4, border: '2px solid var(--borda)', flex: 'none' }}>{iniciais(nome)}</span>
+    : <span className="num" style={{ width: tamanho, height: tamanho, borderRadius: '50%', background: corDaPessoa(uid), color: '#fff', display: 'grid', placeItems: 'center', fontSize: tamanho * 0.4, border: '2px solid var(--borda)', flex: 'none' }}>{iniciais(nome)}</span>
   const compartilhar = async () => {
     const topo = bolao.ranking.slice(0, 10).map((linha) => `${linha.posicao}º ${linha.nome} · ${linha.pontos} pts`).join('\n')
     const texto = `🎯 Bolão · ${torneio.nome}\n${topo}\n\nEntre e palpite: ${linkDoBolao(torneio.codigoDoBolao ?? torneio.nuvem?.codigo ?? '')}`
