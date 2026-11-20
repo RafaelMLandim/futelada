@@ -20,8 +20,9 @@ import { useMusicaDeFundo } from './utils/musica'
 import { VoltarAoInicio } from './components/navegacao'
 import { TelaoLocal, TelaoNaTv } from './telas/torneio/Telao'
 import { EscolherTorneio } from './telas/torneio/EscolherTorneio'
+import { BolaoApp } from './telas/bolao/BolaoApp'
 
-type Modo = 'inicio' | 'pelada' | 'torneio' | 'torneios' | 'caixa' | 'historico' | 'perfil'
+type Modo = 'inicio' | 'pelada' | 'torneio' | 'torneios' | 'caixa' | 'historico' | 'perfil' | 'bolao'
 const CHAVE_MODO = 'app:modo'
 // qual perfil estava aberto (o da pelada ou o do torneio): ao reabrir o app, volta nele
 const CHAVE_PERFIL = 'app:perfil'
@@ -29,13 +30,18 @@ const CHAVE_PERFIL = 'app:perfil'
 function modoSalvo(): Modo {
   // link de convite para um torneio abre direto no torneio
   if (new URLSearchParams(location.search).get('entrar')) return 'torneio'
+  // link do bolão (?bolao=CÓDIGO): entra no bolão daquele torneio (PLANO.md, seção 23)
+  if (codigoDoBolao) return 'bolao'
   try {
     const m = localStorage.getItem(CHAVE_MODO)
-    return m === 'pelada' || m === 'torneio' || m === 'torneios' || m === 'caixa' || m === 'historico' || m === 'perfil' ? m : 'inicio'
+    return m === 'pelada' || m === 'torneio' || m === 'torneios' || m === 'caixa' || m === 'historico' || m === 'perfil' || m === 'bolao' ? m : 'inicio'
   } catch {
     return 'inicio'
   }
 }
+
+// link do bolão (?bolao=CÓDIGO): quem tem conta entra e palpita (PLANO.md, seção 23)
+const codigoDoBolao = new URLSearchParams(location.search).get('bolao')?.toUpperCase() ?? null
 
 /** Escolhe entre a pelada do dia e o torneio (e lembra o último usado). */
 // link de pagamento do campo pago (?pagar=CÓDIGO): abre só a página de pagar
@@ -105,8 +111,9 @@ export default function App() {
     : modo === 'caixa' ? <Caixa onVoltar={inicio} />
     : modo === 'historico' ? <Historico />
     : modo === 'perfil' ? <Perfil key={cartaDoPerfil} carta={cartaDoPerfil} />
+    : modo === 'bolao' ? <BolaoApp codigoDoLink={codigoDoBolao} onVoltar={inicio} />
     : null
   // o menu da foto (no topo) tem "Voltar ao início"
   if (tela) return <VoltarAoInicio.Provider value={inicio}>{tela}</VoltarAoInicio.Provider>
-  return <Inicio onPelada={() => setModo('pelada')} onTorneio={(comLista) => setModo(comLista ? 'torneios' : 'torneio')} onCaixa={() => setModo('caixa')} onHistorico={() => setModo('historico')} onPerfil={(carta) => { setCartaDoPerfil(carta); setModo('perfil') }} />
+  return <Inicio onPelada={() => setModo('pelada')} onTorneio={(comLista) => setModo(comLista ? 'torneios' : 'torneio')} onCaixa={() => setModo('caixa')} onHistorico={() => setModo('historico')} onPerfil={(carta) => { setCartaDoPerfil(carta); setModo('perfil') }} onBolao={() => setModo('bolao')} />
 }

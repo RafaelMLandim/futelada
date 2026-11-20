@@ -14,7 +14,7 @@ import { dataHoje, reais } from '../utils/formatar'
 
 // Tela inicial: pelada do dia, torneio, caixa da pelada e histórico (a conta fica na foto, no topo).
 /** `onPerfil`: abre o Meu perfil na carta da pelada ou na do torneio (cada grupo abre a sua). */
-export function Inicio({ onPelada, onTorneio, onCaixa, onHistorico, onPerfil }: { onPelada: () => void; onTorneio: (comLista: boolean) => void; onCaixa: () => void; onHistorico: () => void; onPerfil: (carta: 'pelada' | 'torneio') => void }) {
+export function Inicio({ onPelada, onTorneio, onCaixa, onHistorico, onPerfil, onBolao }: { onPelada: () => void; onTorneio: (comLista: boolean) => void; onCaixa: () => void; onHistorico: () => void; onPerfil: (carta: 'pelada' | 'torneio') => void; onBolao: () => void }) {
   const conta = useConta()
   const caixa = useCaixa()
   const { peladas } = useHistorico()
@@ -68,6 +68,9 @@ export function Inicio({ onPelada, onTorneio, onCaixa, onHistorico, onPerfil }: 
           <Opcao icone="times" titulo="Meu perfil" onClick={conta.logado ? () => onPerfil('torneio') : conta.entrar}
             detalhe={conta.logado ? 'Sua carta do torneio e suas conquistas' : 'Sua carta do torneio · entre com o Google'}
             acao={conta.logado ? 'Ver' : 'Entrar'} />
+          <Opcao icone="certo" titulo="Bolão" onClick={conta.logado ? onBolao : conta.entrar}
+            detalhe={conta.logado ? 'Palpites dos jogos e ranking · só pontos' : 'Palpites e ranking · entre com o Google'}
+            acao={conta.logado ? 'Abrir' : 'Entrar'} />
         </section>
       </div>
     </div>

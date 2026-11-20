@@ -10,7 +10,7 @@ import {
   addDoc, collection, connectFirestoreEmulator, deleteDoc, deleteField, doc, getDoc, getDocs, increment, initializeFirestore, memoryLocalCache, onSnapshot, orderBy, persistentLocalCache, query,
   limit, persistentMultipleTabManager, setDoc, updateDoc, where, writeBatch, type DocumentReference,
 } from 'firebase/firestore'
-import type { DadosNuvem, Operacao } from '../logic/torneio'
+import type { DadosNuvem, Operacao, PalpiteDoJogo, PalpiteDoTorneio, ParticipanteDoBolao } from '../logic/torneio'
 import type { InscricaoDoTorneio, JogadorInscrito, PartidaTorneio, ResultadoJogo, TimeInscrito } from '../types/torneio'
 import { nativo, noIphone } from '../utils/nativo'
 import { baseDaNuvem, baseParaNuvem } from './formato'
@@ -18,7 +18,7 @@ import { entrarComUmToque, prepararUmToque } from './umToque'
 import { CONTADORES_ZERADOS, PLANO_VAZIO, type Contadores, type DadosDoPlano, type Plano } from '../logic/plano'
 import type { PeladaDaCarta, TorneioDaCarta } from '../logic/carta'
 import type { JogadorDaTurma } from '../logic/turma'
-import type { ParticipacaoNoTorneio, PedidoEsseSouEu, AvisoPagamento, CobrancaNuvem, ConfirmadoNaLista, Lancamento, ListaDaPelada, MesarioNoCampo, Nuvem, PeladaCompartilhada, PeladaNoHistorico, Perfil, TelaDoTelao, Turma } from './tipos'
+import type { BolaoDoUsuario, ParticipacaoNoTorneio, PedidoEsseSouEu, AvisoPagamento, CobrancaNuvem, ConfirmadoNaLista, Lancamento, ListaDaPelada, MesarioNoCampo, Nuvem, PeladaCompartilhada, PeladaNoHistorico, Perfil, TelaDoTelao, Turma } from './tipos'
 import type { Caixinha } from '../logic/caixinha'
 
 export const configFirebase = {
@@ -145,6 +145,11 @@ export function criarNuvemFirebase(): Nuvem {
   const inscricao = (codigo: string) => doc(db, 'inscricoes', codigo)
   const participacoes = (dono: string) => collection(db, 'usuarios', dono, 'participacoes')
   const pedidosDoTorneio = (torneio: string) => collection(db, 'torneios', torneio, 'pedidos')
+  const meusBoloes = (dono: string) => collection(db, 'usuarios', dono, 'boloes')
+  const participantesDoBolao = (torneio: string) => collection(db, 'torneios', torneio, 'bolao')
+  const palpitesDoJogo = (torneio: string, jogo: string) => collection(db, 'torneios', torneio, 'palpites', jogo, 'de')
+  const palpitesDoTorneio = (torneio: string) => collection(db, 'torneios', torneio, 'palpitesDoTorneio')
+  const sistemaDoTorneio = (torneio: string) => collection(db, 'torneios', torneio, 'sistema')
   const timesInscritos = (codigo: string) => collection(db, 'inscricoes', codigo, 'times')
   const jogadoresInscritos = (codigo: string, time: string) => collection(db, 'inscricoes', codigo, 'times', time, 'jogadores')
   const jogadoresDaTurma = (dono: string, turma: string) => collection(db, 'usuarios', dono, 'turmas', turma, 'jogadores')
@@ -246,7 +251,17 @@ export function criarNuvemFirebase(): Nuvem {
     async apagar(codigo) {
       await logado
       // a carta de quem jogou fica (cartas/{conta}/torneios: é do jogador, não do torneio)
-      for (const sub of [partidas(codigo), resultados(codigo), campos(codigo), pedidosDoTorneio(codigo)]) {
+      // o bolão vai junto: os palpites de cada jogo (pelo nome de cada participante), os do torneio e quem entrou
+      const base = await getDoc(torneio(codigo)).catch(() => null)
+      const codigoDoBolao = base?.data()?.codigoDoBolao as string | undefined
+      if (codigoDoBolao) await deleteDoc(doc(db, 'codigosDoBolao', codigoDoBolao)).catch(() => null)
+      const jogos = ((base?.data()?.jogos ?? []) as { id: string }[]).map((jogo) => jogo.id)
+      const quem = (await getDocs(participantesDoBolao(codigo)).catch(() => null))?.docs.map((participante) => participante.id) ?? []
+      for (const conta of quem) {
+        for (const jogo of jogos) await deleteDoc(doc(palpitesDoJogo(codigo, jogo), conta)).catch(() => null)
+        await deleteDoc(doc(palpitesDoTorneio(codigo), conta)).catch(() => null)
+      }
+      for (const sub of [partidas(codigo), resultados(codigo), campos(codigo), pedidosDoTorneio(codigo), participantesDoBolao(codigo), sistemaDoTorneio(codigo)]) {
         for (const d of (await getDocs(sub)).docs) await deleteDoc(d.ref)
       }
       await deleteDoc(torneio(codigo))
@@ -513,6 +528,91 @@ export function criarNuvemFirebase(): Nuvem {
       await (participacao ? setDoc(ref, puro(participacao)) : deleteDoc(ref))
     },
 
+    // ---- bolão (seção 23) ----
+    async entrarNoBolao(torneio, nomeDoTorneio, nome) {
+      const dono = await uid()
+      if (!auth.currentUser || auth.currentUser.isAnonymous) throw new Error('sem conta')
+      const agora = Date.now()
+      const ja = await getDoc(doc(participantesDoBolao(torneio), dono)).catch(() => null)
+      // quem já estava mantém a hora em que entrou (é o último desempate do ranking)
+      if (!ja?.exists()) await setDoc(doc(participantesDoBolao(torneio), dono), { nome: nome.slice(0, 40), em: agora })
+      await setDoc(doc(meusBoloes(dono), torneio), { nomeDoTorneio, data: agora }, { merge: true })
+    },
+    ouvirMeusBoloes(aoMudar) {
+      return ouvirDoPerfil<BolaoDoUsuario>(meusBoloes, aoMudar, () => aoMudar([]))
+    },
+    async lembrarBolao(torneio, resumo) {
+      const dono = await uid()
+      if (!auth.currentUser || auth.currentUser.isAnonymous) return
+      await setDoc(doc(meusBoloes(dono), torneio), puro(resumo), { merge: true })
+    },
+    async trocarCodigoDoBolao(torneio, novo, antigo) {
+      const dono = await uid()
+      if (novo) {
+        // o id é o código: se outro já criou, a regra recusa (não dá para mudar o dos outros)
+        const ja = await getDoc(doc(db, 'codigosDoBolao', novo)).catch(() => null)
+        if (ja?.exists() && ja.data().torneio !== torneio) return false
+        if (!ja?.exists()) {
+          try { await setDoc(doc(db, 'codigosDoBolao', novo), { torneio, organizador: dono, em: Date.now() }) } catch { return false }
+        }
+      }
+      if (antigo && antigo !== novo) await deleteDoc(doc(db, 'codigosDoBolao', antigo)).catch(() => null)
+      return true
+    },
+    async torneioDoCodigo(codigo) {
+      await logado
+      const apelido = await getDoc(doc(db, 'codigosDoBolao', codigo)).catch(() => null)
+      return apelido?.exists() ? (apelido.data().torneio as string) : codigo
+    },
+    ouvirParticipantesDoBolao(torneio, aoMudar) {
+      let parar = () => {}
+      let parou = false
+      void logado.then(() => {
+        if (parou) return
+        parar = onSnapshot(participantesDoBolao(torneio),
+          (consulta) => aoMudar(consulta.docs.map((documento) => ({ ...(documento.data() as Omit<ParticipanteDoBolao, 'uid'>), uid: documento.id }))), () => aoMudar([]))
+      })
+      return () => { parou = true; parar() }
+    },
+    async meusPalpites(torneio, jogos) {
+      const dono = await uid()
+      const lidos = await Promise.all(jogos.map((jogo) => getDoc(doc(palpitesDoJogo(torneio, jogo), dono)).catch(() => null)))
+      const doTorneio = await getDoc(doc(palpitesDoTorneio(torneio), dono)).catch(() => null)
+      const resultado: Record<string, PalpiteDoJogo> = {}
+      lidos.forEach((documento, indice) => { if (documento?.exists()) resultado[jogos[indice]] = documento.data() as PalpiteDoJogo })
+      return { jogos: resultado, torneio: doTorneio?.exists() ? doTorneio.data() as PalpiteDoTorneio : null }
+    },
+    async salvarPalpite(torneio, jogo, palpite) {
+      const dono = await uid()
+      const ref = doc(palpitesDoJogo(torneio, jogo), dono)
+      // espera o servidor: se o jogo já começou, a regra recusa e quem chamou avisa
+      await (palpite ? setDoc(ref, puro(palpite)) : deleteDoc(ref))
+    },
+    async salvarPalpiteDoTorneio(torneio, palpite) {
+      const dono = await uid()
+      await setDoc(doc(palpitesDoTorneio(torneio), dono), puro(palpite))
+    },
+    ouvirPalpitesDoJogo(torneio, jogo, aoMudar, aoErro) {
+      let parar = () => {}
+      let parou = false
+      void logado.then(() => {
+        if (parou) return
+        parar = onSnapshot(palpitesDoJogo(torneio, jogo),
+          (consulta) => aoMudar(Object.fromEntries(consulta.docs.map((documento) => [documento.id, documento.data() as PalpiteDoJogo]))), (erro) => aoErro?.(erro))
+      })
+      return () => { parou = true; parar() }
+    },
+    ouvirPalpitesDoTorneio(torneio, aoMudar, aoErro) {
+      let parar = () => {}
+      let parou = false
+      void logado.then(() => {
+        if (parou) return
+        parar = onSnapshot(palpitesDoTorneio(torneio),
+          (consulta) => aoMudar(Object.fromEntries(consulta.docs.map((documento) => [documento.id, documento.data() as PalpiteDoTorneio]))), (erro) => aoErro?.(erro))
+      })
+      return () => { parou = true; parar() }
+    },
+
     // ---- conta e caixa ----
     ouvirPerfil(aoMudar) {
       if (!nativo()) prepararUmToque()
@@ -761,10 +861,26 @@ export function criarNuvemFirebase(): Nuvem {
       const docs = async (q: Parameters<typeof getDocs>[0]) => (await getDocs(q)).docs.map((d) => d.ref as DocumentReference)
       const refs: DocumentReference[] = [...await docs(caixa(dono)), ...await docs(caixinhas(dono)), ...await docs(historico(dono)), ...await docs(participacoes(dono)), doc(db, 'perfis', dono)]
       for (const t of await docs(turmas(dono))) refs.push(...await docs(jogadoresDaTurma(dono, t.id)), t)
+      // bolão: os palpites dele nos torneios dos outros (os jogos vêm da base do torneio)
+      const jogosDoTorneio = async (torneio: string) => {
+        const base = await getDoc(doc(db, 'torneios', torneio)).catch(() => null)
+        return ((base?.data()?.jogos ?? []) as { id: string }[]).map((jogo) => jogo.id)
+      }
+      for (const bolao of await docs(meusBoloes(dono))) {
+        for (const jogo of await jogosDoTorneio(bolao.id)) refs.push(doc(palpitesDoJogo(bolao.id, jogo), dono))
+        refs.push(doc(palpitesDoTorneio(bolao.id), dono), doc(participantesDoBolao(bolao.id), dono), bolao)
+      }
       for (const t of await docs(query(collection(db, 'torneios'), where('nuvem.organizador', '==', dono)))) {
-        for (const sub of [partidas(t.id), resultados(t.id), campos(t.id), pedidosDoTorneio(t.id)]) refs.push(...await docs(sub))
+        for (const sub of [partidas(t.id), resultados(t.id), campos(t.id), pedidosDoTorneio(t.id), participantesDoBolao(t.id), sistemaDoTorneio(t.id)]) refs.push(...await docs(sub))
+        // os palpites dos jogos que não começaram ninguém lista (nem o organizador): vão pelo nome de cada participante
+        const quem = (await getDocs(participantesDoBolao(t.id)).catch(() => null))?.docs.map((participante) => participante.id) ?? []
+        for (const conta of quem) {
+          for (const jogo of await jogosDoTorneio(t.id)) refs.push(doc(palpitesDoJogo(t.id, jogo), conta))
+          refs.push(doc(palpitesDoTorneio(t.id), conta))
+        }
         refs.push(t)
       }
+      refs.push(...await docs(query(collection(db, 'codigosDoBolao'), where('organizador', '==', dono))))
       for (const c of await docs(query(collection(db, 'cobrancas'), where('organizador', '==', dono)))) refs.push(...await docs(avisos(c.id)), c)
       for (const lista of await docs(query(collection(db, 'listas'), where('organizador', '==', dono)))) refs.push(...await docs(confirmados(lista.id)), lista)
       for (const link of await docs(query(collection(db, 'inscricoes'), where('organizador', '==', dono)))) {

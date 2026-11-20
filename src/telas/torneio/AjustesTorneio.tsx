@@ -4,6 +4,8 @@ import { Icone } from '../../components/Icone'
 import type { TorneioHook } from '../../store/torneio'
 import { useConfirmar } from '../../utils/confirmacao'
 import { enviarConvite } from '../../utils/convite'
+import { limparCodigoDoBolao, linkDoBolao, trocarCodigoDoBolao } from '../../store/bolao'
+import { compartilharTexto } from '../../utils/nativo'
 import { maiusculas } from '../../utils/formatar'
 import { RegrasForm } from './RegrasForm'
 
@@ -34,6 +36,29 @@ export function AjustesTorneio({ hook, onInicio }: { hook: TorneioHook; onInicio
     const r = await enviarConvite(codigo!, torneio.nome)
     setAviso(r === 'copiado' ? 'Convite copiado. Cole no WhatsApp do grupo.' : r === 'falhou' ? `Não deu para enviar. Passe o código: ${codigo}` : null)
   }
+  // bolão (PLANO.md, seção 23): o link para o grupo palpitar nos jogos (só pontos, sem dinheiro)
+  const chamarParaOBolao = async () => {
+    const texto = `🎯 Bolão do ${torneio.nome}: palpite nos jogos, em quem faz os gols e em quem leva cartão. É só pontos, de graça. Entre: ${linkDoBolao(torneio.codigoDoBolao ?? codigo!)}`
+    if (!(await compartilharTexto({ text: texto }))) {
+      await navigator.clipboard.writeText(texto).catch(() => null)
+      setAviso('Link do bolão copiado. Cole no WhatsApp do grupo.')
+    }
+  }
+  // o organizador escolhe o código do bolão ("COPAVILA"): único, vale no link e para digitar
+  const [codigoDoBolao, setCodigoDoBolao] = useState(torneio.codigoDoBolao ?? '')
+  const [avisoDoBolao, setAvisoDoBolao] = useState<string | null>(null)
+  const [salvandoBolao, setSalvandoBolao] = useState(false)
+  const salvarCodigoDoBolao = async () => {
+    const novo = codigoDoBolao || null
+    if (novo && novo.length < 4) return setAvisoDoBolao('Use de 4 a 12 letras e números.')
+    setSalvandoBolao(true)
+    const resposta = await trocarCodigoDoBolao(codigo!, novo, torneio.codigoDoBolao ?? null)
+    setSalvandoBolao(false)
+    if (resposta === 'ok') {
+      hook.aplicar((t) => { const { codigoDoBolao: _antigo, ...resto } = t; return novo ? { ...resto, codigoDoBolao: novo } : resto })
+      setAvisoDoBolao(novo ? `Pronto! O link do bolão agora usa ${novo}.` : 'O bolão voltou a usar o código do torneio.')
+    } else setAvisoDoBolao(resposta === 'em-uso' ? 'Esse código já está em uso. Escolha outro.' : 'Não deu para salvar. Confira a internet.')
+  }
   const compartilhar = async () => {
     setCompartilhando(true)
     const cod = await hook.compartilhar().catch(() => null)
@@ -54,6 +79,20 @@ export function AjustesTorneio({ hook, onInicio }: { hook: TorneioHook; onInicio
                 <div style={{ fontSize: 40, letterSpacing: 6 }}>{codigo}</div>
               </div>
               {!hook.soAcompanha && <button className="btn sm" onClick={convidar}><Icone nome="times" /> Convidar mesários</button>}
+              <button className="btn w sm" onClick={() => void chamarParaOBolao()}><Icone nome="certo" /> Link do bolão</button>
+              {org && (
+                <div style={{ display: 'grid', gap: 6 }}>
+                  <span style={{ fontWeight: 700 }}>Código do bolão <span className="mut">· para o link e para digitar</span></span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 6 }}>
+                    <input className="inp" style={{ minWidth: 0 }} placeholder={codigo} value={codigoDoBolao} maxLength={12} autoCapitalize="characters"
+                      aria-label="Código do bolão" onChange={(evento) => { setCodigoDoBolao(limparCodigoDoBolao(evento.target.value)); setAvisoDoBolao(null) }} />
+                    <button className="btn sm" style={{ width: 'auto', paddingInline: 14 }} disabled={salvandoBolao || codigoDoBolao === (torneio.codigoDoBolao ?? '')}
+                      onClick={() => void salvarCodigoDoBolao()}>{salvandoBolao ? '…' : 'Salvar'}</button>
+                  </div>
+                  <span className="mut" style={{ fontSize: 13 }}>Ex.: COPAVILA. De 4 a 12 letras e números; não pode repetir o de outro torneio.</span>
+                  {avisoDoBolao && <div role="status" style={{ fontWeight: 700, color: avisoDoBolao.startsWith('Pronto') || avisoDoBolao.startsWith('O bolão') ? 'var(--verde)' : 'var(--vermelho)' }}>{avisoDoBolao}</div>}
+                </div>
+              )}
               {aviso && <div role="status" className="mut" style={{ color: 'var(--navy)', fontWeight: 600 }}>{aviso}</div>}
             </div>
             {/* cada campo tem um mesário: quem pega trava o campo para os outros (PLANO.md, seção 10) */}

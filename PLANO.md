@@ -1320,3 +1320,32 @@ Decidido: a carta do torneio fica **separada** da pelada; quem foi digitado pelo
   **qualquer time** (com o nome do time): Artilheiro, Goleiro menos vazado, Troféu Garçom (se teve assistência) e
   Melhor jogador (a coroa; se o organizador escolheu). Rodapé: jogos e gols do torneio. Dados em
   `resumoDoCampeao` (`logic/torneio/carta.ts`).
+
+## 23. Bolão do torneio (20/11/2026)
+- **O que é:** palpites nos jogos do torneio, **sem dinheiro**: só pontos e um ranking. Prêmio, se houver, é do organizador
+  (aviso no ranking: "Brincadeira sem valor. Prêmios, se houver, são do organizador. Apple e Google não patrocinam.").
+  Nunca usar "aposta" nem "bet" no app (lojas e classificação etária).
+- **Quem palpita:** só quem tem conta. Entra pelo link do bolão (`?bolao=CÓDIGO`, botão "Link do bolão" nos Ajustes do
+  torneio compartilhado) ou colando o link/código em Início → Torneio → **Bolão**. Grátis; sempre ligado em todo torneio
+  compartilhado. "Meus bolões" junta todos os torneios em que a pessoa palpita (encerrados à parte).
+- **Telas:** abas Jogos | Torneio | Ranking. Jogos: os ao vivo em destaque (placar, tempo, o meu palpite e os pontos até
+  agora) e as rodadas com o selo de cada jogo (Palpitar, ✓ 2-1, ao vivo, 🎯 +11). O palpite de um jogo tem a cara da
+  partida: placar preto, "Gol VIL/REA" (quem faz, ou "sem escolher jogador"), o resumo e as escalações; tocar no jogador
+  abre a ficha (gols, média, assistências e cartões no torneio) com ⚽ Faz gol · Amarelo · Vermelho. O placar é a soma
+  dos gols. Salvou, volta para os jogos. Depois que o jogo começa: palpite travado, comparado com o jogo (ao vivo ou final),
+  e "O que a galera palpitou" (% por jogador; só depois de começar, para ninguém ir na onda dos outros).
+- **Pontos:** placar exato +3, só o vencedor/empate +1 (no apito final); cada gol de jogador acertado +2 (palpitou 2 e ele
+  fez 1: +2); cartão em quem levou +2, vermelho palpitado em quem foi expulso +4 (gols e cartões contam na hora). Até 2
+  cartões por jogo. Torneio (fecha no 1º jogo): campeão 10, vice 5, artilheiro 8, garçom 5 (com assistências), mais cartões 5;
+  empatados no topo valem todos. Ranking: pontos, depois placares cravados, depois quem entrou primeiro.
+- **Nuvem e regras:** `torneios/{c}/bolao/{conta}` (quem entrou), `torneios/{c}/palpites/{jogo}/de/{conta}` (fecha quando
+  existe `partidas/{jogo}` ou `resultados/{jogo}`; os dos outros só depois), `torneios/{c}/palpitesDoTorneio/{conta}` (fecha
+  com `torneios/{c}/sistema/bolao`, que a função `fecharBolaoNoInicio`/`fecharBolaoNoResultado` cria no 1º jogo) e
+  `usuarios/{conta}/boloes` (Meus bolões). Excluir a conta apaga os palpites; apagar o torneio apaga o bolão.
+- **Código do bolão personalizado:** nos Ajustes do torneio compartilhado, o organizador escolhe um código (4 a 12 letras e
+  números, sem acento: "Copa Vila" → COPAVILA). Fica em `codigosDoBolao/{CÓDIGO}` (o id é o código: único; só o organizador do
+  torneio cria; não pode ser o código de outro torneio). Vale no link (`?bolao=COPAVILA`) e para digitar; o código de 6 do
+  torneio continua valendo. Apagar o torneio ou a conta apaga o código.
+- **Código:** `logic/torneio/bolao.ts` (pontos e ranking, testes), `store/bolao.ts`, `telas/bolao/`, regras em
+  `testes-regras/bolao.mjs`.
+

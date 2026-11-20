@@ -260,6 +260,67 @@ service cloud.firestore {
         allow create: if comConta() && (souOrganizador() || jogoNoMeuCampo());
         allow update, delete: if comConta() && souOrganizador();
       }
+
+      // ---- Bolão (PLANO.md, seção 23): palpites só por pontos, de quem tem conta ----
+      function comecou(jogo) {
+        return exists(/databases/$(database)/documents/torneios/$(codigo)/partidas/$(jogo))
+          || exists(/databases/$(database)/documents/torneios/$(codigo)/resultados/$(jogo));
+      }
+      // o servidor marca quando o 1º jogo começa (função fecharBolao): aí fecham os palpites do torneio
+      function bolaoFechado() { return exists(/databases/$(database)/documents/torneios/$(codigo)/sistema/bolao); }
+      function seuNome(dados) { return dados.nome is string && dados.nome.size() > 0 && dados.nome.size() <= 40; }
+
+      // Quem entrou no bolão (o ranking lista todos). Cada um só o próprio; o organizador tira (ao apagar o torneio).
+      match /bolao/{conta} {
+        allow read: if comConta();
+        allow create, update: if comConta() && request.auth.uid == conta
+          && request.resource.data.keys().hasOnly(['nome', 'em']) && seuNome(request.resource.data) && request.resource.data.em is number;
+        allow delete: if comConta() && (request.auth.uid == conta || souOrganizador());
+      }
+      // Palpite de um jogo: só o dono grava, e só antes do jogo começar. Os dos outros só aparecem depois que o jogo
+      // começa (ninguém vai na onda dos outros). Apagar o próprio pode sempre (excluir a conta).
+      match /palpites/{jogo}/de/{conta} {
+        allow get: if comConta() && (request.auth.uid == conta || comecou(jogo));
+        allow list: if comConta() && comecou(jogo);
+        allow create, update: if comConta() && request.auth.uid == conta && !comecou(jogo)
+          && request.resource.data.keys().hasOnly(['placar', 'gols', 'cartoes', 'em'])
+          && request.resource.data.placar is list && request.resource.data.placar.size() == 2
+          && request.resource.data.gols is list && request.resource.data.gols.size() <= 40
+          && request.resource.data.cartoes is list && request.resource.data.cartoes.size() <= 2
+          && request.resource.data.em is number;
+        allow delete: if comConta() && (request.auth.uid == conta || souOrganizador());
+      }
+      // Campeão, vice, artilheiro, garçom e mais cartões: fecham no 1º jogo; os dos outros aparecem depois.
+      match /palpitesDoTorneio/{conta} {
+        allow get: if comConta() && (request.auth.uid == conta || bolaoFechado());
+        allow list: if comConta() && bolaoFechado();
+        allow create, update: if comConta() && request.auth.uid == conta && !bolaoFechado()
+          && request.resource.data.keys().hasOnly(['campeao', 'vice', 'artilheiro', 'garcom', 'maisCartoes', 'em'])
+          && request.resource.data.em is number;
+        allow delete: if comConta() && (request.auth.uid == conta || souOrganizador());
+      }
+      // Marcas do servidor (bolão fechado): todos leem, ninguém grava; o organizador apaga junto com o torneio.
+      match /sistema/{marca} {
+        allow read: if comConta();
+        allow create, update: if false;
+        allow delete: if comConta() && souOrganizador();
+      }
+    }
+
+    // Código do bolão escolhido pelo organizador ("COPAVILA", PLANO.md, seção 23): o id é o código, então é único.
+    // Só o organizador do torneio cria, e não pode ser o código de outro torneio. Ninguém muda (troca = apaga e cria).
+    match /codigosDoBolao/{codigo} {
+      allow get: if request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
+      allow list: if request.auth != null && resource.data.organizador == request.auth.uid;
+      allow create: if request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && codigo.matches('^[A-Z0-9]{4,12}$')
+        && request.resource.data.keys().hasOnly(['torneio', 'organizador', 'em'])
+        && request.resource.data.organizador == request.auth.uid
+        && request.resource.data.torneio is string
+        && get(/databases/$(database)/documents/torneios/$(request.resource.data.torneio)).data.nuvem.organizador == request.auth.uid
+        && !exists(/databases/$(database)/documents/torneios/$(codigo));
+      allow update: if false;
+      allow delete: if request.auth != null && resource.data.organizador == request.auth.uid;
     }
 
     // Telão (PLANO.md, seção 20): a TV entra anônima e cria a tela dela (id = uid) com um código; a organizadora

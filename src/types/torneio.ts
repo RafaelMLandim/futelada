@@ -167,4 +167,5 @@ export type Torneio = {
   inscricao?: string // código do link de inscrição dos times (PLANO.md, seção 22)
   melhorJogador?: string // id do jogador eleito o melhor do torneio pelo organizador (vai para a carta)
   limiteDeTimes?: number // torneio grátis: até 8 times (PLANO.md, seção 14.1)
+  codigoDoBolao?: string // código escolhido pelo organizador para o link do bolão ("COPAVILA"; PLANO.md, seção 23)
 }

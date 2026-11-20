@@ -1,6 +1,25 @@
 {
   "observacao": "Contas de teste do emulador do Firebase (auth 9099). Só valem no emulador local.",
   "contas": [
-    { "email": "organizador-premium@exemplo.test", "senha": "teste-c43f9e9517d6", "uso": "ver a tela do Pro e a lista da pelada" }
+    {
+      "email": "organizador-premium@exemplo.test",
+      "senha": "teste-c43f9e9517d6",
+      "uso": "ver a tela do Pro e a lista da pelada"
+    },
+    {
+      "email": "bolao-ana@exemplo.test",
+      "senha": "teste-bolao-7f3a91",
+      "uso": "bolão: organizadora do torneio de teste"
+    },
+    {
+      "email": "bolao-beto@exemplo.test",
+      "senha": "teste-bolao-7f3a91",
+      "uso": "bolão: participante que palpita"
+    },
+    {
+      "email": "bolao-carla@exemplo.test",
+      "senha": "teste-bolao-7f3a91",
+      "uso": "bolão: participante que entra pelo código COPAVILA"
+    }
   ]
 }

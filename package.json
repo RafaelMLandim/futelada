@@ -12,7 +12,7 @@
     "android": "vite build && bash -c 'source ~/.local/opt/android-env.sh && npx cap sync android && cd android && ./gradlew assembleDebug -q'",
     "android:loja": "vite build && bash -c 'source ~/.local/opt/android-env.sh && npx cap sync android && cd android && ./gradlew bundleRelease -q'",
     "ios": "vite build && bash -c 'source ~/.local/opt/android-env.sh && npx cap sync ios'",
-    "test:regras": "bash -c 'source ~/.local/opt/android-env.sh && npx firebase-tools emulators:exec --only firestore --project demo-dois-ou-dez \"node --test --test-concurrency=1 testes-regras/plano.mjs testes-regras/isolamento.mjs\"'",
+    "test:regras": "bash -c 'source ~/.local/opt/android-env.sh && npx firebase-tools emulators:exec --only firestore --project demo-dois-ou-dez \"node --test --test-concurrency=1 testes-regras/plano.mjs testes-regras/isolamento.mjs testes-regras/bolao.mjs\"'",
     "emuladores": "bash -c 'source ~/.local/opt/android-env.sh && npx firebase-tools emulators:start --only auth,firestore,functions --project dois-ou-dez'"
   },
   "dependencies": {

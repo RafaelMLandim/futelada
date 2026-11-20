@@ -26,3 +26,7 @@ export { juntarInscricoes, vagasDaInscricao, ehCapitao, ligarContaAoJogador } fr
 export { separar, juntar, diferencas, aplicarOperacoes, novoCodigo, type BaseTorneio, type DadosNuvem, type Operacao } from './sincronia'
 export { periodoDaPartida, temposDaFase, duracaoDoPeriodo, decorridoNoPeriodo, ultimoPeriodo, nomeDoPeriodo, rotuloDoPeriodo, vaiParaProrrogacao,
   comecarIntervalo, proximoTempo, comecarProrrogacao } from './periodos'
+export { PONTOS_DO_BOLAO, MAXIMO_DE_CARTOES_NO_PALPITE, placarDoPalpite, situacaoDoJogo, palpiteDoJogoFechado, palpiteDoTorneioFechado, pontosDoJogo,
+  respostasDoTorneio, pontosDoTorneio, rankingDoBolao, preferenciasDoBolao, type PalpiteDoJogo, type PalpiteDoTorneio, type ParticipanteDoBolao,
+  type GolDoPalpite, type CartaoDoPalpite, type CorDoPalpite, type SituacaoDoJogo, type PontosDoJogo, type RespostasDoTorneio, type PontosDoTorneio,
+  type LinhaDoRanking } from './bolao'

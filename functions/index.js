@@ -5,6 +5,7 @@ import { initializeApp } from 'firebase-admin/app'
 import { FieldValue, getFirestore } from 'firebase-admin/firestore'
 import { setGlobalOptions } from 'firebase-functions/v2'
 import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https'
+import { onDocumentCreated } from 'firebase-functions/v2/firestore'
 import { logger } from 'firebase-functions'
 import { defineSecret } from 'firebase-functions/params'
 import { codigoValido, idDaPeladaNaCarta, jogadoresDoTorneioValidos, jogadoresValidos } from './carta.js'
@@ -151,3 +152,17 @@ export const denunciarFoto = onCall(async (req) => {
     return { ok: true, removida: true }
   })
 })
+
+/**
+ * Bolão (PLANO.md, seção 23): quando o 1º jogo do torneio começa (ou já chega um resultado), fecham os palpites do
+ * torneio (campeão, artilheiro…). A marca fica em torneios/{codigo}/sistema/bolao, que só o servidor grava; as regras
+ * olham para ela. Os palpites de cada jogo as próprias regras fecham (o jogo em andamento ou encerrado existe).
+ */
+async function fecharBolao(codigo) {
+  const marca = db.doc(`torneios/${codigo}/sistema/bolao`)
+  await marca.create({ fechadoEm: Date.now() }).catch((erro) => {
+    if (erro?.code !== 6) throw erro // 6 = já existe: já estava fechado
+  })
+}
+export const fecharBolaoNoInicio = onDocumentCreated('torneios/{codigo}/partidas/{jogo}', (evento) => fecharBolao(evento.params.codigo))
+export const fecharBolaoNoResultado = onDocumentCreated('torneios/{codigo}/resultados/{jogo}', (evento) => fecharBolao(evento.params.codigo))

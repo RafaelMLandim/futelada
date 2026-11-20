@@ -1,4 +1,4 @@
-import type { DadosNuvem, Operacao } from '../logic/torneio'
+import type { DadosNuvem, Operacao, PalpiteDoJogo, PalpiteDoTorneio, ParticipanteDoBolao } from '../logic/torneio'
 import type { PeladaGuardada } from '../logic/historico'
 import type { PeladaDaCarta, ResumoDaCarta, TorneioDaCarta } from '../logic/carta'
 import type { ResumoDoTorneioNaCarta } from '../logic/torneio/carta'
@@ -68,6 +68,12 @@ export type Turma = { id: string; nome: string; criadaEm: number }
 
 /** Pelada encerrada no histórico (fica no perfil de quem fez login). */
 export type PeladaNoHistorico = PeladaGuardada & { id: string }
+
+/**
+ * Bolão em que quem está logado entrou (PLANO.md, seção 23): fica no perfil dele, para a lista "Meus bolões". `id` = o
+ * código do torneio. A colocação e os pontos são os da última vez que ele abriu (para a lista não abrir todos).
+ */
+export type BolaoDoUsuario = { id: string; nomeDoTorneio: string; data: number; posicao?: number; pontos?: number; participantes?: number; encerrado?: boolean }
 
 /** Mesário que pegou um campo do torneio (o campo fica travado para os outros). */
 export type MesarioNoCampo = { uid: string; nome: string; foto: string | null; em: number }
@@ -193,6 +199,29 @@ export interface Nuvem {
   ouvirParticipacoes(aoMudar: (participacoes: ParticipacaoNoTorneio[]) => void): () => void
   /** Guarda (ou tira, com null) a participação no perfil de quem está logado. */
   guardarParticipacao(id: string, participacao: Omit<ParticipacaoNoTorneio, 'id'> | null): Promise<void>
+
+  // ---- bolão (PLANO.md, seção 23) ----
+  /** Entra no bolão do torneio (aparece no ranking) e guarda ele em "Meus bolões". */
+  entrarNoBolao(torneio: string, nomeDoTorneio: string, nome: string): Promise<void>
+  /** Os bolões de quem está logado, do mais novo ao mais antigo. */
+  ouvirMeusBoloes(aoMudar: (boloes: BolaoDoUsuario[]) => void): () => void
+  /** Lembra a colocação e os pontos para a lista "Meus bolões". */
+  lembrarBolao(torneio: string, resumo: Pick<BolaoDoUsuario, 'posicao' | 'pontos' | 'participantes' | 'encerrado' | 'nomeDoTorneio'>): Promise<void>
+  /** Troca o código do bolão do torneio ("COPAVILA"): false = já está em uso. `antigo` sai (null = não tinha). */
+  trocarCodigoDoBolao(torneio: string, novo: string | null, antigo: string | null): Promise<boolean>
+  /** O código digitado (o do bolão ou o do torneio) → o código do torneio. */
+  torneioDoCodigo(codigo: string): Promise<string>
+  /** Quem entrou no bolão. */
+  ouvirParticipantesDoBolao(torneio: string, aoMudar: (participantes: ParticipanteDoBolao[]) => void): () => void
+  /** Os palpites de quem está logado (dos jogos pedidos e o do torneio). */
+  meusPalpites(torneio: string, jogos: string[]): Promise<{ jogos: Record<string, PalpiteDoJogo>; torneio: PalpiteDoTorneio | null }>
+  /** Grava (ou tira, com null) o palpite de um jogo. Falha se o jogo já começou. */
+  salvarPalpite(torneio: string, jogo: string, palpite: PalpiteDoJogo | null): Promise<void>
+  salvarPalpiteDoTorneio(torneio: string, palpite: PalpiteDoTorneio): Promise<void>
+  /** Os palpites de todos num jogo (por conta). Só depois que o jogo começa (antes, as regras não deixam). */
+  ouvirPalpitesDoJogo(torneio: string, jogo: string, aoMudar: (palpites: Record<string, PalpiteDoJogo>) => void, aoErro?: (erro: Error) => void): () => void
+  /** Os palpites do torneio de todos (por conta). Só depois do 1º jogo. */
+  ouvirPalpitesDoTorneio(torneio: string, aoMudar: (palpites: Record<string, PalpiteDoTorneio>) => void, aoErro?: (erro: Error) => void): () => void
 
   // ---- carta e foto do jogador (PLANO.md, seção 17) ----
   /** Peladas da carta de quem está logado (só o servidor grava; vazio sem login). */
