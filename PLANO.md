@@ -1126,6 +1126,11 @@ conta ou digita o nome), a mesma pessoa aparecendo duas vezes (entrou com a cont
   ("Bola nova · DANIEL"); desfeito, a entrada sai. "Usar o dinheiro (saída)" lança uma saída da caixinha. Barra da meta:
   "R$ 90 de R$ 150 · 9 de 15 pagaram"; o saldo da caixinha aparece quando houve saída.
 - **Encerrar caixinha:** some da lista; o que entrou continua no caixa.
+- **Quem participa (20/11/2026):** a caixinha não pega mais a turma inteira (que tinha nomes repetidos das peladas em que a
+  pessoa entrou só com o nome: uma caixinha saiu com 62). Já vem marcado **quem joga com a conta** (uma vez por conta); em
+  "+ Adicionar mais gente" o organizador digita o nome de quem não tem conta (de propósito não sugere os nomes da turma sem
+  conta, que vinham repetidos: a ideia é todo mundo baixar o app) ou devolve quem tem conta e ele tirou. Na caixinha aberta, "Mudar quem participa" refaz o valor por pessoa; quem já pagou ou avisou não sai
+  (e continua com o valor que pagou). `participantesDaTurma` em `logic/caixinha.ts`.
 - **Código:** `logic/caixinha.ts` (contas e testes), `store/caixinhas.ts`, `telas/Caixinhas.tsx`; nuvem em
   `usuarios/{uid}/caixinhas` e a cobrança em `cobrancas/{código}` (campos novos `titulo` e `descricao`). Excluir a conta apaga as caixinhas.
 - **Campo pago (10/11):** com o campo pago ligado, a pelada só encerra depois de lançar no caixa ("Lance o campo no caixa ·

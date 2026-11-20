@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { entradasDesfeitas, entradasQueFaltam, resumoDaCaixinha, valorPorPessoaDaCaixinha, type Caixinha } from '..'
+import { entradasDesfeitas, entradasQueFaltam, participantesDaTurma, resumoDaCaixinha, valorPorPessoaDaCaixinha, type Caixinha } from '..'
 
 // Caixinhas: dinheiro separado por motivo, dividido pela turma.
 const jogadores = Array.from({ length: 15 }, (_, indice) => ({ id: `j${indice}`, nome: `JOGADOR ${indice}` }))
@@ -32,5 +32,18 @@ describe('caixinha', () => {
       { tipo: 'entrada', valor: 10, descricao: 'Bola nova · JOGADOR 1', data: 5, caixinha: 'bola', jogador: 'j1', turma: 'quarta' },
     ])
     expect(entradasDesfeitas(bola, { j1: 'pago' }, lancamentos).map((lancamento) => lancamento.id)).toEqual(['l1'])
+  })
+
+  it('participantes: só quem tem conta, cada conta uma vez', () => {
+    const turma = [
+      { id: 'a1', nome: 'Bruno', peladas: 1, ultimaPelada: 1, conta: 'contaBruno' },
+      { id: 'a2', nome: 'BRUNO', peladas: 4, ultimaPelada: 2, conta: 'contaBruno' },
+      { id: 'a3', nome: 'bruno', peladas: 2, ultimaPelada: 3 }, // o mesmo, das peladas em que entrou só com o nome
+      { id: 'b1', nome: 'Daniel', peladas: 1, ultimaPelada: 1 },
+      { id: 'b2', nome: 'DANIEL', peladas: 3, ultimaPelada: 2 },
+      { id: 'c1', nome: 'Caio', peladas: 5, ultimaPelada: 1, arquivado: true },
+      { id: 'd1', nome: 'Edu', peladas: 2, ultimaPelada: 1, conta: 'contaEdu' },
+    ]
+    expect(participantesDaTurma(turma)).toEqual([{ id: 'a2', nome: 'BRUNO' }, { id: 'd1', nome: 'Edu' }])
   })
 })

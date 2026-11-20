@@ -1,17 +1,17 @@
 // Caixinhas no Caixa (PLANO.md, seção 19): dinheiro separado por motivo ("Bola nova"), dividido por todos os
-// jogadores da turma. Cada uma tem o link com o QR do Pix para o grupo, a lista de quem pagou e a barra da meta.
+// jogadores escolhidos (quem joga com a conta já vem marcado; os outros o organizador adiciona). Cada uma tem o link com o QR do Pix para o grupo, a lista de quem pagou e a barra da meta.
 
 import { useState } from 'react'
 import { QrCode } from '../components/QrCode'
-import { resumoDaCaixinha, valorPorPessoaDaCaixinha, type Caixinha, type JogadorDaCaixinha } from '../logic'
+import { participantesDaTurma, resumoDaCaixinha, valorPorPessoaDaCaixinha, type Caixinha, type JogadorDaCaixinha } from '../logic'
 import type { Lancamento, Turma } from '../nuvem/tipos'
 import { carregar } from '../store/armazenamento'
-import { criarCaixinha, encerrarCaixinha, marcarNaCaixinha, useLancarCaixinha, useStatusDaCaixinha } from '../store/caixinhas'
+import { criarCaixinha, encerrarCaixinha, marcarNaCaixinha, mudarParticipantes, useLancarCaixinha, useStatusDaCaixinha } from '../store/caixinhas'
 import { linkDePagamento } from '../store/cobranca'
 import { useJogadoresDaTurma } from '../store/turmas'
 import type { StatusPagamento } from '../types/pelada'
 import { useConfirmar } from '../utils/confirmacao'
-import { reais } from '../utils/formatar'
+import { normalizarNome, reais } from '../utils/formatar'
 import { compartilharTexto } from '../utils/nativo'
 import { pixCopiaECola } from '../utils/pix'
 
@@ -31,7 +31,7 @@ export function SecaoDeCaixinhas({ caixinhas, turmas, turmaDoFiltro, lancamentos
     <section className="panel">
       <div className="ph">Caixinhas<span className="sub">dinheiro separado por motivo</span></div>
       <div className="pb" style={{ display: 'grid', gap: 10 }}>
-        {visiveis.length === 0 && <div className="mut">Junte dinheiro para a bola nova, os coletes ou o churrasco. O valor é dividido por todos da turma.</div>}
+        {visiveis.length === 0 && <div className="mut">Junte dinheiro para a bola nova, os coletes ou o churrasco. O valor é dividido por quem participa.</div>}
         {/* cada card também lança no caixa o que for confirmado (mesmo com a caixinha fechada) */}
         {caixinhas.filter((caixinha) => !caixinha.encerrada).map((caixinha) => (
           <CardDaCaixinha key={caixinha.id} caixinha={caixinha} visivel={visiveis.includes(caixinha)} lancamentos={lancamentos}
@@ -81,7 +81,63 @@ function CardDaCaixinha({ caixinha, visivel, lancamentos, lancar, apagar, onAbri
   )
 }
 
-/** Criar: nome, motivo, valor total e a turma; o valor é dividido por todos os jogadores da turma. */
+/**
+ * Quem participa da caixinha: a lista (tocar no × tira) e, embaixo, quem dá para adicionar: quem tem conta e ficou de
+ * fora e qualquer nome digitado pelo organizador. Quem já pagou ou avisou não sai.
+ */
+function QuemParticipa({ escolhidos, sugestoes, travados, onMudar }: {
+  escolhidos: JogadorDaCaixinha[]; sugestoes: JogadorDaCaixinha[]; travados?: Record<string, StatusPagamento>; onMudar: (jogadores: JogadorDaCaixinha[]) => void
+}) {
+  const [novo, setNovo] = useState('')
+  const [adicionando, setAdicionando] = useState(false)
+  const ids = new Set(escolhidos.map((jogador) => jogador.id))
+  const nomes = new Set(escolhidos.map((jogador) => normalizarNome(jogador.nome)))
+  const foraComConta = sugestoes.filter((jogador) => !ids.has(jogador.id))
+  const adicionarNome = () => {
+    const nome = novo.trim()
+    if (!nome || nomes.has(normalizarNome(nome))) return setNovo('')
+    onMudar([...escolhidos, { id: `n${Date.now().toString(36)}`, nome }])
+    setNovo('')
+  }
+  const chip = (jogador: JogadorDaCaixinha) => (
+    <button key={jogador.id} className="chip" style={{ textTransform: 'none', background: '#fff' }} onClick={() => onMudar([...escolhidos, jogador])}>+ {jogador.nome}</button>
+  )
+  return (
+    <div style={{ display: 'grid', gap: 6 }}>
+      <span className="mut" style={{ color: 'var(--navy)', fontWeight: 700 }}>Quem participa ({escolhidos.length})</span>
+      {escolhidos.length === 0 && <div className="mut" style={{ fontSize: 13 }}>Ninguém ainda. Adicione abaixo.</div>}
+      <div>
+        {escolhidos.map((jogador) => {
+          const pagou = travados?.[jogador.id]
+          return (
+            <div key={jogador.id} className="tr" style={{ color: 'var(--navy)' }}>
+              <span className="nome">{jogador.nome}</span>
+              {pagou
+                ? <span className="tag">{pagou === 'pago' ? 'Pago' : 'Avisou'}</span>
+                : <button className="ib s" style={{ width: 30, height: 30 }} aria-label={`Tirar ${jogador.nome}`}
+                    onClick={() => onMudar(escolhidos.filter((outro) => outro.id !== jogador.id))}><span style={{ fontSize: 18, lineHeight: 1 }}>×</span></button>}
+            </div>
+          )
+        })}
+      </div>
+      {!adicionando
+        ? <button className="btn w sm" onClick={() => setAdicionando(true)}>+ Adicionar mais gente</button>
+        : <div style={{ display: 'grid', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 6 }}>
+              <input className="inp" style={{ minWidth: 0 }} maxLength={30} placeholder="Nome de quem vai pagar" value={novo}
+                onChange={(evento) => setNovo(evento.target.value)} onKeyDown={(evento) => { if (evento.key === 'Enter') adicionarNome() }} />
+              <button className="btn sm" style={{ width: 'auto', paddingInline: 14 }} disabled={!novo.trim()} onClick={adicionarNome}>Adicionar</button>
+            </div>
+            {foraComConta.length > 0 && <>
+              <span className="mut" style={{ fontSize: 13 }}>Da turma, com conta no app</span>
+              <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>{foraComConta.map(chip)}</div>
+            </>}
+          </div>}
+    </div>
+  )
+}
+
+/** Criar: nome, motivo, valor total e quem participa (quem joga com a conta já vem marcado). */
 function NovaCaixinha({ turmas, turmaInicial, onFechar, onCriada }: {
   turmas: Turma[]; turmaInicial: string | null; onFechar: () => void; onCriada: (id: string) => void
 }) {
@@ -95,17 +151,20 @@ function NovaCaixinha({ turmas, turmaInicial, onFechar, onCriada }: {
   const [recebedor, setRecebedor] = useState(pagamento?.recebedor ?? '')
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
-  const jogadoresDaTurma = useJogadoresDaTurma(turma).filter((jogador) => !jogador.arquivado)
+  const jogadoresDaTurma = useJogadoresDaTurma(turma)
+  const sugestoes = participantesDaTurma(jogadoresDaTurma)
+  const [escolhidos, setEscolhidos] = useState<JogadorDaCaixinha[] | null>(null)
+  // até o organizador mexer, vale quem joga com a conta (a turma pode chegar depois de abrir)
+  const participantes = escolhidos ?? sugestoes
   const meta = Number(valor.replace(/[^\d,.]/g, '').replace(',', '.')) || 0
-  const porPessoa = valorPorPessoaDaCaixinha(meta, jogadoresDaTurma.length)
-  const pronto = nome.trim() && meta > 0 && jogadoresDaTurma.length > 0 && chavePix.trim() && recebedor.trim()
+  const porPessoa = valorPorPessoaDaCaixinha(meta, participantes.length)
+  const pronto = nome.trim() && meta > 0 && participantes.length > 0 && chavePix.trim() && recebedor.trim()
 
   const criar = async () => {
     setSalvando(true)
     setErro(null)
     try {
-      const jogadores: JogadorDaCaixinha[] = jogadoresDaTurma.map((jogador) => ({ id: jogador.id, nome: jogador.nome }))
-      const caixinha = await criarCaixinha({ nome: nome.trim(), descricao: descricao.trim(), meta: Math.round(meta * 100) / 100, turma, jogadores, chavePix: chavePix.trim(), recebedor: recebedor.trim() })
+      const caixinha = await criarCaixinha({ nome: nome.trim(), descricao: descricao.trim(), meta: Math.round(meta * 100) / 100, turma, jogadores: participantes, chavePix: chavePix.trim(), recebedor: recebedor.trim() })
       onCriada(caixinha.id)
     } catch {
       setErro('Não deu para criar agora. Confira a internet e tente de novo.')
@@ -132,10 +191,11 @@ function NovaCaixinha({ turmas, turmaInicial, onFechar, onCriada }: {
             <input className="inp" inputMode="decimal" placeholder="Ex.: 150" value={valor} onChange={(evento) => setValor(evento.target.value)} />
           </label>
           <div className="plano-conta" style={{ color: 'var(--navy)' }}>
-            {jogadoresDaTurma.length > 0
-              ? <><b>{reais(porPessoa)} para cada um</b><small>{reais(meta)} ÷ {jogadoresDaTurma.length} jogadores da turma</small></>
-              : <b>A turma ainda não tem jogadores. Faça uma pelada com ela antes.</b>}
+            {participantes.length > 0
+              ? <><b>{reais(porPessoa)} para cada um</b><small>{reais(meta)} ÷ {participantes.length} {participantes.length === 1 ? 'pessoa' : 'pessoas'}</small></>
+              : <b>Escolha quem participa para dividir o valor.</b>}
           </div>
+          <QuemParticipa escolhidos={participantes} sugestoes={sugestoes} onMudar={setEscolhidos} />
           <label style={{ display: 'grid', gap: 4 }}>
             <span className="mut" style={{ color: 'var(--navy)', fontWeight: 700 }}>Sua chave Pix</span>
             <input className="inp" placeholder="CPF, celular, e-mail ou chave aleatória" value={chavePix} onChange={(evento) => setChavePix(evento.target.value)} />
@@ -158,6 +218,7 @@ function CaixinhaAberta({ caixinha, lancamentos, onSaida, onFechar }: { caixinha
   const status = useStatusDaCaixinha(caixinha)
   const confirmar = useConfirmar()
   const [aviso, setAviso] = useState<string | null>(null)
+  const [editando, setEditando] = useState(false)
   const pix = pixDaCaixinha(caixinha)
   const copiar = async () => {
     await navigator.clipboard.writeText(pix).catch(() => null)
@@ -205,8 +266,58 @@ function CaixinhaAberta({ caixinha, lancamentos, onSaida, onFechar }: { caixinha
               )
             })}
           </div>
+          <button className="btn w sm" onClick={() => setEditando(true)}>Mudar quem participa</button>
           <button className="btn r sm" onClick={() => { onFechar(); onSaida() }}>Usar o dinheiro (saída)</button>
           <button className="btn w sm" onClick={encerrar}>Encerrar caixinha</button>
+        </div>
+      </section>
+      {editando && <MudarParticipantes caixinha={caixinha} status={status} onFechar={() => setEditando(false)} />}
+    </div>
+  )
+}
+
+/** Muda quem participa de uma caixinha já criada: o valor por pessoa é refeito. Quem já pagou ou avisou não sai. */
+function MudarParticipantes({ caixinha, status, onFechar }: { caixinha: Caixinha; status: Record<string, StatusPagamento>; onFechar: () => void }) {
+  const sugestoes = participantesDaTurma(useJogadoresDaTurma(caixinha.turma))
+  const [escolhidos, setEscolhidos] = useState(caixinha.jogadores)
+  const [salvando, setSalvando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const porPessoa = valorPorPessoaDaCaixinha(caixinha.meta, escolhidos.length)
+  const jaPagaram = caixinha.jogadores.some((jogador) => status[jogador.id] === 'pago')
+  // quem tem conta, mais quem já pagou ou avisou (esses não saem)
+  const contas = new Set(sugestoes.map((jogador) => jogador.id))
+  const soComConta = [...caixinha.jogadores.filter((jogador) => status[jogador.id] && !contas.has(jogador.id)), ...sugestoes]
+  const salvar = async () => {
+    setSalvando(true)
+    setErro(null)
+    try {
+      await mudarParticipantes(caixinha, escolhidos)
+      onFechar()
+    } catch {
+      setErro('Não deu para salvar agora. Confira a internet e tente de novo.')
+      setSalvando(false)
+    }
+  }
+  return (
+    <div className="modal" role="dialog" aria-modal="true" aria-label="Quem participa" onClick={(evento) => { evento.stopPropagation(); onFechar() }}>
+      <section className="panel" onClick={(evento) => evento.stopPropagation()} style={{ maxHeight: 'calc(var(--altura-tela) * .92)', overflowY: 'auto' }}>
+        <div className="ph">Quem participa</div>
+        <div className="pb" style={{ display: 'grid', gap: 10 }}>
+          <div className="plano-conta" style={{ color: 'var(--navy)' }}>
+            {escolhidos.length > 0
+              ? <><b>{reais(porPessoa)} para cada um</b><small>{reais(caixinha.meta)} ÷ {escolhidos.length} {escolhidos.length === 1 ? 'pessoa' : 'pessoas'}</small></>
+              : <b>Escolha quem participa para dividir o valor.</b>}
+          </div>
+          {jaPagaram && porPessoa !== caixinha.valorPorPessoa && (
+            <div className="mut" style={{ fontSize: 13 }}>Quem já pagou continua com {reais(caixinha.valorPorPessoa)} no caixa. O valor novo vale para quem ainda vai pagar.</div>
+          )}
+          {sugestoes.length > 0 && escolhidos.length !== soComConta.length && (
+            <button className="btn w sm" onClick={() => setEscolhidos(soComConta)}>Deixar só quem tem conta ({soComConta.length})</button>
+          )}
+          <QuemParticipa escolhidos={escolhidos} sugestoes={sugestoes} travados={status} onMudar={setEscolhidos} />
+          {erro && <div role="status" style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{erro}</div>}
+          <button className="btn" disabled={escolhidos.length === 0 || salvando} onClick={() => void salvar()}>{salvando ? 'Salvando…' : 'Salvar'}</button>
+          <button className="btn w sm" onClick={onFechar}>Cancelar</button>
         </div>
       </section>
     </div>

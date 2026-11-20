@@ -19,4 +19,4 @@ export { artilharia, criterioDoArtilheiro, goleirosMenosVazados, goleiroDaSeleca
 export { peladaParaGuardar, soPartidasTerminadas, fecharPartidaEmAndamento, temporada, artilhariaDaTemporada, type PeladaGuardada, type Temporada, type LinhaDaTemporada, type GoleiroDaTemporada } from './historico'
 export { sugestoes, parecidoNaTurma, quemChegouNaTurma, jogaramNaPelada, turmaDoHistorico, naTurma, resumoDasTurmas, textoDoDia, nomeSugerido, type JogadorDaTurma, type ResumoDaTurma } from './turma'
 export { relatorioDoAno, anosDasPeladas, peladasDaTurma, type RelatorioDoAno, type JogadorNoAno, type GoleiroNoAno } from './relatorio'
-export { entradasDesfeitas, entradasQueFaltam, resumoDaCaixinha, valorPorPessoaDaCaixinha, type Caixinha, type JogadorDaCaixinha, type ResumoDaCaixinha } from './caixinha'
+export { entradasDesfeitas, entradasQueFaltam, participantesDaTurma, resumoDaCaixinha, valorPorPessoaDaCaixinha, type Caixinha, type JogadorDaCaixinha, type ResumoDaCaixinha } from './caixinha'

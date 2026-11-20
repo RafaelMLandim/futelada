@@ -3,6 +3,7 @@
 // toca em "Já paguei" e o organizador confirma. O que é confirmado entra no caixa marcado com a caixinha.
 
 import type { MovimentoDoCaixa } from './caixa'
+import type { JogadorDaTurma } from './turma'
 import type { StatusPagamento } from '../types/pelada'
 
 export type JogadorDaCaixinha = { id: string; nome: string }
@@ -20,6 +21,18 @@ export type Caixinha = {
   recebedor: string
   data: number // criada em
   encerrada?: boolean
+}
+
+/**
+ * Quem entra na caixinha: quem joga com a conta no app, cada conta uma vez só (a turma pode ter a mesma pessoa repetida,
+ * das peladas em que entrou com o nome). Os que mais jogaram primeiro. Quem não tem conta o organizador digita.
+ */
+export function participantesDaTurma(turma: readonly JogadorDaTurma[]): JogadorDaCaixinha[] {
+  const ativos = [...turma].filter((jogador) => !jogador.arquivado)
+    .sort((primeiro, segundo) => segundo.peladas - primeiro.peladas || segundo.ultimaPelada - primeiro.ultimaPelada)
+  const porConta = new Map<string, JogadorDaTurma>()
+  for (const jogador of ativos) if (jogador.conta && !porConta.has(jogador.conta)) porConta.set(jogador.conta, jogador)
+  return [...porConta.values()].map((jogador) => ({ id: jogador.id, nome: jogador.nome }))
 }
 
 /** Valor por pessoa: o total dividido por todos, arredondado para cima no centavo (como no campo pago). */

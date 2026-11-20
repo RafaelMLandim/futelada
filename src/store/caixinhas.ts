@@ -51,6 +51,16 @@ export async function criarCaixinha(dados: NovaCaixinha): Promise<Caixinha> {
   return caixinha
 }
 
+/** Muda quem participa: o valor por pessoa é refeito e o link passa a mostrar a lista nova (os avisos ficam). */
+export async function mudarParticipantes(caixinha: Caixinha, jogadores: JogadorDaCaixinha[]): Promise<Caixinha> {
+  const nuvem = await obterNuvem()
+  if (!nuvem) throw new Error('sem nuvem')
+  const nova: Caixinha = { ...caixinha, jogadores, valorPorPessoa: valorPorPessoaDaCaixinha(caixinha.meta, jogadores.length) }
+  await nuvem.publicarCobranca(nova.cobranca, cobrancaDaCaixinha(nova))
+  await nuvem.salvarCaixinha(nova)
+  return nova
+}
+
 export async function encerrarCaixinha(caixinha: Caixinha): Promise<void> {
   await (await obterNuvem())?.salvarCaixinha({ ...caixinha, encerrada: true })
 }
