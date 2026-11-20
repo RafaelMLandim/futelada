@@ -396,7 +396,7 @@ function AbaRanking({ bolao, torneio, eu }: { bolao: BolaoHook; torneio: Torneio
           </div>
         ))}
         <div className="pb mut" style={{ fontSize: 13, display: 'grid', gap: 6 }}>
-          <span>Empate nos pontos: na frente quem cravou mais placares; depois, quem entrou primeiro no bolão.</span>
+          <span>Empate nos pontos: na frente quem cravou mais placares; depois quem acertou o campeão, mais gols de jogador e mais vencedores. Empatou em tudo, divide a posição.</span>
           <b style={{ color: 'var(--navy)' }}>Brincadeira sem valor. Prêmios, se houver, são do organizador. Apple e Google não patrocinam.</b>
         </div>
       </section>

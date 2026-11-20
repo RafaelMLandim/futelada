@@ -1337,7 +1337,8 @@ Decidido: a carta do torneio fica **separada** da pelada; quem foi digitado pelo
 - **Pontos:** placar exato +3, só o vencedor/empate +1 (no apito final); cada gol de jogador acertado +2 (palpitou 2 e ele
   fez 1: +2); cartão em quem levou +2, vermelho palpitado em quem foi expulso +4 (gols e cartões contam na hora). Até 2
   cartões por jogo. Torneio (fecha no 1º jogo): campeão 10, vice 5, artilheiro 8, garçom 5 (com assistências), mais cartões 5;
-  empatados no topo valem todos. Ranking: pontos, depois placares cravados, depois quem entrou primeiro.
+  empatados no topo valem todos. **Desempate do ranking (20/11):** pontos → placares cravados → acertou o campeão → gols de
+  jogador acertados → vencedores acertados; empatou em tudo, divide a posição (2º e 2º; o próximo é o 4º).
 - **Nuvem e regras:** `torneios/{c}/bolao/{conta}` (quem entrou), `torneios/{c}/palpites/{jogo}/de/{conta}` (fecha quando
   existe `partidas/{jogo}` ou `resultados/{jogo}`; os dos outros só depois), `torneios/{c}/palpitesDoTorneio/{conta}` (fecha
   com `torneios/{c}/sistema/bolao`, que a função `fecharBolaoNoInicio`/`fecharBolaoNoResultado` cria no 1º jogo) e

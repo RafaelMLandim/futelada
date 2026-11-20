@@ -132,10 +132,21 @@ export function pontosDoTorneio(palpite: PalpiteDoTorneio | undefined, respostas
   return { ...pontos, total: Object.values(pontos).reduce((soma, valor) => soma + valor, 0) }
 }
 
-export type LinhaDoRanking = { uid: string; nome: string; posicao: number; pontos: number; cravados: number; em: number }
+/**
+ * Linha do ranking com o que desempata: `cravados` (placares exatos), `campeao` (acertou o campeão: 1), `gols` (gols
+ * de jogador acertados) e `vencedores` (jogos em que acertou quem venceu ou o empate).
+ */
+export type LinhaDoRanking = {
+  uid: string; nome: string; posicao: number; pontos: number
+  cravados: number; campeao: number; gols: number; vencedores: number; em: number
+}
+
+/** A ordem do desempate (PLANO.md, seção 23); empatou em tudo, divide a posição. */
+const CRITERIOS_DO_DESEMPATE = ['pontos', 'cravados', 'campeao', 'gols', 'vencedores'] as const
 
 /**
- * Ranking: mais pontos; empatou, quem cravou mais placares; ainda empatado, quem entrou primeiro no bolão.
+ * Ranking: mais pontos; empatou, mais placares cravados; depois quem acertou o campeão, mais gols de jogador acertados e
+ * mais vencedores acertados. Empatados em tudo dividem a posição (2º e 2º; o próximo é o 4º).
  * `palpites`: por jogo, os palpites de cada participante (só dos jogos que já começaram).
  */
 export function rankingDoBolao(torneio: Torneio, participantes: ParticipanteDoBolao[], palpitesDoTorneio: Record<string, PalpiteDoTorneio>,
@@ -145,6 +156,8 @@ export function rankingDoBolao(torneio: Torneio, participantes: ParticipanteDoBo
   const linhas = participantes.map((participante) => {
     let pontos = pontosDoTorneio(palpitesDoTorneio[participante.uid], respostas).total
     let cravados = 0
+    let gols = 0
+    let vencedores = 0
     for (const [jogoId, deCadaUm] of Object.entries(palpites)) {
       const palpite = deCadaUm[participante.uid]
       const situacao = situacoes.get(jogoId)
@@ -152,12 +165,22 @@ export function rankingDoBolao(torneio: Torneio, participantes: ParticipanteDoBo
       const conta = pontosDoJogo(palpite, situacao)
       pontos += conta.total
       if (conta.cravou) cravados++
+      if (conta.placar) vencedores++ // placar exato também acertou quem venceu
+      gols += conta.gols.reduce((soma, gol) => soma + Math.min(gol.palpite, gol.feitos), 0)
     }
-    return { uid: participante.uid, nome: participante.nome, pontos, cravados, em: participante.em, posicao: 0 }
+    const campeao = respostas && palpitesDoTorneio[participante.uid]?.campeao === respostas.campeao ? 1 : 0
+    return { uid: participante.uid, nome: participante.nome, pontos, cravados, campeao, gols, vencedores, em: participante.em, posicao: 0 }
   })
-  linhas.sort((primeiro, segundo) => segundo.pontos - primeiro.pontos || segundo.cravados - primeiro.cravados || primeiro.em - segundo.em)
-  // o desempate vai até quem entrou primeiro: cada um tem a sua posição
-  linhas.forEach((linha, indice) => { linha.posicao = indice + 1 })
+  const comparar = (primeiro: LinhaDoRanking, segundo: LinhaDoRanking) => {
+    for (const criterio of CRITERIOS_DO_DESEMPATE) if (segundo[criterio] !== primeiro[criterio]) return segundo[criterio] - primeiro[criterio]
+    return 0
+  }
+  // empatados em tudo ficam na ordem alfabética, só para a lista não pular de lugar
+  linhas.sort((primeiro, segundo) => comparar(primeiro, segundo) || primeiro.nome.localeCompare(segundo.nome))
+  linhas.forEach((linha, indice) => {
+    const anterior = linhas[indice - 1]
+    linha.posicao = anterior && comparar(anterior, linha) === 0 ? anterior.posicao : indice + 1
+  })
   return linhas
 }
 

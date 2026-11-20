@@ -103,17 +103,23 @@ describe('bolão no torneio', () => {
     expect(pontosDoTorneio(certeiro, respostas)).toMatchObject({ campeao: 10, vice: 5, artilheiro: 8, garcom: 0, total: 23 })
     expect(pontosDoTorneio(undefined, respostas).total).toBe(0)
 
-    const participantes = [{ uid: 'ana', nome: 'Ana', em: 1 }, { uid: 'beto', nome: 'Beto', em: 2 }, { uid: 'caio', nome: 'Caio', em: 3 }, { uid: 'duda', nome: 'Duda', em: 4 }]
+    const participantes = ['Ana', 'Beto', 'Caio', 'Duda', 'Edu', 'Fabi'].map((nome, indice) => ({ uid: nome.toLowerCase(), nome, em: indice }))
+    const errado = { ...certeiro, campeao: jogo.B.id, vice: null, artilheiro: null }
     const palpites = {
       [jogo.jogoId]: {
         ana: palpite({ placar: [2, 0] }), // cravou: 3
         beto: palpite({ placar: [1, 0], gols: [{ lado: 'A', jogador: jogo.A.jogadores[1].id }] }), // vencedor 1 + gol 2 = 3
-        duda: palpite({ placar: [2, 0] }), // cravou: 3 (entrou depois da Ana)
+        duda: palpite({ placar: [2, 0] }), // cravou: 3, igual à Ana em tudo
+        edu: palpite({ placar: [3, 0] }), // vencedor 1 (+ campeão 10 = 11)
+        fabi: palpite({ placar: [0, 1], gols: [{ lado: 'A', jogador: jogo.A.jogadores[1].id }, { lado: 'A', jogador: jogo.A.jogadores[1].id }] }), // gols 4 (+ 0)
       },
     }
-    const ranking = rankingDoBolao(t, participantes, { caio: { ...certeiro } }, palpites)
-    expect(ranking.map((linha) => [linha.nome, linha.posicao, linha.pontos, linha.cravados])).toEqual([
-      ['Caio', 1, 23, 0], ['Ana', 2, 3, 1], ['Duda', 3, 3, 1], ['Beto', 4, 3, 0],
+    const doTorneio = { caio: { ...certeiro }, edu: { ...certeiro, vice: null, artilheiro: null }, fabi: errado, ana: errado }
+    const ranking = rankingDoBolao(t, participantes, doTorneio, palpites)
+    expect(ranking.map((linha) => [linha.nome, linha.posicao, linha.pontos])).toEqual([
+      ['Caio', 1, 23], ['Edu', 2, 11], ['Fabi', 3, 4], ['Ana', 4, 3], ['Duda', 4, 3], ['Beto', 6, 3],
     ])
+    // Ana e Duda: mesmos pontos, cravados, campeão, gols e vencedores → dividem o 4º; Beto (sem cravar) fica atrás
+    expect(ranking.find((linha) => linha.nome === 'Beto')).toMatchObject({ cravados: 0, gols: 1, vencedores: 1 })
   })
 })
