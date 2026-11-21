@@ -9,6 +9,7 @@ import { Icone } from '../../components/Icone'
 import { euNoTorneio, nomeDoGrupo, numerosDoHistorico, type Colocacao, type DestaqueNoHistorico, type TorneioNoHistorico } from '../../logic/torneio'
 import { useConta } from '../../store/conta'
 import { useTorneiosEncerrados } from '../../store/historicoDeTorneios'
+import { useFotosDasContas } from '../../store/denuncias'
 import { compartilharTexto } from '../../utils/nativo'
 import { useVoltar } from '../../utils/voltar'
 
@@ -215,13 +216,13 @@ function TorneioAberto({ torneio, eu, onVoltar }: { torneio: TorneioNoHistorico;
             {meu.jogador && meu.time && (
               <section className="panel">
                 <div className="ph">Você no torneio</div>
-                <div className="tr" style={{ minHeight: 56, gap: 10 }}>
-                  <Camisa cor={meu.time.cor} uniforme={meu.time.uniforme} tamanho={30} numero={meu.jogador.camisa} />
+                <div className="tr" style={{ minHeight: 64, gap: 12 }}>
+                  <MinhaFoto conta={eu} />
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span className="num" style={nomeGrande}>{meu.time.nome}</span>
                     <span className="mut" style={{ fontSize: 13 }}>{[meu.colocacao ? TEXTO_DA_COLOCACAO[meu.colocacao] : null, meu.jogador.camisa !== undefined ? `camisa ${meu.jogador.camisa}` : null].filter(Boolean).join(' · ') || 'Jogou o torneio'}</span>
                   </span>
-                  {meu.colocacao && <span className={'tag ' + (meu.colocacao === 'campeao' ? 't-ok' : 't-y')}>{TEXTO_DA_COLOCACAO[meu.colocacao]}</span>}
+                  <Camisa cor={meu.time.cor} uniforme={meu.time.uniforme} tamanho={40} numero={meu.jogador.camisa} />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
                   <Numero valor={meu.jogador.jogos} rotulo={meu.jogador.jogos === 1 ? 'jogo' : 'jogos'} />
@@ -247,6 +248,19 @@ function TorneioAberto({ torneio, eu, onVoltar }: { torneio: TorneioNoHistorico;
       </div>
     </div>
   )
+}
+
+/** A foto de quem está vendo (a do perfil do app ou a da conta); sem foto, a silhueta. */
+function MinhaFoto({ conta }: { conta: string }) {
+  const { perfil } = useConta()
+  const foto = useFotosDasContas(conta ? [conta] : [])[conta] ?? perfil?.foto ?? null
+  const estilo = { width: 48, height: 48, flex: 'none' as const, borderRadius: '50%', border: '2px solid var(--amarelo)', overflow: 'hidden', background: 'var(--navy)' }
+  return foto ? <img src={foto} alt="" style={{ ...estilo, objectFit: 'cover' }} />
+    : (
+      <span className="foto-do-jogador vazia" aria-hidden="true" style={{ width: 48, height: 48 }}>
+        <svg viewBox="0 0 32 32"><circle cx="16" cy="12.5" r="6" /><path d="M3 36c0-9 5.8-15 13-15s13 6 13 15z" /></svg>
+      </span>
+    )
 }
 
 const nomeETime = (destaque: DestaqueNoHistorico) => ({ nome: destaque.nome, time: destaque.time })
