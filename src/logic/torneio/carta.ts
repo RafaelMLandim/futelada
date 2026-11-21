@@ -21,7 +21,7 @@ export type ResumoDoTorneioNaCarta = {
 const OUTRO: Record<Lado, Lado> = { A: 'B', B: 'A' }
 
 /** O time que perdeu a final (mata-mata) ou o 2º da tabela (pontos corridos). Só com o torneio terminado. */
-function viceCampeao(torneio: Torneio): string | null {
+export function viceCampeao(torneio: Torneio): string | null {
   if (!campeao(torneio)) return null
   if (torneio.regras.formato === 'pontos') return classificacao(torneio)[1]?.time ?? null
   const final = torneio.jogos.filter((jogo) => jogo.rodada === 'Final').at(-1)

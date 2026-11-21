@@ -21,8 +21,9 @@ import { VoltarAoInicio } from './components/navegacao'
 import { TelaoLocal, TelaoNaTv } from './telas/torneio/Telao'
 import { EscolherTorneio } from './telas/torneio/EscolherTorneio'
 import { BolaoApp } from './telas/bolao/BolaoApp'
+import { HistoricoDeTorneios } from './telas/torneio/HistoricoDeTorneios'
 
-type Modo = 'inicio' | 'pelada' | 'torneio' | 'torneios' | 'caixa' | 'historico' | 'perfil' | 'bolao'
+type Modo = 'inicio' | 'pelada' | 'torneio' | 'torneios' | 'caixa' | 'historico' | 'perfil' | 'bolao' | 'historicoDeTorneios'
 const CHAVE_MODO = 'app:modo'
 // qual perfil estava aberto (o da pelada ou o do torneio): ao reabrir o app, volta nele
 const CHAVE_PERFIL = 'app:perfil'
@@ -34,7 +35,7 @@ function modoSalvo(): Modo {
   if (codigoDoBolao) return 'bolao'
   try {
     const m = localStorage.getItem(CHAVE_MODO)
-    return m === 'pelada' || m === 'torneio' || m === 'torneios' || m === 'caixa' || m === 'historico' || m === 'perfil' || m === 'bolao' ? m : 'inicio'
+    return m === 'pelada' || m === 'torneio' || m === 'torneios' || m === 'caixa' || m === 'historico' || m === 'perfil' || m === 'bolao' || m === 'historicoDeTorneios' ? m : 'inicio'
   } catch {
     return 'inicio'
   }
@@ -110,10 +111,11 @@ export default function App() {
     : modo === 'torneios' ? <EscolherTorneio onAbrir={() => setModo('torneio')} onVoltar={inicio} />
     : modo === 'caixa' ? <Caixa onVoltar={inicio} />
     : modo === 'historico' ? <Historico />
+    : modo === 'historicoDeTorneios' ? <HistoricoDeTorneios onVoltar={inicio} />
     : modo === 'perfil' ? <Perfil key={cartaDoPerfil} carta={cartaDoPerfil} />
     : modo === 'bolao' ? <BolaoApp codigoDoLink={codigoDoBolao} onVoltar={inicio} />
     : null
   // o menu da foto (no topo) tem "Voltar ao início"
   if (tela) return <VoltarAoInicio.Provider value={inicio}>{tela}</VoltarAoInicio.Provider>
-  return <Inicio onPelada={() => setModo('pelada')} onTorneio={(comLista) => setModo(comLista ? 'torneios' : 'torneio')} onCaixa={() => setModo('caixa')} onHistorico={() => setModo('historico')} onPerfil={(carta) => { setCartaDoPerfil(carta); setModo('perfil') }} onBolao={() => setModo('bolao')} />
+  return <Inicio onPelada={() => setModo('pelada')} onTorneio={(comLista) => setModo(comLista ? 'torneios' : 'torneio')} onCaixa={() => setModo('caixa')} onHistorico={() => setModo('historico')} onPerfil={(carta) => { setCartaDoPerfil(carta); setModo('perfil') }} onBolao={() => setModo('bolao')} onHistoricoDeTorneios={() => setModo('historicoDeTorneios')} />
 }

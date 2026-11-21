@@ -1350,3 +1350,24 @@ Decidido: a carta do torneio fica **separada** da pelada; quem foi digitado pelo
 - **Código:** `logic/torneio/bolao.ts` (pontos e ranking, testes), `store/bolao.ts`, `telas/bolao/`, regras em
   `testes-regras/bolao.mjs`.
 
+- **Torneio apagado:** o bolão que não terminou sai de "Meus bolões" de cada participante (o app dele confere na nuvem
+  que o torneio não existe mais; erro de internet não tira). O bolão encerrado fica (guarda a colocação final).
+
+## 24. Histórico de torneios (21/11/2026)
+
+- **O quê:** como o histórico da pelada. No Início (parte do Torneio), "Histórico": os torneios encerrados em que a
+  pessoa organizou, jogou com a conta ou entrou no bolão. Fica na conta de cada um: continua mesmo se o organizador
+  apagar o torneio.
+- **Lista:** "Seus números" (torneios, títulos, gols, melhor posição no bolão), filtros Todos / Joguei / Organizei e os
+  torneios por ano (camisa e nome do campeão, o papel da pessoa, gols, bolão e a etiqueta Campeão / 2º / 3º lugar).
+- **Torneio aberto:** placa do campeão com o placar da final; abas Resumo (pódio, destaques: melhor do torneio,
+  artilheiro, garçom, goleiro menos vazado, mais cartões; top 3 do bolão; compartilhar), Jogos (por fase) e Eu (time,
+  camisa, jogos, gols, assistências, cartões e o bolão: pontos, cravados, acertou o campeão). Cartões com o mesmo
+  desenho da partida.
+- **Como chega:** quando o torneio tem campeão, o celular do organizador monta o resumo (`torneioParaOHistorico`, com o
+  ranking final do bolão) e manda. Compartilhado: a função `registrarTorneioNoHistorico` confere (só o organizador,
+  campos e tamanhos) e grava em `usuarios/{conta}/torneiosEncerrados/{código}` de cada participante (organizador, quem
+  tem conta nos times, quem entrou no bolão); resultado corrigido depois manda de novo e regrava. Só deste celular: vai
+  direto para a conta do organizador. Custo: 1 documento pequeno por pessoa por torneio (1 leitura ao abrir a lista).
+- **Código:** `logic/torneio/historico.ts` (testes), `store/historicoDeTorneios.ts`, `telas/torneio/HistoricoDeTorneios.tsx`,
+  `functions/historico.js` (testes).

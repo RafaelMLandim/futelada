@@ -28,9 +28,20 @@ export function useMeusBoloes(): BolaoDoUsuario[] | null {
   useEffect(() => {
     let parar = () => {}
     let ativo = true
+    const conferidos = new Set<string>()
     void obterNuvem().then((nuvem) => {
       if (!nuvem) return setBoloes([])
-      if (ativo) parar = nuvem.ouvirMeusBoloes(setBoloes)
+      if (!ativo) return
+      parar = nuvem.ouvirMeusBoloes((lista) => {
+        setBoloes(lista)
+        // torneio apagado pelo organizador: o bolão que não terminou sai da lista (só se a nuvem responder que não
+        // existe; sem internet, fica). O encerrado fica: guarda a colocação final (o resumo está no histórico de torneios).
+        for (const bolao of lista) {
+          if (conferidos.has(bolao.id) || bolao.encerrado) continue
+          conferidos.add(bolao.id)
+          void nuvem.existe(bolao.id).then((existe) => { if (!existe) return nuvem.esquecerBolao(bolao.id) }).catch(() => null)
+        }
+      })
     })
     return () => { ativo = false; parar() }
   }, [])

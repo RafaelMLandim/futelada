@@ -10,7 +10,7 @@ import {
   addDoc, collection, connectFirestoreEmulator, deleteDoc, deleteField, doc, getDoc, getDocs, increment, initializeFirestore, memoryLocalCache, onSnapshot, orderBy, persistentLocalCache, query,
   limit, persistentMultipleTabManager, setDoc, updateDoc, where, writeBatch, type DocumentReference,
 } from 'firebase/firestore'
-import type { DadosNuvem, Operacao, PalpiteDoJogo, PalpiteDoTorneio, ParticipanteDoBolao } from '../logic/torneio'
+import type { DadosNuvem, Operacao, PalpiteDoJogo, PalpiteDoTorneio, ParticipanteDoBolao, TorneioNoHistorico } from '../logic/torneio'
 import type { InscricaoDoTorneio, JogadorInscrito, PartidaTorneio, ResultadoJogo, TimeInscrito } from '../types/torneio'
 import { nativo, noIphone } from '../utils/nativo'
 import { baseDaNuvem, baseParaNuvem } from './formato'
@@ -146,6 +146,7 @@ export function criarNuvemFirebase(): Nuvem {
   const participacoes = (dono: string) => collection(db, 'usuarios', dono, 'participacoes')
   const pedidosDoTorneio = (torneio: string) => collection(db, 'torneios', torneio, 'pedidos')
   const meusBoloes = (dono: string) => collection(db, 'usuarios', dono, 'boloes')
+  const torneiosEncerrados = (dono: string) => collection(db, 'usuarios', dono, 'torneiosEncerrados')
   const participantesDoBolao = (torneio: string) => collection(db, 'torneios', torneio, 'bolao')
   const palpitesDoJogo = (torneio: string, jogo: string) => collection(db, 'torneios', torneio, 'palpites', jogo, 'de')
   const palpitesDoTorneio = (torneio: string) => collection(db, 'torneios', torneio, 'palpitesDoTorneio')
@@ -178,9 +179,13 @@ export function criarNuvemFirebase(): Nuvem {
     try {
       await linkWithCredential(atual, credencial) // o anônimo vira a conta: mesmo uid, nada se perde
     } catch (e) {
-      // essa conta já existe (entrou em outro celular): troca para ela
-      if ((e as { code?: string }).code === 'auth/credential-already-in-use') await signInWithCredential(auth, credencial)
-      else throw e
+      // a conta já existe: entrou em outro celular (credential-already-in-use) ou o mesmo e-mail já tem conta de outro
+      // jeito, com e-mail e senha (email-already-in-use / account-exists-with-different-credential). Não dá para juntar
+      // com o visitante: troca para a conta. Com o Google, o Firebase aceita (o Google é o dono do Gmail).
+      const codigo = (e as { code?: string }).code
+      if (codigo === 'auth/credential-already-in-use' || codigo === 'auth/email-already-in-use' || codigo === 'auth/account-exists-with-different-credential') {
+        await signInWithCredential(auth, credencial)
+      } else throw e
     }
   }
 
@@ -265,6 +270,9 @@ export function criarNuvemFirebase(): Nuvem {
         for (const d of (await getDocs(sub)).docs) await deleteDoc(d.ref)
       }
       await deleteDoc(torneio(codigo))
+      // o do organizador sai de "Meus bolões" na hora; o dos outros, quando o app deles vê que o torneio não existe mais
+      const dono = await uid()
+      await deleteDoc(doc(meusBoloes(dono), codigo)).catch(() => null)
     },
 
     // ---- campos do torneio: cada mesário trava o seu (as regras do Firebase garantem) ----
@@ -540,6 +548,11 @@ export function criarNuvemFirebase(): Nuvem {
     },
     ouvirMeusBoloes(aoMudar) {
       return ouvirDoPerfil<BolaoDoUsuario>(meusBoloes, aoMudar, () => aoMudar([]))
+    },
+    async esquecerBolao(torneio) {
+      const dono = await uid()
+      if (!auth.currentUser || auth.currentUser.isAnonymous) return
+      await deleteDoc(doc(meusBoloes(dono), torneio))
     },
     async lembrarBolao(torneio, resumo) {
       const dono = await uid()
@@ -819,6 +832,18 @@ export function criarNuvemFirebase(): Nuvem {
       await logado
       await (await funcaoDoServidor('registrarTorneioNaCarta'))({ codigo, nome, data, jogadores })
     },
+    ouvirTorneiosEncerrados(aoMudar, aoErro) {
+      return ouvirDoPerfil<TorneioNoHistorico>(torneiosEncerrados, aoMudar, aoErro)
+    },
+    async registrarTorneioNoHistorico(codigo, resumo) {
+      await logado
+      await (await funcaoDoServidor('registrarTorneioNoHistorico'))({ codigo, resumo: puro(resumo) })
+    },
+    async guardarTorneioEncerrado(id, resumo) {
+      const dono = await uid()
+      if (!auth.currentUser || auth.currentUser.isAnonymous) return
+      await setDoc(doc(torneiosEncerrados(dono), id), { ...puro(resumo), organizador: dono })
+    },
     async denunciarFoto(conta, motivo) {
       await logado
       await (await funcaoDoServidor('denunciarFoto'))({ conta, motivo })
@@ -859,7 +884,7 @@ export function criarNuvemFirebase(): Nuvem {
       }
       const dono = u.uid
       const docs = async (q: Parameters<typeof getDocs>[0]) => (await getDocs(q)).docs.map((d) => d.ref as DocumentReference)
-      const refs: DocumentReference[] = [...await docs(caixa(dono)), ...await docs(caixinhas(dono)), ...await docs(historico(dono)), ...await docs(participacoes(dono)), doc(db, 'perfis', dono)]
+      const refs: DocumentReference[] = [...await docs(caixa(dono)), ...await docs(caixinhas(dono)), ...await docs(historico(dono)), ...await docs(participacoes(dono)), ...await docs(torneiosEncerrados(dono)), doc(db, 'perfis', dono)]
       for (const t of await docs(turmas(dono))) refs.push(...await docs(jogadoresDaTurma(dono, t.id)), t)
       // bolão: os palpites dele nos torneios dos outros (os jogos vêm da base do torneio)
       const jogosDoTorneio = async (torneio: string) => {

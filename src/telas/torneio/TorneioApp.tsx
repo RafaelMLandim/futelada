@@ -19,6 +19,7 @@ import { contarUso, usarCreditoDeTorneio, usePlano } from '../../store/plano'
 import { useConfirmar } from '../../utils/confirmacao'
 import { useInscricaoDoTorneio } from '../../store/inscricaoDoTorneio'
 import { useTorneioNaCarta } from '../../store/torneioNaCarta'
+import { useTorneioNoHistorico } from '../../store/historicoDeTorneios'
 import { useEsseSouEuAutomatico } from './EsseSouEu'
 
 type Aba = 'times' | 'jogos' | 'jogo' | 'tabela' | 'ajustes'
@@ -39,6 +40,7 @@ export function TorneioApp({ onInicio }: { onInicio: () => void }) {
   const inscricao = useInscricaoDoTorneio(hook, torneio?.limiteDeTimes && !plano.ultimate ? torneio.limiteDeTimes : null)
   // a carta de quem joga com conta: o celular do organizador manda os números a cada jogo que acaba
   useTorneioNaCarta(hook)
+  useTorneioNoHistorico(hook)
   // "esse sou eu": o celular do organizador liga sozinho quem pediu
   useEsseSouEuAutomatico(hook)
 

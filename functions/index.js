@@ -10,6 +10,7 @@ import { logger } from 'firebase-functions'
 import { defineSecret } from 'firebase-functions/params'
 import { codigoValido, idDaPeladaNaCarta, jogadoresDoTorneioValidos, jogadoresValidos } from './carta.js'
 import { denunciaValida, deveRemover, idDaDenuncia } from './denuncia.js'
+import { quemRecebe, resumoDoHistoricoValido } from './historico.js'
 import { aplicarEvento } from './plano.js'
 
 initializeApp()
@@ -110,6 +111,31 @@ export const registrarTorneioNaCarta = onCall(async (req) => {
   lote.set(registro, { contas: agora })
   await lote.commit()
   return { ok: true, jogadores: jogadores.length }
+})
+
+/**
+ * Histórico de torneios (PLANO.md, seção 24): o celular do organizador manda o resumo do torneio encerrado e o servidor
+ * grava uma cópia na conta de cada participante (organizador, quem jogou com conta e quem entrou no bolão). Mandar de
+ * novo (resultado corrigido) regrava; quem saiu do torneio sai do histórico.
+ */
+export const registrarTorneioNoHistorico = onCall(async (req) => {
+  const uid = req.auth?.uid
+  if (!uid || req.auth.token.firebase?.sign_in_provider === 'anonymous') throw new HttpsError('unauthenticated', 'Entre com a sua conta.')
+  const codigo = req.data?.codigo
+  const resumo = resumoDoHistoricoValido(req.data?.resumo)
+  if (!codigoValido(codigo) || !resumo) throw new HttpsError('invalid-argument', 'Resumo do torneio inválido.')
+  const torneio = await db.doc(`torneios/${codigo}`).get()
+  if (torneio.data()?.nuvem?.organizador !== uid) throw new HttpsError('permission-denied', 'Só o organizador do torneio.')
+  const bolao = await db.collection(`torneios/${codigo}/bolao`).select().get()
+  const contas = quemRecebe(uid, torneio.data(), bolao.docs.map((participante) => participante.id))
+  const registro = db.doc(`torneios/${codigo}/privado/historico`)
+  const antes = (await registro.get()).data()?.contas ?? []
+  const escrita = db.bulkWriter()
+  for (const conta of contas) escrita.set(db.doc(`usuarios/${conta}/torneiosEncerrados/${codigo}`), { ...resumo, organizador: uid })
+  for (const conta of antes) if (!contas.includes(conta)) escrita.delete(db.doc(`usuarios/${conta}/torneiosEncerrados/${codigo}`))
+  escrita.set(registro, { contas })
+  await escrita.close()
+  return { ok: true, contas: contas.length }
 })
 
 /** Pelada apagada do histórico: os números saem da carta (só o organizador apaga o que ele mesmo registrou). */

@@ -35,15 +35,17 @@ export function useConta() {
       await (await obterNuvem())?.entrarComGoogle()
     } catch (e) {
       const codigo = (e as { code?: string }).code
-      if (codigo !== 'auth/popup-closed-by-user' && codigo !== 'auth/cancelled-popup-request') setErro('Não deu para entrar com o Google. Tente de novo.')
+      // o código do erro aparece junto: se acontecer de novo, dá para saber a causa pela foto da tela
+      if (codigo !== 'auth/popup-closed-by-user' && codigo !== 'auth/cancelled-popup-request') setErro(`Não deu para entrar com o Google. Tente de novo.${codigo ? ` (${codigo})` : ''}`)
     }
   }, [])
   const entrarComApple = useCallback(async () => {
     setErro(null)
     try {
       await (await obterNuvem())?.entrarComApple()
-    } catch {
-      setErro('Não deu para entrar com a Apple. Tente de novo.')
+    } catch (e) {
+      const codigo = (e as { code?: string }).code
+      setErro(`Não deu para entrar com a Apple. Tente de novo.${codigo ? ` (${codigo})` : ''}`)
     }
   }, [])
   /** Entra com e-mail e senha (com `nome`: cria a conta). Devolve o erro para mostrar (null = entrou). */

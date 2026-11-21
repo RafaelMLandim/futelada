@@ -9,12 +9,14 @@ import { useImportarTurmaAntiga, useTurmas } from '../store/turmas'
 import { listaDeTorneios } from '../store/torneio'
 import { useParticipacoes } from '../store/participacoes'
 import { usePlano } from '../store/plano'
+import { useTorneiosEncerrados } from '../store/historicoDeTorneios'
+import { numerosDoHistorico } from '../logic/torneio'
 import { textoDasPeladasGratis } from '../logic/plano'
 import { dataHoje, reais } from '../utils/formatar'
 
 // Tela inicial: pelada do dia, torneio, caixa da pelada e histórico (a conta fica na foto, no topo).
 /** `onPerfil`: abre o Meu perfil na carta da pelada ou na do torneio (cada grupo abre a sua). */
-export function Inicio({ onPelada, onTorneio, onCaixa, onHistorico, onPerfil, onBolao }: { onPelada: () => void; onTorneio: (comLista: boolean) => void; onCaixa: () => void; onHistorico: () => void; onPerfil: (carta: 'pelada' | 'torneio') => void; onBolao: () => void }) {
+export function Inicio({ onPelada, onTorneio, onCaixa, onHistorico, onPerfil, onBolao, onHistoricoDeTorneios }: { onPelada: () => void; onTorneio: (comLista: boolean) => void; onCaixa: () => void; onHistorico: () => void; onPerfil: (carta: 'pelada' | 'torneio') => void; onBolao: () => void; onHistoricoDeTorneios: () => void }) {
   const conta = useConta()
   const caixa = useCaixa()
   const { peladas } = useHistorico()
@@ -30,6 +32,8 @@ export function Inicio({ onPelada, onTorneio, onCaixa, onHistorico, onPerfil, on
   // torneios em que joga (entrou num time pelo link com a conta): o torneio abre a pré-tela, com o Jogando
   const jogando = (useParticipacoes() ?? []).length
   const partidas = pelada?.estado.historico.length ?? 0
+  const encerrados = useTorneiosEncerrados() ?? []
+  const titulos = conta.perfil ? numerosDoHistorico(encerrados, conta.perfil.uid).titulos : 0
 
   return (
     <div className="scr" style={{ height: 'var(--altura-tela)' }}>
@@ -70,6 +74,10 @@ export function Inicio({ onPelada, onTorneio, onCaixa, onHistorico, onPerfil, on
             acao={conta.logado ? 'Ver' : 'Entrar'} />
           <Opcao icone="certo" titulo="Bolão" onClick={conta.logado ? onBolao : conta.entrar}
             detalhe={conta.logado ? 'Palpites dos jogos e ranking · só pontos' : 'Palpites e ranking · entre com o Google'}
+            acao={conta.logado ? 'Abrir' : 'Entrar'} />
+          <Opcao icone="tabela" titulo="Histórico" onClick={conta.logado ? onHistoricoDeTorneios : conta.entrar}
+            detalhe={!conta.logado ? 'Torneios encerrados · entre com o Google'
+              : encerrados.length ? `${encerrados.length} ${encerrados.length === 1 ? 'torneio' : 'torneios'}${titulos ? ` · ${titulos} ${titulos === 1 ? 'título' : 'títulos'}` : ''}` : 'Torneios encerrados'}
             acao={conta.logado ? 'Abrir' : 'Entrar'} />
         </section>
       </div>

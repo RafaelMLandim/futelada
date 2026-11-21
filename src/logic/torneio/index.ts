@@ -30,3 +30,8 @@ export { PONTOS_DO_BOLAO, MAXIMO_DE_CARTOES_NO_PALPITE, placarDoPalpite, situaca
   respostasDoTorneio, pontosDoTorneio, rankingDoBolao, preferenciasDoBolao, type PalpiteDoJogo, type PalpiteDoTorneio, type ParticipanteDoBolao,
   type GolDoPalpite, type CartaoDoPalpite, type CorDoPalpite, type SituacaoDoJogo, type PontosDoJogo, type RespostasDoTorneio, type PontosDoTorneio,
   type LinhaDoRanking } from './bolao'
+export {
+  euNoTorneio, numerosDoHistorico, torneioParaOHistorico,
+  type BolaoNoHistorico, type Colocacao, type DestaqueNoHistorico, type JogadorNoHistorico, type JogoNoHistorico, type TimeNoHistorico,
+  type TorneioEncerrado, type TorneioNoHistorico,
+} from './historico'

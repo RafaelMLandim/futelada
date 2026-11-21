@@ -1,4 +1,4 @@
-import type { DadosNuvem, Operacao, PalpiteDoJogo, PalpiteDoTorneio, ParticipanteDoBolao } from '../logic/torneio'
+import type { DadosNuvem, Operacao, PalpiteDoJogo, PalpiteDoTorneio, ParticipanteDoBolao, TorneioEncerrado, TorneioNoHistorico } from '../logic/torneio'
 import type { PeladaGuardada } from '../logic/historico'
 import type { PeladaDaCarta, ResumoDaCarta, TorneioDaCarta } from '../logic/carta'
 import type { ResumoDoTorneioNaCarta } from '../logic/torneio/carta'
@@ -205,6 +205,8 @@ export interface Nuvem {
   entrarNoBolao(torneio: string, nomeDoTorneio: string, nome: string): Promise<void>
   /** Os bolões de quem está logado, do mais novo ao mais antigo. */
   ouvirMeusBoloes(aoMudar: (boloes: BolaoDoUsuario[]) => void): () => void
+  /** Tira o bolão de "Meus bolões" (o torneio foi apagado). */
+  esquecerBolao(torneio: string): Promise<void>
   /** Lembra a colocação e os pontos para a lista "Meus bolões". */
   lembrarBolao(torneio: string, resumo: Pick<BolaoDoUsuario, 'posicao' | 'pontos' | 'participantes' | 'encerrado' | 'nomeDoTorneio'>): Promise<void>
   /** Troca o código do bolão do torneio ("COPAVILA"): false = já está em uso. `antigo` sai (null = não tinha). */
@@ -235,6 +237,12 @@ export interface Nuvem {
   ouvirCartaDosTorneios(aoMudar: (torneios: TorneioDaCarta[]) => void): () => void
   /** O organizador manda o resumo do torneio: o servidor grava na carta de quem jogou com conta (refaz, não soma). */
   registrarTorneioNaCarta(codigo: string, nome: string, data: number, jogadores: ResumoDoTorneioNaCarta[]): Promise<void>
+  /** Histórico de torneios (seção 24): os torneios encerrados de quem está logado, do mais novo para o mais antigo. */
+  ouvirTorneiosEncerrados(aoMudar: (torneios: TorneioNoHistorico[]) => void, aoErro?: (e: Error) => void): () => void
+  /** Torneio compartilhado: o servidor grava na conta de cada participante (só o organizador manda). */
+  registrarTorneioNoHistorico(codigo: string, resumo: TorneioEncerrado): Promise<void>
+  /** Torneio só deste celular: vai direto para o histórico de quem organizou. */
+  guardarTorneioEncerrado(id: string, resumo: TorneioEncerrado): Promise<void>
   /** Pelada apagada do histórico: os números saem da carta de quem jogou. */
   retirarDaCarta(data: number, contas: string[]): Promise<void>
   /** Denuncia a foto ou o apelido de outra conta (com 3 pessoas diferentes, o servidor tira). */
