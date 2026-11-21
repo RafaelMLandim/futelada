@@ -111,7 +111,7 @@ export default function App() {
     : modo === 'torneios' ? <EscolherTorneio onAbrir={() => setModo('torneio')} onVoltar={inicio} />
     : modo === 'caixa' ? <Caixa onVoltar={inicio} />
     : modo === 'historico' ? <Historico />
-    : modo === 'historicoDeTorneios' ? <HistoricoDeTorneios onVoltar={inicio} />
+    : modo === 'historicoDeTorneios' ? <HistoricoDeTorneios />
     : modo === 'perfil' ? <Perfil key={cartaDoPerfil} carta={cartaDoPerfil} />
     : modo === 'bolao' ? <BolaoApp codigoDoLink={codigoDoBolao} onVoltar={inicio} />
     : null

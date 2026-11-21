@@ -22,7 +22,7 @@ const TEXTO_DA_COLOCACAO: Record<Exclude<Colocacao, null>, string> = { campeao: 
 
 const timeDe = (torneio: TorneioNoHistorico, id: string | null) => torneio.times.find((time) => time.id === id) ?? null
 
-export function HistoricoDeTorneios({ onVoltar }: { onVoltar: () => void }) {
+export function HistoricoDeTorneios() {
   const conta = useConta()
   const torneios = useTorneiosEncerrados()
   const [aberto, setAberto] = useState<string | null>(null)
@@ -76,7 +76,6 @@ export function HistoricoDeTorneios({ onVoltar }: { onVoltar: () => void }) {
             })}
           </>
         )}
-        <button className="btn w sm" onClick={onVoltar}>Voltar ao início</button>
       </div>
     </div>
   )
