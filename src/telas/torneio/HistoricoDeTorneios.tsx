@@ -190,7 +190,7 @@ function TorneioAberto({ torneio, eu, onVoltar }: { torneio: TorneioNoHistorico;
                 <div className="ph">Bolão<span className="sub">{quantos(torneio.bolao.participantes, 'participante', 'participantes')}</span></div>
                 {torneio.bolao.primeiros.map((linhaDoBolao) => (
                   <div key={`${linhaDoBolao.posicao}-${linhaDoBolao.nome}`} className="tr" style={{ minHeight: 44, gap: 10 }}>
-                    <span className="num" style={{ width: 30, fontSize: 18 }}>{linhaDoBolao.posicao === 1 ? <Icone nome="trofeu" tamanho={20} /> : `${linhaDoBolao.posicao}º`}</span>
+                    <span className="num" style={{ width: 30, fontSize: 18 }}>{linhaDoBolao.posicao}º</span>
                     <span className="nome" style={{ fontWeight: 700 }}>{linhaDoBolao.nome}</span>
                     <span className="num" style={{ fontSize: 18 }}>{linhaDoBolao.pontos} pts</span>
                   </div>
